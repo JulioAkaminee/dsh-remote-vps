@@ -38,8 +38,5 @@ fs.copyFileSync(path.join(assets, hostTgz), path.join(dist, hostTgz))
 fs.copyFileSync(path.join(root, 'deploy', 'install-host.sh'), path.join(dist, 'install-host.sh'))
 fs.copyFileSync(path.join(root, 'deploy', 'install-desktop.sh'), path.join(dist, 'install-desktop.sh'))
 
-if (!fs.existsSync(path.join(desktop, 'node_modules', 'ssh2'))) {
-  execFileSync(npm, ['install', '--no-audit', '--no-fund', '--omit=dev'], { cwd: desktop, stdio: 'inherit' })
-}
 const desktopTgz = pack(desktop, dist)
 console.log(`built:\n  dist/${hostTgz}\n  dist/${desktopTgz}\n  dist/install-host.sh\n  dist/install-desktop.sh`)

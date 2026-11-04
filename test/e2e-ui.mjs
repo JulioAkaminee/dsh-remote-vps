@@ -139,7 +139,10 @@ try {
   await page.locator('[data-dsh-devices=workspace-menu] [role=menuitem]').filter({ hasText: 'project-on-vps' }).first().click()
   await page.waitForFunction(() => getComputedStyle(document.getElementById('dsh-devices-frames')).display === 'block', null, { timeout: 15000 })
   await frame.locator('[contenteditable=true], textarea').first().waitFor({ timeout: 20000 })
+  // Wait for the new, blank session (the previous conversation may still be on screen briefly).
+  for (let i = 0; i < 40 && (await visibleCount(frame, '[VPS] MOCK-REPLY')) > 0; i++) await page.waitForTimeout(250)
   const beforeMenu = await visibleCount(frame, '[VPS] MOCK-REPLY')
+  check('the chooser opened a new, blank session on the device', beforeMenu === 0)
   await send(frame, 'started from the local workspace chooser')
   check('choosing a device workspace in the chooser starts the chat on the device', await waitMore(frame, '[VPS] MOCK-REPLY', beforeMenu))
 } catch (error) {

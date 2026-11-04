@@ -7,7 +7,9 @@ import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-import ssh2 from 'ssh2'
+// ssh2 is vendored (lib/vendor) so the plugin has no dependencies: installs work offline
+// and need no package build scripts in any package manager.
+import ssh2 from './vendor/node_modules/ssh2/lib/index.js'
 
 const { Client, utils } = ssh2
 
