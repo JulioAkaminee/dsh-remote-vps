@@ -54,7 +54,7 @@ export function apply(ctx, config) {
 
   const routes = [
     ['GET', '/devices', async () => json(manager.list())],
-    ['GET', '/devices/ssh-hosts', async () => json({ hosts: listSshAliases() })],
+    ['GET', '/devices/ssh-hosts', async () => json({ hosts: listSshAliases(), saved: manager.savedMachines() })],
     [
       'GET',
       '/devices/job',

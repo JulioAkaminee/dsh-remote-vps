@@ -13,7 +13,7 @@ import { DeviceClient, DeviceHttpError, generateClientKey, hello, pair } from '.
 import { DeviceGateway } from './gateway.js'
 import { parsePairingInput, PROTOCOL_VERSION } from './protocol.js'
 import { DeviceRegistry } from './registry.js'
-import { resolveSshTarget, shq, SshConnection } from './ssh.js'
+import { listSavedMachines, resolveSshTarget, shq, SshConnection } from './ssh.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const ASSETS = path.join(here, '..', 'assets')
@@ -165,7 +165,7 @@ export class DeviceManager {
     this._closeTransport(s)
     const t = device.transport
     const resolved = resolveSshTarget(t.target, { port: t.port, username: t.username, identityFile: t.identityFile, proxyJump: t.proxyJump })
-    const ssh = new SshConnection(resolved, { expectFingerprint: t.fingerprint })
+    const ssh = new SshConnection(resolved, { expectFingerprint: t.fingerprint, ...this._savedSecrets(t.savedMachineId) })
     await ssh.connect()
     let remotePort = t.remotePort
     try {
@@ -234,12 +234,13 @@ export class DeviceManager {
           } else throw error
         } else throw error
       }
-      const sessions = await client.sessions().catch(() => null)
+      const [sessions, workspaces] = await Promise.all([client.sessions().catch(() => null), client.workspaces().catch(() => null)])
       s.info = info
       if (sessions) {
         s.sessions = sessions.items ?? []
         s.sessionsAt = Date.now()
       }
+      if (workspaces) s.workspaces = workspaces.items ?? []
       s.status = 'online'
       s.error = null
       s.failures = 0
@@ -291,6 +292,7 @@ export class DeviceManager {
       protocolMismatch: !!(device.versions?.protocol && device.versions.protocol !== PROTOCOL_VERSION),
       sessions: s.sessions,
       sessionsAt: s.sessionsAt,
+      workspaces: (s.workspaces ?? []).map((w) => ({ id: w.id, title: w.title, path: w.path })),
       uptimeSec: s.info?.uptimeSec ?? null,
       loadavg: s.info?.loadavg ?? null,
     }
@@ -303,11 +305,11 @@ export class DeviceManager {
       if (!s || s.status !== 'online' || s.sessionsLoading || !s.client) continue
       if (Date.now() - (s.sessionsAt ?? 0) < maxAgeMs) continue
       s.sessionsLoading = true
-      s.client
-        .sessions()
-        .then((r) => {
+      Promise.all([s.client.sessions(), s.client.workspaces().catch(() => null)])
+        .then(([r, w]) => {
           s.sessions = r.items ?? []
           s.sessionsAt = Date.now()
+          if (w) s.workspaces = w.items ?? []
         })
         .catch(() => {
           s.nextCheckAt = 0
@@ -322,6 +324,7 @@ export class DeviceManager {
     this._refreshSessionsIfStale()
     return {
       devices: this.registry.list().map((d) => this.view(d)),
+      saved: this.savedMachines(),
       self: { hostname: os.hostname(), platform: process.platform, dsh: localDshVersion(), plugin: PLUGIN_VERSION },
     }
   }
@@ -418,19 +421,38 @@ export class DeviceManager {
     return this._job('ssh-pair', (log, job) => this._sshPair(params, log, job))
   }
 
-  async _connectSsh({ target, port, username, identityFile, fingerprint }, log) {
+  /** Secrets of a machine saved by dsh-tauri-remote, read at connect time (never stored here). */
+  _savedSecrets(savedMachineId) {
+    if (!savedMachineId) return {}
+    const m = listSavedMachines({ withSecrets: true }).find((x) => x.id === savedMachineId)
+    return m ? { password: m.password, passphrase: m.passphrase } : {}
+  }
+
+  /** Machines saved on this computer (dsh-tauri-remote), marked when already paired. */
+  savedMachines() {
+    const devices = this.registry.list()
+    return listSavedMachines().map((m) => {
+      const paired = devices.find(
+        (d) => d.transport.kind === 'ssh' && (d.transport.savedMachineId === m.id || d.transport.target === m.target || d.transport.target === m.host),
+      )
+      return { ...m, pairedDeviceId: paired?.id ?? null }
+    })
+  }
+
+  async _connectSsh({ target, port, username, identityFile, fingerprint, password, passphrase }, log) {
     const resolved = resolveSshTarget(target, { port, username, identityFile })
     log(`connecting to ${resolved.username}@${resolved.host}:${resolved.port}${resolved.proxyJump ? ` via ${resolved.proxyJump}` : ''}`)
-    if (fingerprint) return { ssh: await new SshConnection(resolved, { expectFingerprint: fingerprint }).connect(), resolved, fingerprint }
+    const secrets = { password, passphrase }
+    if (fingerprint) return { ssh: await new SshConnection(resolved, { expectFingerprint: fingerprint, ...secrets }).connect(), resolved, fingerprint }
     try {
-      await new SshConnection(resolved).connect()
+      await new SshConnection(resolved, secrets).connect()
       throw new Error('unexpected: unpinned connection succeeded')
     } catch (error) {
       if (error.code !== 'HOSTKEY_UNCONFIRMED') throw error
       if (!error.presented.known) throw error // the UI asks the user to confirm this fingerprint
       log(`host key ${error.presented.fingerprint} matches ~/.ssh/known_hosts`)
       const fp = error.presented.fingerprint
-      return { ssh: await new SshConnection(resolved, { expectFingerprint: fp }).connect(), resolved, fingerprint: fp }
+      return { ssh: await new SshConnection(resolved, { expectFingerprint: fp, ...secrets }).connect(), resolved, fingerprint: fp }
     }
   }
 
@@ -474,8 +496,20 @@ export class DeviceManager {
     return result
   }
 
-  async _sshPair({ target, port, username, identityFile, fingerprint, name, install = true, hostPort }, log, job) {
-    const { ssh, fingerprint: fp } = await this._connectSsh({ target, port, username, identityFile, fingerprint }, log)
+  async _sshPair({ target, port, username, identityFile, fingerprint, name, install = true, hostPort, savedMachineId }, log, job) {
+    if (savedMachineId) {
+      // A server already saved on this computer: reuse its address, credentials
+      // and the host key the user accepted there.
+      const m = listSavedMachines().find((x) => x.id === savedMachineId)
+      if (!m) throw new Error('that saved server is no longer on this computer')
+      target = m.target
+      name = name || m.name
+      if (!fingerprint && m.fingerprint) {
+        fingerprint = m.fingerprint
+        log(`using the host key you already accepted for ${m.name} (${m.fingerprint})`)
+      }
+    }
+    const { ssh, fingerprint: fp } = await this._connectSsh({ target, port, username, identityFile, fingerprint, ...this._savedSecrets(savedMachineId) }, log)
     let keep = false
     try {
       let status = await this._remoteStatus(ssh)
@@ -519,7 +553,16 @@ export class DeviceManager {
           remoteName: probe.name,
           clientId: paired.clientId,
           key,
-          transport: { kind: 'ssh', target, port: port || undefined, username: username || undefined, identityFile: identityFile || undefined, fingerprint: fp, remotePort },
+          transport: {
+            kind: 'ssh',
+            target,
+            port: port || undefined,
+            username: username || undefined,
+            identityFile: identityFile || undefined,
+            fingerprint: fp,
+            remotePort,
+            savedMachineId: savedMachineId || undefined,
+          },
         })
         // Hand the live connection to the device's runtime state.
         const s = this._ensureState(probe.deviceId)
@@ -548,7 +591,10 @@ export class DeviceManager {
     return this._job('update', async (log) => {
       const s = this._ensureState(id)
       const t = device.transport
-      const { ssh } = await this._connectSsh({ target: t.target, port: t.port, username: t.username, identityFile: t.identityFile, fingerprint: t.fingerprint }, log)
+      const { ssh } = await this._connectSsh(
+        { target: t.target, port: t.port, username: t.username, identityFile: t.identityFile, fingerprint: t.fingerprint, ...this._savedSecrets(t.savedMachineId) },
+        log,
+      )
       try {
         await this._install(ssh, log, { port: t.remotePort })
         log('restarting the device host')

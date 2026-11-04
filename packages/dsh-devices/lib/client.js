@@ -95,6 +95,14 @@ window.__ModuleLoader__.load({
       connecting: 'Connecting to {device}…',
       deviceOffline: '{device} is offline. Its chats come back when it is reachable again.',
       now: 'now',
+      savedServers: 'Saved on this computer',
+      savedHint: 'Servers already saved in Remote access. Their address, login and accepted host key are reused.',
+      savedTitle: 'Saved on this computer — ready to add',
+      addSaved: 'Add',
+      alreadyAdded: 'added',
+      hostKeyKnown: 'host key already trusted',
+      menuRemote: 'On your devices',
+      menuNewOn: 'New on {device}…',
     }
     const zh = {
       panel: '设备', title: '设备', subtitle: '在你的服务器上运行的 DSH。它们的会话与本地会话一起显示在侧边栏，并标记为远程；代理、工具和终端都在设备上运行。',
@@ -116,6 +124,9 @@ window.__ModuleLoader__.load({
       openFailed: '无法打开设备：{error}', outdated: '有更新', remote: '远程', remoteOn: '远程 · {device}',
       newRemote: '在 {device} 上新建会话', offlineShort: '离线', connecting: '正在连接 {device}…',
       deviceOffline: '{device} 离线。恢复连接后会话会重新出现。', now: '刚刚',
+      savedServers: '本机已保存', savedHint: '已在远程访问中保存的服务器，将复用其地址、登录方式和已接受的主机密钥。',
+      savedTitle: '本机已保存 — 可直接添加', addSaved: '添加', alreadyAdded: '已添加', hostKeyKnown: '主机密钥已信任',
+      menuRemote: '你的设备', menuNewOn: '在 {device} 上新建…',
     }
 
     function fill(text, vars) {
@@ -415,6 +426,15 @@ window.__ModuleLoader__.load({
 .dshdev-fb-actions{display:none;margin-left:auto}
 .dshdev-fb-project:hover .dshdev-fb-actions{display:inline-flex}
 .dshdev-fb-iconbtn{background:none;border:0;padding:2px;border-radius:6px;color:inherit;cursor:pointer;display:inline-flex}
+.dshdev-saved{display:flex;flex-direction:column;gap:6px}
+.dshdev-saved-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;padding:8px 10px;color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.dshdev-saved-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-saved-item.on{border-color:var(--dsw-focus-ring-color);background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-saved-name{font-weight:600;white-space:nowrap}
+.dshdev-saved-item .dshdev-s-meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.dshdev-menu-caption{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--dsw-alias-label-tertiary);padding:8px 10px 4px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:4px}
+.dshdev-menu-suffix{color:var(--dsw-alias-label-tertiary);margin-left:6px;font-size:12px}
+.dshdev-menu-item{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:6px 10px;font:inherit;color:inherit;cursor:pointer}
 .dshdev-chat-panel{position:relative;width:100%;height:100%}
 .dshdev-chat-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:13px;padding:24px;text-align:center}
 `
@@ -664,6 +684,76 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // ── the composer's workspace chooser also lists device workspaces ───────
+    /**
+     * When the "Choose workspace" menu opens, append the workspaces of every
+     * online device (remote icon + device name) and a "New on <device>…" entry.
+     * Picking one starts the chat on that device, inline in this window.
+     */
+    function mountWorkspaceMenu(ctx, t) {
+      const svgRemote = (size) =>
+        `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1.5" y="6.5" width="10" height="7.5" rx="1.6" fill="currentColor" opacity="0.16"/><rect x="1.5" y="6.5" width="10" height="7.5" rx="1.6" stroke="currentColor"/><path d="M4 10.25h.01M6.5 10.25h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M10.2 3.6a3.3 3.3 0 0 1 3.3 3.3M10.2 1.6a5.3 5.3 0 0 1 5.3 5.3" stroke="currentColor" stroke-linecap="round"/></svg>`
+      const svgPlus = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>'
+      const isWorkspaceChooser = (button) => !!button && [...button.classList].some((c) => /_workspace$/.test(c))
+      const enhance = (menu) => {
+        if (menu.dataset.dshdevEnhanced) return
+        const anchor = document.querySelector('button[aria-haspopup="menu"][aria-expanded="true"]')
+        if (!isWorkspaceChooser(anchor)) return
+        menu.dataset.dshdevEnhanced = '1'
+        const online = (store.data.devices || []).filter((d) => d.status === 'online')
+        if (online.length === 0) return
+        const viewport = menu.querySelector('[class*="_viewport_"]') || menu
+        const sample = menu.querySelector('[role=menuitem]')
+        const wrapCls = sample && sample.parentElement ? sample.parentElement.className : ''
+        const itemCls = sample ? [...sample.classList].filter((c) => !/_selected_/.test(c)).join(' ') : 'dshdev-menu-item'
+        const iconCls = (sample && sample.querySelector('[class*="_itemIcon_"]')?.className) || ''
+        const labelCls = (sample && sample.querySelector('[class*="_itemLabel_"]')?.className) || ''
+        const section = document.createElement('div')
+        section.setAttribute('data-dsh-devices', 'workspace-menu')
+        section.setAttribute('role', 'group')
+        section.setAttribute('aria-label', t('menuRemote'))
+        const caption = document.createElement('div')
+        caption.className = 'dshdev-menu-caption'
+        caption.textContent = t('menuRemote')
+        section.appendChild(caption)
+        const add = (icon, label, suffix, onPick) => {
+          const wrap = document.createElement('div')
+          wrap.className = wrapCls
+          const item = document.createElement('button')
+          item.type = 'button'
+          item.setAttribute('role', 'menuitem')
+          item.className = itemCls
+          item.innerHTML = `<span class="${iconCls}" style="color:rgb(65,118,230)">${icon}</span><span class="${labelCls}"></span>`
+          item.lastChild.textContent = label
+          if (suffix) {
+            const sfx = document.createElement('span')
+            sfx.className = 'dshdev-menu-suffix'
+            sfx.textContent = suffix
+            item.lastChild.appendChild(sfx)
+          }
+          item.addEventListener('click', (event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            anchor.click() // close the native menu
+            onPick()
+          })
+          wrap.appendChild(item)
+          section.appendChild(wrap)
+        }
+        for (const device of online) {
+          const workspaces = device.workspaces && device.workspaces.length ? device.workspaces : groupSessions(device).filter((g) => g.workspaceId).map((g) => ({ id: g.workspaceId, title: g.title }))
+          for (const w of workspaces) add(svgRemote(16), w.title, device.name, () => newRemote(ctx, device, w.id))
+          add(svgPlus, fill(t('menuNewOn'), { device: device.name }), '', () => newRemote(ctx, device, null))
+        }
+        viewport.appendChild(section)
+      }
+      const observer = new MutationObserver(() => {
+        for (const menu of document.querySelectorAll('[role=menu]:not([data-dshdev-enhanced])')) enhance(menu)
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+      return () => observer.disconnect()
+    }
+
     // ── main area: the embedded remote conversation ─────────────────────────
     function RemoteChatPanel({ t }) {
       const st = useStore()
@@ -797,13 +887,15 @@ window.__ModuleLoader__.load({
       return h('div', { ref, className: 'dshdev-log', 'aria-live': 'polite' }, job.log.join('\n') || t('working'))
     }
 
-    function AddDialog({ t, onClose, onDone }) {
+    function AddDialog({ t, onClose, onDone, preset }) {
       const [tab, setTab] = useState('ssh')
-      const [target, setTarget] = useState('')
+      const [target, setTarget] = useState(preset ? preset.target : '')
+      const [savedId, setSavedId] = useState(preset ? preset.id : null)
+      const [saved, setSaved] = useState([])
       const [port, setPort] = useState('')
       const [user, setUser] = useState('')
       const [identity, setIdentity] = useState('')
-      const [name, setName] = useState('')
+      const [name, setName] = useState(preset ? preset.name : '')
       const [code, setCode] = useState('')
       const [url, setUrl] = useState('')
       const [advanced, setAdvanced] = useState(false)
@@ -814,7 +906,11 @@ window.__ModuleLoader__.load({
       const [success, setSuccess] = useState(null)
 
       useEffect(() => {
-        api('/devices/ssh-hosts').then((r) => setHosts(r.hosts || []), () => {})
+        api('/devices/ssh-hosts').then((r) => {
+          setHosts(r.hosts || [])
+          setSaved(r.saved || [])
+        }, () => {})
+        if (preset) startSsh()
       }, [])
 
       useEffect(() => {
@@ -854,6 +950,7 @@ window.__ModuleLoader__.load({
             identityFile: identity.trim() || undefined,
             name: name.trim() || undefined,
             fingerprint,
+            savedMachineId: savedId || undefined,
           })
           setJob(started)
         } catch (e) {
@@ -894,7 +991,39 @@ window.__ModuleLoader__.load({
           ? h(
               React.Fragment,
               null,
-              h(Field, { label: t('sshTarget'), hint: t('sshTargetHint') }, h(TextInput, { value: target, onChange: setTarget, placeholder: 'root@203.0.113.10', list: 'dshdev-hosts', autoFocus: true })),
+              saved.length
+                ? h(
+                    Field,
+                    { label: t('savedServers'), hint: t('savedHint') },
+                    h(
+                      'div',
+                      { className: 'dshdev-saved', role: 'listbox', 'aria-label': t('savedServers') },
+                      saved.map((m) =>
+                        h(
+                          'button',
+                          {
+                            key: m.id,
+                            type: 'button',
+                            role: 'option',
+                            'aria-selected': savedId === m.id,
+                            className: `dshdev-saved-item${savedId === m.id ? ' on' : ''}`,
+                            disabled: busy,
+                            onClick: () => {
+                              setSavedId(m.id)
+                              setTarget(m.target)
+                              setName(m.name)
+                            },
+                          },
+                          h('span', { className: 'dshdev-remote-mark' }, h(RemoteIcon, { size: 16 })),
+                          h('span', { className: 'dshdev-saved-name' }, m.name),
+                          h('span', { className: 'dshdev-s-meta' }, m.target),
+                          m.pairedDeviceId ? h('span', { className: 'dshdev-tag' }, t('alreadyAdded')) : null,
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+              h(Field, { label: t('sshTarget'), hint: t('sshTargetHint') }, h(TextInput, { value: target, onChange: (v) => (setTarget(v), setSavedId(null)), placeholder: 'root@203.0.113.10', list: 'dshdev-hosts', autoFocus: !preset })),
               h('datalist', { id: 'dshdev-hosts' }, hosts.map((x) => h('option', { key: x, value: x }))),
               advanced
                 ? h(
@@ -1012,14 +1141,32 @@ window.__ModuleLoader__.load({
             'div',
             { className: 'dshdev-head' },
             h('div', null, h('h1', null, t('title')), h('div', { className: 'dshdev-sub' }, t('subtitle'))),
-            h('div', { className: 'dshdev-actions' }, h(Btn, { variant: 'outline', onClick: () => post('/devices/refresh', {}).then(refreshDevices) }, t('refresh')), h(Btn, { variant: 'primary', onClick: () => setAdding(true) }, t('add'))),
+            h('div', { className: 'dshdev-actions' }, h(Btn, { variant: 'outline', onClick: () => post('/devices/refresh', {}).then(refreshDevices) }, t('refresh')), h(Btn, { variant: 'primary', onClick: () => setAdding({}) }, t('add'))),
           ),
           notice || st.error ? h('div', { className: 'dshdev-err', role: 'alert', style: { marginBottom: 12 } }, notice || st.error) : null,
           updateJob ? h('div', { style: { marginBottom: 12 } }, h(JobView, { job: updateJob, t })) : null,
-          st.loaded && devices.length === 0 ? h('div', { className: 'dshdev-empty' }, t('empty')) : null,
+          (st.data.saved || []).some((m) => !m.pairedDeviceId)
+            ? h(
+                'div',
+                { className: 'dshdev-card', 'data-testid': 'dsh-devices-saved' },
+                h('div', { className: 'dshdev-sessions-title', style: { padding: '12px 16px 2px' } }, t('savedTitle')),
+                (st.data.saved || [])
+                  .filter((m) => !m.pairedDeviceId)
+                  .map((m) =>
+                    h(
+                      'div',
+                      { key: m.id, className: 'dshdev-row', style: { paddingTop: 8, paddingBottom: 8 } },
+                      h('span', { className: 'dshdev-remote-mark', style: { display: 'inline-flex', color: 'rgb(65,118,230)' } }, h(RemoteIcon, { size: 16 })),
+                      h('div', { className: 'dshdev-main' }, h('div', { className: 'dshdev-name' }, m.name), h('div', { className: 'dshdev-meta' }, [`SSH · ${m.target}`, m.fingerprint ? t('hostKeyKnown') : null].filter(Boolean).join('  ·  '))),
+                      h(Btn, { variant: 'primary', onClick: () => setAdding({ preset: m }) }, t('addSaved')),
+                    ),
+                  ),
+              )
+            : null,
+          st.loaded && devices.length === 0 && !(st.data.saved || []).length ? h('div', { className: 'dshdev-empty' }, t('empty')) : null,
           devices.map((d) => h(DeviceCard, { key: d.id, device: d, t, self: st.data.self, onOpen, onAction })),
         ),
-        adding ? h(AddDialog, { t, onClose: () => setAdding(false), onDone: refreshDevices }) : null,
+        adding ? h(AddDialog, { t, preset: adding.preset, onClose: () => setAdding(false), onDone: refreshDevices }) : null,
         renaming
           ? h(SimpleDialog, {
               t,
@@ -1090,6 +1237,7 @@ window.__ModuleLoader__.load({
         sync()
         return ctx.layout.panelInfo.subscribe(sync)
       }, 'dsh-devices: panel tracking')
+      ctx.effect(() => mountWorkspaceMenu(ctx, t), 'dsh-devices: workspace chooser')
       // The remote groups sit in the sidebar's own list; poll while mounted.
       ctx.effect(() => {
         const unmount = mountSidebar(ctx, t)

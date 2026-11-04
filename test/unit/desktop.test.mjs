@@ -120,3 +120,26 @@ test('gateway: secret path, Host/Origin checks, token injection, WebSocket relay
   await gw.stop()
   device.close()
 })
+
+test('ssh: machines saved by dsh-tauri-remote are listed with their accepted host key, secrets only on request', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-dshhome-'))
+  fs.mkdirSync(path.join(home, 'remote'), { recursive: true })
+  fs.writeFileSync(
+    path.join(home, 'remote', 'machines.json'),
+    JSON.stringify({ version: 1, enabled: true, machines: { m1: { id: 'm1', name: 'VPS', host: '203.0.113.10', port: 2222, user: 'root', password: 'pw' }, bad: { id: 'bad' } } }),
+  )
+  fs.writeFileSync(path.join(home, 'remote', 'known-hosts.json'), JSON.stringify([{ machineId: 'm1', fingerprint: 'SHA256:abc' }]))
+  const prev = process.env.DSH_HOME
+  process.env.DSH_HOME = home
+  try {
+    const { listSavedMachines } = await import(`../../packages/dsh-devices/lib/ssh.js?saved=${Date.now()}`)
+    const [m, ...rest] = listSavedMachines()
+    assert.equal(rest.length, 0, 'invalid records are skipped')
+    assert.deepEqual([m.name, m.target, m.fingerprint, m.hasPassword], ['VPS', 'root@203.0.113.10:2222', 'SHA256:abc', true])
+    assert.equal(m.password, undefined, 'no secrets unless asked')
+    assert.equal(listSavedMachines({ withSecrets: true })[0].password, 'pw')
+  } finally {
+    if (prev === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = prev
+  }
+})

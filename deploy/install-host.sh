@@ -34,6 +34,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$PLUGIN" ] && [ -f "$PLUGIN" ] || result_fail "--plugin <dsh-device-host tarball> is required"
+# Absolute path: npm reads a bare "dir/file.tgz" as a GitHub "owner/repo" spec.
+PLUGIN="$(cd "$(dirname "$PLUGIN")" && pwd)/$(basename "$PLUGIN")"
 
 mkdir -p "$ROOT/bin" "$ROOT/runtime"
 chmod 700 "$ROOT"

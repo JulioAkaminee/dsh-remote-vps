@@ -1,0 +1,31 @@
+// Optional e2e: a server saved by dsh-tauri-remote ($DSH_HOME/remote/machines.json in ctrl-home)
+// shows up under Devices → "Saved on this computer" and pairs in one click, reusing its host key.
+// Needs SSH access from the ctrl process to that server (see README → Desenvolvimento).
+import { launch, shot } from './pw.mjs'
+import { launchUrlFromLog } from './ctrl-api.mjs'
+const { browser, context } = await launch()
+const page = await context.newPage()
+const errors = []
+page.on('pageerror', (e) => errors.push(String(e)))
+await page.goto(launchUrlFromLog('/tmp/dshdev/ctrl.log'))
+await page.getByRole('button', { name: 'Continue' }).click({ timeout: 15000 }).catch(() => {})
+await page.waitForTimeout(800)
+await page.getByRole('button', { name: 'Devices' }).first().click()
+await page.waitForSelector('[data-testid=dsh-devices-saved]', { timeout: 20000 })
+await shot(page, 's-01-saved-suggestion')
+console.log('saved card:', (await page.locator('[data-testid=dsh-devices-saved]').innerText()).replace(/\n+/g, ' | '))
+await page.locator('[data-testid=dsh-devices-saved]').getByRole('button', { name: 'Add' }).first().click()
+await page.waitForSelector('text=Paired with', { timeout: 120000 })
+await shot(page, 's-02-paired')
+console.log('log:', (await page.locator('.dshdev-log').innerText()).replace(/\n+/g, ' | '))
+console.log('host key prompt shown:', await page.locator('[data-testid=hostkey-fingerprint]').count())
+await page.getByRole('button', { name: 'Done' }).click()
+await page.waitForTimeout(3500)
+console.log('saved card after:', await page.locator('[data-testid=dsh-devices-saved]').count())
+console.log('sidebar remote groups:', (await page.locator('[data-dsh-devices=sidebar]').innerText()).replace(/\n+/g, ' | '))
+await page.getByRole('button', { name: 'Add device' }).click()
+await page.waitForSelector('.dshdev-saved-item')
+await shot(page, 's-03-picker')
+console.log('picker:', (await page.locator('.dshdev-saved').innerText()).replace(/\n+/g, ' | '))
+console.log('errors:', JSON.stringify(errors))
+await browser.close()

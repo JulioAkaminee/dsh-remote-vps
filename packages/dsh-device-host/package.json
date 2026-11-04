@@ -1,6 +1,6 @@
 {
   "name": "dsh-device-host",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Make a DeepSeek Harness (dsh) instance a remote device: pairing, short-lived device tokens, and an authenticated tunnel to its web UI. The agent runs here; a desktop dsh controls it.",
   "type": "module",
   "license": "MIT",

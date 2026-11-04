@@ -30,7 +30,7 @@ Dois pacotes:
 Gere os pacotes (na VPS ou em qualquer máquina com Node ≥ 22.19):
 
 ```sh
-npm run build        # → dist/dsh-devices-0.1.0.tgz, dist/dsh-device-host-0.1.0.tgz, dist/install-*.sh
+npm run build        # → dist/dsh-devices-0.1.1.tgz, dist/dsh-device-host-0.1.1.tgz, dist/install-*.sh
 ```
 
 ### 1. No Mac: instalar o `dsh-devices`
@@ -45,17 +45,17 @@ sh ~/dsh-remote-vps/deploy/install-desktop.sh
 Para atualizar depois: `cd ~/dsh-remote-vps && git pull && sh deploy/install-desktop.sh`.
 Os pacotes prontos também estão nas *Releases* do repositório.
 
-Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.0.tgz` e `install-desktop.sh` para o Mac e rode:
+Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.1.tgz` e `install-desktop.sh` para o Mac e rode:
 
 ```sh
-sh install-desktop.sh ./dsh-devices-0.1.0.tgz            # detecta o profile do app
-sh install-desktop.sh ./dsh-devices-0.1.0.tgz --profile NOME
+sh install-desktop.sh ./dsh-devices-0.1.1.tgz            # detecta o profile do app
+sh install-desktop.sh ./dsh-devices-0.1.1.tgz --profile NOME
 ```
 
 Ou, direto do Mac, puxando da VPS por SSH:
 
 ```sh
-ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.0.tgz' > /tmp/dsh-devices.tgz
+ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.1.tgz' > /tmp/dsh-devices.tgz
 ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/install-desktop.sh' | sh -s /tmp/dsh-devices.tgz
 ```
 
@@ -64,6 +64,11 @@ Reinicie o DeepSeek Harness. Aparece **Devices** na barra lateral.
 Para remover: `sh install-desktop.sh --uninstall`.
 
 ### 2. Adicionar a VPS
+
+**Já salva no computador:** se a VPS já está salva no *Remote access* do DSH desktop
+(`~/.dsh/remote/machines.json`, do `dsh-tauri-remote`), ela aparece sozinha em **Devices →
+"Saved on this computer"** e na lista do diálogo *Add device*. Um clique em **Add** pareia,
+reaproveitando endereço, login e a chave do servidor que você já aceitou (sem confirmar de novo).
 
 **Por SSH (recomendado, nenhuma porta nova):** Devices → *Add device* → SSH → `root@IP` (ou um
 alias do `~/.ssh/config`). Na primeira vez você confirma a impressão digital da chave do servidor.
@@ -76,7 +81,7 @@ mostra um código `XXXX-XXXX` (5 min, uso único) e um link `dsh-device://…`. 
 *Add device* → Pairing code → cole o link. Exige que o Mac alcance a VPS por HTTPS
 (Tailscale, Cloudflare Tunnel ou proxy reverso apontando para `127.0.0.1:3180`).
 
-Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.0.tgz`.
+Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.1.tgz`.
 
 ### 3. Chave do modelo na VPS
 
@@ -89,7 +94,9 @@ Models, ou coloque `DEEPSEEK_API_KEY=...` em `~/.dsh-device/env` e rode
 - **Chats juntos:** os workspaces da VPS aparecem abaixo dos locais, com o ícone de remoto e o
   nome do device. Clique num chat remoto: ele abre na área principal desta janela. Voltar para
   um chat local e para o remoto é instantâneo (a UI do device fica viva em segundo plano).
-- **Novo chat remoto:** passe o mouse no workspace remoto → **+**.
+- **Novo chat remoto:** no seletor de workspace do campo de mensagem (*Choose workspace*), a seção
+  **On your devices** lista os workspaces de cada VPS e *New on <VPS>…*; escolha um e o chat
+  começa na VPS. Ou passe o mouse no workspace remoto da barra lateral → **+**.
 - **Devices:** status (online/offline, uptime, versão), renomear, atualizar o device (alinha a
   versão do dsh com a do Mac), remover (também despareia na VPS), abrir em janela separada.
 - Se o Mac dormir ou a rede cair, a sessão continua na VPS; o plugin reconecta sozinho

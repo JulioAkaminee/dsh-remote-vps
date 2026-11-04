@@ -129,6 +129,19 @@ try {
   await page.waitForFunction((n) => document.querySelectorAll('[data-dshdev-session]').length > n, rows, { timeout: 30000 })
   check('new remote session appears in the sidebar', true)
   await shot(page, 'e2e-04-new-remote')
+
+  // 7. the composer's workspace chooser offers device workspaces too
+  await page.getByRole('button', { name: 'New session' }).first().click()
+  await page.waitForTimeout(800)
+  await page.getByRole('button', { name: 'Choose workspace' }).first().click()
+  await page.waitForSelector('[data-dsh-devices=workspace-menu] [role=menuitem]', { timeout: 10000 })
+  await shot(page, 'e2e-05-workspace-chooser')
+  await page.locator('[data-dsh-devices=workspace-menu] [role=menuitem]').filter({ hasText: 'project-on-vps' }).first().click()
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('dsh-devices-frames')).display === 'block', null, { timeout: 15000 })
+  await frame.locator('[contenteditable=true], textarea').first().waitFor({ timeout: 20000 })
+  const beforeMenu = await visibleCount(frame, '[VPS] MOCK-REPLY')
+  await send(frame, 'started from the local workspace chooser')
+  check('choosing a device workspace in the chooser starts the chat on the device', await waitMore(frame, '[VPS] MOCK-REPLY', beforeMenu))
 } catch (error) {
   check('unexpected error', false, error.message.split('\n')[0])
   await shot(page, 'e2e-error').catch(() => {})

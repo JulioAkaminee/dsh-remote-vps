@@ -78,6 +78,59 @@ function blockMatches(block, alias) {
   return matched
 }
 
+// ── machines already saved on this computer by the desktop's dsh-tauri-remote ──
+// `$DSH_HOME/remote/machines.json` (legacy `$DSH_HOME/ssh/machines.json`):
+//   { version, enabled, machines: { [id]: { id, name, host, port, user, password?, passphrase?, ... } } }
+// `$DSH_HOME/remote/known-hosts.json`: [{ machineId, fingerprint: "SHA256:..." }] — keys the user accepted there.
+
+function dshHomeDir() {
+  return process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
+}
+
+function readJsonFile(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Saved SSH machines, with their accepted host-key fingerprint when known.
+ * Secrets are included only when `withSecrets` is true (host side, never sent to the browser).
+ */
+export function listSavedMachines({ withSecrets = false } = {}) {
+  const out = []
+  const seen = new Set()
+  for (const dir of ['remote', 'ssh']) {
+    const doc = readJsonFile(path.join(dshHomeDir(), dir, 'machines.json'))
+    const fingerprints = readJsonFile(path.join(dshHomeDir(), dir, 'known-hosts.json'))
+    const fpOf = (id) => (Array.isArray(fingerprints) ? fingerprints.find((r) => r && r.machineId === id)?.fingerprint : undefined)
+    const machines = doc && typeof doc.machines === 'object' && doc.machines ? Object.values(doc.machines) : []
+    for (const m of machines) {
+      if (!m || typeof m.id !== 'string' || typeof m.host !== 'string' || !m.host || seen.has(m.id)) continue
+      if (m.transport !== undefined && m.transport !== 'ssh') continue
+      seen.add(m.id)
+      const port = typeof m.port === 'number' ? m.port : 22
+      const user = typeof m.user === 'string' && m.user ? m.user : undefined
+      const fingerprint = fpOf(m.id)
+      out.push({
+        id: m.id,
+        source: 'dsh-tauri-remote',
+        name: typeof m.name === 'string' && m.name ? m.name : m.host,
+        host: m.host,
+        port,
+        user,
+        target: `${user ? `${user}@` : ''}${m.host}${port !== 22 ? `:${port}` : ''}`,
+        fingerprint: typeof fingerprint === 'string' && fingerprint.startsWith('SHA256:') ? fingerprint : undefined,
+        hasPassword: typeof m.password === 'string' && m.password !== '',
+        ...(withSecrets ? { password: m.password || undefined, passphrase: m.passphrase || undefined } : {}),
+      })
+    }
+  }
+  return out
+}
+
 /** Concrete Host aliases (no wildcards) for the "Add device" picker. */
 export function listSshAliases() {
   const out = new Set()
@@ -159,7 +212,7 @@ export function knownHostsHas(host, port, keyBlob) {
   return false
 }
 
-function loadKeys(resolved) {
+function loadKeys(resolved, passphrase) {
   const files = [...resolved.identityFiles]
   if (!resolved.identitiesOnly || files.length === 0) {
     for (const f of ['id_ed25519', 'id_ecdsa', 'id_rsa']) files.push(path.join(SSH_DIR(), f))
@@ -175,18 +228,21 @@ function loadKeys(resolved) {
     } catch {
       continue
     }
-    const parsed = utils.parseKey(data)
-    if (parsed instanceof Error) continue // encrypted or unsupported: skipped (use ssh-agent)
-    keys.push({ file, data })
+    let parsed = utils.parseKey(data)
+    if (parsed instanceof Error && passphrase) parsed = utils.parseKey(data, passphrase)
+    if (parsed instanceof Error) continue // encrypted without a known passphrase, or unsupported: use ssh-agent
+    keys.push({ file, data, passphrase: utils.parseKey(data) instanceof Error ? passphrase : undefined })
   }
   return keys
 }
 
-function authHandlerFor(resolved, { password } = {}) {
+function authHandlerFor(resolved, { password, passphrase } = {}) {
   const methods = []
   const agent = process.env.SSH_AUTH_SOCK
   if (agent && !resolved.identitiesOnly) methods.push({ type: 'agent', username: resolved.username, agent })
-  for (const key of loadKeys(resolved)) methods.push({ type: 'publickey', username: resolved.username, key: key.data })
+  for (const key of loadKeys(resolved, passphrase)) {
+    methods.push({ type: 'publickey', username: resolved.username, key: key.data, ...(key.passphrase ? { passphrase: key.passphrase } : {}) })
+  }
   if (agent && resolved.identitiesOnly) methods.push({ type: 'agent', username: resolved.username, agent })
   if (password) methods.push({ type: 'password', username: resolved.username, password })
   if (methods.length === 0) methods.push({ type: 'none', username: resolved.username })
@@ -199,10 +255,11 @@ function authHandlerFor(resolved, { password } = {}) {
  * caller can ask the user to confirm it.
  */
 export class SshConnection {
-  constructor(resolved, { expectFingerprint, password, readyTimeout = 20000 } = {}) {
+  constructor(resolved, { expectFingerprint, password, passphrase, readyTimeout = 20000 } = {}) {
     this.resolved = resolved
     this.expectFingerprint = expectFingerprint
     this.password = password
+    this.passphrase = passphrase
     this.readyTimeout = readyTimeout
     this.client = null
     this.jump = null
@@ -248,7 +305,7 @@ export class SshConnection {
         readyTimeout: this.readyTimeout,
         keepaliveInterval: 10_000,
         keepaliveCountMax: 3,
-        authHandler: authHandlerFor(this.resolved, { password: this.password }),
+        authHandler: authHandlerFor(this.resolved, { password: this.password, passphrase: this.passphrase }),
         hostVerifier: (key) => {
           const fp = fingerprint(key)
           this.presented = { fingerprint: fp, known: knownHostsHas(this.resolved.host, this.resolved.port, key) }
