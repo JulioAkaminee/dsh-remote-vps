@@ -179,6 +179,7 @@ window.__ModuleLoader__.load({
       modelOk: 'DeepSeek API key configured', modelSource: 'source: {source}',
       useMacKey: 'Use this computer’s key', pasteKey: 'Paste key', changeKey: 'Change key', removeKey: 'Remove key',
       saveKey: 'Save key', keyPlaceholder: 'sk-…', keySaved: 'Key saved on {device}.', deviceSettings: 'Device settings',
+      loadingDevice: 'Loading {device}…', loadFailed: 'Could not load {device}’s interface.', retry: 'Try again',
       needsUpdate: 'This device runs an older device host ({remote}); update it to manage its key from here.', updateNow: 'Update device',
       updateWarn: 'Updating restarts the device host; running turns on it stop.',
       modelLabel: 'Models', keyHint: 'Stored on the device (its credential store). It never stays on this computer.',
@@ -189,6 +190,7 @@ window.__ModuleLoader__.load({
       modelOk: 'Chave da API do DeepSeek configurada', modelSource: 'origem: {source}',
       useMacKey: 'Usar a chave deste computador', pasteKey: 'Colar chave', changeKey: 'Trocar chave', removeKey: 'Remover chave',
       saveKey: 'Salvar chave', keyPlaceholder: 'sk-…', keySaved: 'Chave salva em {device}.', deviceSettings: 'Configurações do device',
+      loadingDevice: 'Carregando {device}…', loadFailed: 'Não consegui carregar a interface de {device}.', retry: 'Tentar de novo',
       needsUpdate: 'Este device roda um device host antigo ({remote}); atualize para gerenciar a chave por aqui.', updateNow: 'Atualizar device',
       updateWarn: 'Atualizar reinicia o device host; turnos rodando nele param.',
       modelLabel: 'Modelos', keyHint: 'Fica guardada no device (no cofre de credenciais dele). Não fica neste computador.',
@@ -334,6 +336,10 @@ window.__ModuleLoader__.load({
         const host = document.createElement('div')
         host.id = 'dsh-devices-frames'
         host.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;display:none;z-index:4;overflow:hidden;background:var(--dsw-alias-bg-base,#fff)'
+        const status = document.createElement('div')
+        status.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font:13px/20px system-ui,-apple-system,sans-serif;color:var(--dsw-alias-label-tertiary,#888);text-align:center;padding:24px'
+        host.appendChild(status)
+        this.status = status
         document.body.appendChild(host)
         this.host = host
         window.addEventListener('message', (event) => this.onMessage(event))
@@ -347,6 +353,7 @@ window.__ModuleLoader__.load({
           if (f.iframe.contentWindow !== event.source) continue
           if (msg.type === 'ready') {
             f.ready = true
+            this.markLoaded(deviceId)
             for (const m of f.pending.splice(0)) this.send(deviceId, m)
           }
           if (msg.type === 'pick-device' && msg.rect) {
@@ -381,36 +388,103 @@ window.__ModuleLoader__.load({
           const iframe = document.createElement('iframe')
           iframe.title = device ? device.name : deviceId
           iframe.allow = 'clipboard-read; clipboard-write'
-          iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:transparent'
+          iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:transparent;visibility:hidden'
           iframe.src = `${root}?${params.toString()}`
           this.host.appendChild(iframe)
           f = { iframe, root, ready: false, pending: [] }
           if (command && command.type !== 'open-session' && command.type !== 'new-session') f.pending.push(command)
           this.byDevice.set(deviceId, f)
           iframe.addEventListener('load', () => {
+            if (iframe.src === 'about:blank') return
             // The device UI announces readiness itself; this covers older hosts.
             setTimeout(() => {
-              if (!f.ready) {
+              if (!f.ready && f.iframe.src !== 'about:blank') {
                 f.ready = true
+                this.markLoaded(deviceId)
                 for (const m of f.pending.splice(0)) this.send(deviceId, m)
               }
             }, 8000)
           })
+          this.watch(deviceId)
         } else if (command) this.send(deviceId, command)
         this.active = deviceId
         for (const [id, x] of this.byDevice) x.iframe.style.display = id === deviceId ? 'block' : 'none'
+        this.renderStatus()
         this.layout()
       },
       reload(deviceId) {
         const f = this.byDevice.get(deviceId)
         if (!f) return
         f.ready = false
+        f.loaded = false
         f.pending = []
         const src = f.iframe.src
+        f.iframe.style.visibility = 'hidden'
         f.iframe.src = 'about:blank'
         setTimeout(() => {
           f.iframe.src = src
+          this.watch(deviceId)
         }, 50)
+        this.renderStatus()
+      },
+      /** The device UI is up: show it. */
+      markLoaded(deviceId) {
+        const f = this.byDevice.get(deviceId)
+        if (!f) return
+        f.loaded = true
+        f.failed = false
+        clearTimeout(f.timer)
+        f.iframe.style.visibility = 'visible'
+        this.renderStatus()
+      },
+      /** Give the device UI a deadline; past it, explain instead of showing a blank area. */
+      watch(deviceId) {
+        const f = this.byDevice.get(deviceId)
+        if (!f) return
+        clearTimeout(f.timer)
+        f.failed = false
+        f.timer = setTimeout(() => {
+          if (!f.loaded) {
+            f.failed = true
+            this.renderStatus()
+          }
+        }, 15000)
+      },
+      renderStatus() {
+        if (!this.status) return
+        const f = this.active && this.byDevice.get(this.active)
+        const device = this.active && (store.data.devices || []).find((d) => d.id === this.active)
+        const name = device ? device.name : 'device'
+        this.status.textContent = ''
+        if (!f || f.loaded) {
+          this.status.style.display = 'none'
+          return
+        }
+        this.status.style.display = 'flex'
+        const text = document.createElement('div')
+        text.textContent = f.failed ? fill(appT('loadFailed'), { device: name }) : fill(appT('loadingDevice'), { device: name })
+        this.status.appendChild(text)
+        if (f.failed) {
+          const row = document.createElement('div')
+          row.style.cssText = 'display:flex;gap:8px'
+          const mk = (label, onClick, primary) => {
+            const b = document.createElement('button')
+            b.type = 'button'
+            b.textContent = label
+            b.style.cssText = `font:inherit;padding:6px 12px;border-radius:8px;cursor:pointer;border:1px solid ${primary ? 'transparent' : 'rgba(0,0,0,.18)'};background:${primary ? '#111' : 'transparent'};color:${primary ? '#fff' : 'inherit'}`
+            b.addEventListener('click', onClick)
+            row.appendChild(b)
+          }
+          mk(appT('retry'), () => {
+            entries.delete(this.active)
+            const id = this.active
+            this.drop(id)
+            const d = (store.data.devices || []).find((x) => x.id === id)
+            this.show(id, d, null).catch(() => {})
+          }, true)
+          if (device) mk(appT('openWindow'), () => openInWindow(device).catch(() => {}), false)
+          this.status.appendChild(row)
+        }
       },
       drop(deviceId) {
         const f = this.byDevice.get(deviceId)
@@ -441,7 +515,12 @@ window.__ModuleLoader__.load({
           this.host.style.display = 'none'
           return
         }
-        const r = el.getBoundingClientRect()
+        let r = el.getBoundingClientRect()
+        if (r.height < 40 || r.width < 40) {
+          // Defensive: never collapse to an invisible strip.
+          const parent = el.closest('[data-testid=dsh-devices-chat]')?.parentElement || el.parentElement
+          if (parent) r = parent.getBoundingClientRect()
+        }
         Object.assign(this.host.style, { display: 'block', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` })
       },
     }
@@ -574,12 +653,19 @@ window.__ModuleLoader__.load({
 .dshdev-pill{margin-right:6px}
 .dshdev-chat-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:13px;padding:24px;text-align:center}
 `
+    /**
+     * Install (or refresh) this version's styles. A plugin update swaps the
+     * module without reloading the page, so a <style> left by the previous
+     * version must be replaced, not reused.
+     */
     function ensureStyles() {
-      if (document.getElementById('dshdev-styles')) return
-      const style = document.createElement('style')
-      style.id = 'dshdev-styles'
-      style.textContent = CSS
-      document.head.appendChild(style)
+      let style = document.getElementById('dshdev-styles')
+      if (!style) {
+        style = document.createElement('style')
+        style.id = 'dshdev-styles'
+        document.head.appendChild(style)
+      }
+      if (style.textContent !== CSS) style.textContent = CSS
     }
 
     // ── icons ───────────────────────────────────────────────────────────────
@@ -1154,9 +1240,9 @@ window.__ModuleLoader__.load({
       const banner = device && device.status === 'online' && device.model && device.model.configured === false
       return h(
         'div',
-        { className: 'dshdev-chat-wrap', 'data-testid': 'dsh-devices-chat' },
+        { className: 'dshdev-chat-wrap', 'data-testid': 'dsh-devices-chat', style: { display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 0 } },
         banner ? h('div', { className: 'dshdev-chat-banner' }, h(ModelKeyPanel, { device, t, variant: 'banner', onSaved: () => frames.reload(device.id) })) : null,
-        h('div', { className: 'dshdev-chat-panel', ref }, status ? h('div', { className: 'dshdev-chat-status' }, status) : null),
+        h('div', { className: 'dshdev-chat-panel', ref, style: { position: 'relative', width: '100%', flex: '1 1 auto', minHeight: 0 } }, status ? h('div', { className: 'dshdev-chat-status' }, status) : null),
       )
     }
 
@@ -1659,6 +1745,7 @@ window.__ModuleLoader__.load({
         }, `dsh-devices: ${tag} dictionary`)
       }
       const t = ctx.locale.bind(NS)
+      ensureStyles()
       appCtx = ctx
       appT = t
       ctx.effect(() => mountDevicePill(ctx, t), 'dsh-devices: device picker')

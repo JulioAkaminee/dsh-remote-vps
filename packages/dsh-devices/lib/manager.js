@@ -32,6 +32,13 @@ function readVersion(file) {
 
 export const PLUGIN_VERSION = readVersion(path.join(here, '..', 'package.json'))
 
+/**
+ * Oldest device host this desktop plugin works fully with. Desktop-only
+ * releases keep it, so devices are not asked to update for nothing.
+ * (0.1.4: model-key routes.)
+ */
+export const MIN_HOST_VERSION = '0.1.4'
+
 /** Version of the dsh runtime this desktop runs; remote devices are aligned to it. */
 export function localDshVersion() {
   const bin = process.argv[1]
@@ -288,7 +295,7 @@ export class DeviceManager {
     const localDsh = localDshVersion()
     const remoteDsh = device.versions?.dsh ?? null
     const remotePlugin = device.versions?.plugin ?? null
-    const hostBehind = !!(PLUGIN_VERSION && remotePlugin && compareVersions(remotePlugin, PLUGIN_VERSION) < 0)
+    const hostBehind = !!(remotePlugin && compareVersions(remotePlugin, MIN_HOST_VERSION) < 0)
     return {
       id: device.id,
       name: device.name || device.remoteName || device.id.slice(0, 8),
@@ -533,7 +540,11 @@ export class DeviceManager {
       let status = await this._remoteStatus(ssh)
       const localDsh = localDshVersion()
       const needsInstall = !status
-      const needsUpdate = status && ((localDsh && status.versions?.dsh && status.versions.dsh !== localDsh) || (PLUGIN_VERSION && status.versions?.plugin && status.versions.plugin !== PLUGIN_VERSION))
+      const needsUpdate =
+        status &&
+        ((localDsh && status.versions?.dsh && status.versions.dsh !== localDsh) ||
+          !status.versions?.plugin ||
+          compareVersions(status.versions.plugin, MIN_HOST_VERSION) < 0)
       if (needsInstall || needsUpdate) {
         if (!install) {
           job.prompt = { kind: 'install', installed: !!status, versions: status?.versions ?? null }
