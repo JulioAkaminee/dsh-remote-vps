@@ -5,7 +5,7 @@
 import crypto from 'node:crypto'
 import http from 'node:http'
 import https from 'node:https'
-import { ROUTES, TOKEN_HEADER, tokenSigningPayload } from './protocol.js'
+import { PORT_TUNNEL_PROTOCOL, ROUTES, TOKEN_HEADER, tokenSigningPayload } from './protocol.js'
 
 export class DeviceHttpError extends Error {
   constructor(status, code, detail) {
@@ -133,13 +133,14 @@ export class DeviceClient {
   }
 
   /** Authenticated JSON call; retries once with a fresh token on 401. */
-  async call(method, route, body) {
+  async call(method, route, body, { timeoutMs } = {}) {
     for (let attempt = 0; attempt < 2; attempt++) {
       const token = await this.token({ force: attempt > 0 })
       const res = await requestJson(this.baseUrl(), method, route, {
         agent: this.agent(),
         body,
         headers: { [TOKEN_HEADER]: token },
+        ...(timeoutMs ? { timeoutMs } : {}),
       })
       if (res.status === 401 && attempt === 0) continue
       return expectOk(res)
@@ -163,11 +164,12 @@ export class DeviceClient {
   }
 
   /** Long-poll the device's change feed (resolves on change or after `timeout`). */
-  async watch({ boot, rev, turns, timeout = 25_000 } = {}) {
+  async watch({ boot, rev, turns, att, timeout = 25_000 } = {}) {
     const q = new URLSearchParams({ timeout: String(timeout) })
     if (boot) q.set('boot', boot)
     if (rev !== undefined) q.set('rev', String(rev))
     if (turns !== undefined) q.set('turns', String(turns))
+    if (att !== undefined) q.set('att', String(att))
     for (let attempt = 0; attempt < 2; attempt++) {
       const token = await this.token({ force: attempt > 0 })
       const res = await requestJson(this.baseUrl(), 'GET', `${ROUTES.watch}?${q}`, {
@@ -190,5 +192,80 @@ export class DeviceClient {
 
   clearModelKey() {
     return this.call('DELETE', ROUTES.modelKey)
+  }
+
+  sessionAction(body) {
+    return this.call('POST', ROUTES.sessionAction, body)
+  }
+
+  search(q) {
+    return this.call('GET', `${ROUTES.search}?${new URLSearchParams({ q })}`, undefined, { timeoutMs: 20_000 })
+  }
+
+  accountStatus() {
+    return this.call('GET', ROUTES.account)
+  }
+
+  setAccount(grant) {
+    return this.call('PUT', ROUTES.account, { grant })
+  }
+
+  clearAccount() {
+    return this.call('DELETE', ROUTES.account)
+  }
+
+  syncState() {
+    return this.call('GET', ROUTES.sync, undefined, { timeoutMs: 30_000 })
+  }
+
+  /** Plugin installs run pnpm on the device: allow a long time. */
+  syncApply(bundle) {
+    return this.call('POST', ROUTES.sync, bundle, { timeoutMs: 15 * 60_000 })
+  }
+
+  ports() {
+    return this.call('GET', ROUTES.ports)
+  }
+
+  /**
+   * Open a raw TCP tunnel to `port` on the device (Upgrade: dsh-port-tunnel).
+   * @returns {Promise<import('node:net').Socket>} the spliced socket
+   */
+  async portTunnel(port) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const token = await this.token({ force: attempt > 0 })
+      try {
+        return await this._portTunnel(port, token)
+      } catch (error) {
+        if (error instanceof DeviceHttpError && error.status === 401 && attempt === 0) continue
+        throw error
+      }
+    }
+  }
+
+  _portTunnel(port, token) {
+    const url = new URL(`${ROUTES.portTunnel}?port=${Number(port)}`, this.baseUrl())
+    const lib = url.protocol === 'https:' ? https : http
+    return new Promise((resolve, reject) => {
+      const req = lib.request(url, {
+        method: 'GET',
+        agent: false,
+        headers: { connection: 'Upgrade', upgrade: PORT_TUNNEL_PROTOCOL, [TOKEN_HEADER]: token },
+      })
+      req.setTimeout(15_000, () => req.destroy(Object.assign(new Error('port tunnel timeout'), { code: 'ETIMEDOUT' })))
+      req.on('upgrade', (res, socket, head) => {
+        req.setTimeout(0)
+        if (head && head.length) socket.unshift(head)
+        resolve(socket)
+      })
+      req.on('response', (res) => {
+        res.resume()
+        const status = res.statusCode ?? 0
+        const code = status === 401 ? 'unauthorized' : status === 404 ? 'port-tunnel-unsupported' : 'port-unreachable'
+        reject(new DeviceHttpError(status, code))
+      })
+      req.on('error', reject)
+      req.end()
+    })
   }
 }

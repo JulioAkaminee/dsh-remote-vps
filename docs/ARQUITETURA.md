@@ -53,3 +53,28 @@ cliente e o cabeçalho do token removidos; `Set-Cookie` nunca volta.
 - **Gateway por device:** `http://127.0.0.1:<porta>/<segredo>/` → túnel do device com token.
   O segredo no caminho funciona em qualquer webview (sem regras de cookie de terceiros) e cada
   device tem origem própria, então o `localStorage` dele não se mistura com o do Mac.
+
+### Ferramentas do device (0.1.8)
+
+- **Precisa de você:** o device host acompanha os eventos de sessão (`approval/asked` →
+  `approval/decided`, `tool/call ask_user_question` → resultado ou resposta) e marca cada sessão
+  com `pending`; o feed (`/device/v1/watch`) leva também `attention[]` sequenciado (como
+  `turnEnds`), que vira aviso e notificação no Mac.
+- **Painéis do device:** o Mac manda `{ type: 'open-panel', panel }` para a UI embutida, que chama
+  `layout.selectPanel('plugins' | 'schedules')`; abrir um chat sai do painel.
+- **Sessões:** `POST /device/v1/session-action` usa `sessionController.rename` e o
+  `workspaceRegistry` (pin/unpin/archive/unarchive); `GET /device/v1/search` usa a busca por
+  conteúdo do DSH (`session-query-sqlite`, ligada com `openAt: first-search` no device).
+- **Conta:** `PUT /device/v1/account` grava o registro `deepseek-account-platform/default` (o
+  mesmo `{ version, token, issuer }` do Mac) no cofre de credenciais do device.
+- **Portas:** o device lista portas TCP em escuta do usuário (`/proc/net/tcp*`), filtra
+  infraestrutura e a faixa efêmera e marca as abertas por processos do agente (`fromAgent`) ou
+  dentro de um workspace (`inWorkspace`). O Mac escuta em `127.0.0.1:<mesma porta ou livre>` e
+  liga cada conexão por `forwardOut` (SSH) ou por `Upgrade: dsh-port-tunnel`
+  (`/device/v1/port-tunnel`, autenticado) até o loopback da VPS. A UI embutida recebe o mapa de
+  portas e reescreve links `localhost:<porta>`.
+- **Sincronizar:** o Mac lê suas instruções, skills, linhas de MCP/preset (pelo `loader`) e
+  plug-ins (pelo `pluginManager`), compara por hash com `GET /device/v1/sync` e envia só o
+  escolhido; o device grava arquivos (com backup), mantém as linhas num bloco gerenciado do
+  `cordis.patch.yml` do perfil e instala plug-ins pelo `pluginManager.installBundle`.
+

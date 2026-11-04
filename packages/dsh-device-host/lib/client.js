@@ -7,10 +7,17 @@
 //   ?dsh-new=<wsId|1>     start a new session (in that workspace)
 //   ?dsh-device=<name>    prefix the window title with the device name
 // Messages from the embedding desktop (window.parent):
-//   { source: 'dsh-devices', type: 'open-session', sessionId }
-//   { source: 'dsh-devices', type: 'new-session', workspaceId? }
+//   { source: 'dsh-devices', type: 'open-session', sessionId, files? }
+//   { source: 'dsh-devices', type: 'new-session', workspaceId?, files? }
+//   { source: 'dsh-devices', type: 'open-panel', panel }     plugins | schedules | …
+//   { source: 'dsh-devices', type: 'open-settings' | 'open-files' }
+//   { source: 'dsh-devices', type: 'config', editorLabel, editorTitle }
+//   { source: 'dsh-devices', type: 'ports', map: { "<device port>": <desktop port> } }
 // Messages to the desktop:
 //   { source: 'dsh-device-host', type: 'ready' | 'session', sessionId? }
+//   { source: 'dsh-device-host', type: 'open-editor', path?, sessionId?, kind }
+//   { source: 'dsh-device-host', type: 'pick-device', rect }
+//   { source: 'dsh-device-host', type: 'ensure-port', port }
 window.__ModuleLoader__.load({
   id: 'dsh-device-host',
   factory: (require) => {
@@ -19,6 +26,7 @@ window.__ModuleLoader__.load({
     Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
 
     const inject = ['uiWorkspace', 'slots']
+    // `layout` and `sidebarRight` are read lazily with ctx.get (optional services).
     let React = null
     let P = {}
     try {
@@ -93,6 +101,57 @@ window.__ModuleLoader__.load({
         } catch {}
       }
     }
+    // ── dev-server links: "localhost:<device port>" → this desktop's forwarded port ──
+    let portMap = {}
+    const LOOPBACK = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1'])
+    function rewriteLoopbackUrl(href) {
+      let url
+      try {
+        url = new URL(href, window.location.href)
+      } catch {
+        return null
+      }
+      if (!/^https?:$/.test(url.protocol) || !LOOPBACK.has(url.hostname)) return null
+      const remotePort = url.port || (url.protocol === 'https:' ? '443' : '80')
+      // The device UI itself is served from the desktop's loopback gateway: leave it alone.
+      if (url.origin === window.location.origin) return null
+      const local = portMap[remotePort]
+      if (!local) return { url: null, remotePort: Number(remotePort) }
+      url.hostname = 'localhost'
+      url.port = String(local)
+      return { url: url.toString(), remotePort: Number(remotePort) }
+    }
+    function mountLinkRewrite() {
+      const onClick = (event) => {
+        const a = event.target && event.target.closest ? event.target.closest('a[href]') : null
+        if (!a) return
+        const r = rewriteLoopbackUrl(a.getAttribute('href'))
+        if (!r) return
+        if (r.url) a.setAttribute('href', r.url)
+        else postToDesktop({ type: 'ensure-port', port: r.remotePort })
+      }
+      document.addEventListener('click', onClick, true)
+      document.addEventListener('auxclick', onClick, true)
+      return () => {
+        document.removeEventListener('click', onClick, true)
+        document.removeEventListener('auxclick', onClick, true)
+      }
+    }
+
+    function selectPanel(ctx, panel) {
+      const layout = ctx.get ? ctx.get('layout') : ctx.layout
+      if (!layout || typeof layout.selectPanel !== 'function') throw new Error('layout not ready')
+      layout.selectPanel(panel)
+    }
+    function activePanel(ctx) {
+      try {
+        const layout = ctx.get ? ctx.get('layout') : ctx.layout
+        return layout?.panelInfo?.getSnapshot?.()?.activePanelId ?? null
+      } catch {
+        return null
+      }
+    }
+
     function openFiles(ctx) {
       retry(() => {
         const sr = ctx.get ? ctx.get('sidebarRight') : ctx.sidebarRight
@@ -272,9 +331,42 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
         ctx.effect(() => () => observer.disconnect(), 'dsh-device-host: title')
       }
 
-      const openSession = (id) => retry(() => ctx.uiWorkspace.openSession(id), `open session ${id}`)
-      const newSession = (workspaceId) =>
-        retry(() => (workspaceId && workspaceId !== '1' ? ctx.uiWorkspace.openWorkspace(workspaceId) : ctx.uiWorkspace.startSession()), 'new session')
+      // A device panel (Plugins, Automations…) may cover the chat: leave it first.
+      const leavePanel = () => {
+        if (activePanel(ctx) === null) return
+        try {
+          selectPanel(ctx, null)
+        } catch {}
+      }
+      const openSession = (id) =>
+        retry(() => {
+          leavePanel()
+          return ctx.uiWorkspace.openSession(id)
+        }, `open session ${id}`)
+      // A freshly booted UI loads its workspace list asynchronously: wait for the
+      // workspace to be known before opening it (else DSH reports "unknown workspace").
+      const workspaceKnown = (id) => {
+        try {
+          return !!ctx.uiWorkspace?.workspaces?.list?.getSnapshot?.()?.items?.some((w) => w.workspaceId === id)
+        } catch {
+          return false
+        }
+      }
+      const newSession = (workspaceId) => {
+        const specific = !!workspaceId && workspaceId !== '1'
+        const started = Date.now()
+        const run = () => {
+          if (!ctx.uiWorkspace) throw new Error('workspace UI not ready')
+          leavePanel()
+          if (specific && !workspaceKnown(workspaceId) && Date.now() - started < 10_000) {
+            setTimeout(() => retry(run, 'new session'), 250)
+            return undefined
+          }
+          return specific && workspaceKnown(workspaceId) ? ctx.uiWorkspace.openWorkspace(workspaceId) : ctx.uiWorkspace.startSession()
+        }
+        retry(run, 'new session')
+      }
+      const openPanel = (panel) => retry(() => selectPanel(ctx, panel), `open panel ${panel}`)
 
       // Files after the session switch: opening the tab first would land on the previous surface.
       const openFilesSoon = () => setTimeout(() => openFiles(ctx), 700)
@@ -303,7 +395,9 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
           if (msg.type === 'ping') post({ type: 'ready' })
           if (msg.type === 'open-settings') openSettings(ctx)
           if (msg.type === 'open-files') openFiles(ctx)
+          if (msg.type === 'open-panel' && typeof msg.panel === 'string' && /^[\w.-]{1,64}$/.test(msg.panel)) openPanel(msg.panel)
           if (msg.type === 'config' && typeof msg.editorLabel === 'string') setEditorLabel(msg.editorLabel, msg.editorTitle)
+          if (msg.type === 'ports' && msg.map && typeof msg.map === 'object') portMap = { ...msg.map }
         }
         window.addEventListener('message', onMessage)
         // Report the current session so the desktop can highlight its row.
@@ -325,6 +419,7 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
         ctx.effect(() => mountDevicePill(ctx, deviceName || 'Device'), 'dsh-device-host: device pill')
         if (deviceName) mountHeaderBadge(ctx, deviceName)
         mountOpenInEditor(ctx)
+        ctx.effect(() => mountLinkRewrite(), 'dsh-device-host: dev-server links')
         ctx.effect(() => () => {
           window.removeEventListener('message', onMessage)
           clearInterval(timer)

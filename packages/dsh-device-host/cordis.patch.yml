@@ -23,3 +23,17 @@
 # Remote-SSH (dsh-devices), so the device-side launcher is turned off.
 - id: ui-open-in-app
   disabled: true
+
+# Browser tabs in the right sidebar, like the desktop app has: a desktop
+# forwards the device's dev-server ports to its own localhost, so
+# "localhost:5173" opened here shows the VPS's server on the desktop.
+- id: ui-sidebar-browser
+  disabled: false
+
+# Content search ("Search chats…" on the desktop searches messages on the
+# device). Web profiles ship it off; open the in-memory index on the first
+# search so startup stays quiet. A patch restates the row's whole config.
+- id: session-query-sqlite
+  config:
+    path: ':memory:'
+    openAt: first-search

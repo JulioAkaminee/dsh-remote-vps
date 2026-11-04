@@ -398,6 +398,14 @@ export class SshConnection {
    * remoteHost:remotePort as seen from the device.
    * @returns {Promise<{ port: number, close: () => void }>}
    */
+  /** A direct-tcpip stream to host:port as seen from the server. */
+  openStream(host, port) {
+    return new Promise((resolve, reject) => {
+      if (this.closed || !this.client) return reject(new Error('ssh connection closed'))
+      this.client.forwardOut('127.0.0.1', 0, host, port, (err, stream) => (err ? reject(err) : resolve(stream)))
+    })
+  }
+
   forwardLocal(remotePort, remoteHost = '127.0.0.1') {
     const sockets = new Set()
     const server = net.createServer((socket) => {

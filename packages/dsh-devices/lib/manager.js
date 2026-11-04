@@ -12,9 +12,11 @@ import { fileURLToPath } from 'node:url'
 import { DeviceClient, DeviceHttpError, generateClientKey, hello, pair } from './device-client.js'
 import { DeviceGateway } from './gateway.js'
 import { editorUri, openUrl, pickEditor } from './editors.js'
-import { MODEL_KEY_REF, parsePairingInput, PROTOCOL_VERSION } from './protocol.js'
+import { PortForwards } from './ports.js'
+import { ACCOUNT_GRANT_KEY, MODEL_KEY_REF, parsePairingInput, PROTOCOL_VERSION } from './protocol.js'
 import { DeviceRegistry } from './registry.js'
 import { listSavedMachines, resolveSshTarget, shq, SshConnection } from './ssh.js'
+import { buildBundle, collectLocal, planSync } from './sync-plan.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const ASSETS = path.join(here, '..', 'assets')
@@ -73,10 +75,14 @@ function errorText(error) {
 }
 
 export class DeviceManager {
-  constructor({ registry = new DeviceRegistry(), logger = console, pollMs = POLL_MS, credentials = () => undefined } = {}) {
+  constructor({ registry = new DeviceRegistry(), logger = console, pollMs = POLL_MS, credentials = () => undefined, local = {} } = {}) {
     this.registry = registry
     /** This desktop's credential service (to reuse its DeepSeek key on a device). */
     this.credentials = credentials
+    /** This desktop's own composition, for "Sync with device": loader rows, profile dir, plugin manager. */
+    this.local = { loaderEntries: () => [], profileDir: () => null, pluginManager: () => null, ...local }
+    /** Device dev-server ports served on this computer's localhost. */
+    this.ports = new PortForwards({ connect: (id, port) => this._portStream(id, port), onChange: () => this._changed(), logger })
     this.logger = logger
     this.pollMs = pollMs
     /** @type {Map<string, any>} device id -> runtime state */
@@ -130,6 +136,7 @@ export class DeviceManager {
     this.disposed = true
     clearInterval(this.timer)
     for (const wake of [...this.versionWaiters]) wake()
+    this.ports.dispose()
     await Promise.all([...this.state.keys()].map((id) => this._teardown(id)))
   }
 
@@ -297,6 +304,7 @@ export class DeviceManager {
       s.info = info
       if (sessions) {
         s.sessions = sessions.items ?? []
+        s.archived = sessions.archived ?? []
         s.sessionsAt = Date.now()
       }
       if (workspaces) s.workspaces = workspaces.items ?? []
@@ -338,7 +346,7 @@ export class DeviceManager {
   _startWatch(id, s) {
     const token = {}
     s.watchToken = token
-    s.w = { boot: undefined, rev: undefined, turns: undefined, failures: 0 }
+    s.w = { boot: undefined, rev: undefined, turns: undefined, att: undefined, failures: 0 }
     this._watchLoop(id, s, token).catch(() => {})
   }
 
@@ -347,12 +355,13 @@ export class DeviceManager {
       const device = this.registry.get(id)
       if (!device || s.status !== 'online' || !s.client) break
       try {
-        const r = await s.client.watch({ boot: s.w.boot, rev: s.w.rev, turns: s.w.turns, timeout: 25_000 })
+        const r = await s.client.watch({ boot: s.w.boot, rev: s.w.rev, turns: s.w.turns, att: s.w.att, timeout: 25_000 })
         if (s.watchToken !== token) break
         const firstOfBoot = s.w.boot !== r.boot
         s.w.boot = r.boot
         s.w.rev = r.rev
         s.w.turns = r.turnSeq
+        if (r.attSeq !== undefined) s.w.att = r.attSeq
         s.w.failures = 0
         let changed = false
         if (Array.isArray(r.items)) {
@@ -360,8 +369,15 @@ export class DeviceManager {
           s.sessionsAt = Date.now()
           changed = true
         }
+        if (Array.isArray(r.archived)) s.archived = r.archived
         if (Array.isArray(r.workspaces)) s.workspaces = r.workspaces
+        if (Array.isArray(r.ports)) {
+          s.ports = r.ports
+          await this.ports.reconcile(id, r.ports, { auto: device.autoForwardPorts !== false })
+          changed = true
+        }
         if (!firstOfBoot) for (const te of r.turnEnds ?? []) changed = this._recordTurnEnd(device, s, te) || changed
+        if (!firstOfBoot) for (const a of r.attention ?? []) changed = this._recordAttention(device, s, a) || changed
         if (changed) this._changed()
       } catch (error) {
         if (s.watchToken !== token) break
@@ -381,12 +397,32 @@ export class DeviceManager {
     const session = (s.sessions ?? []).find((x) => x.sessionId === te.sessionId)
     this.notifications.push({
       id: `${device.id}:${s.w.boot}:${te.seq}`,
+      kind: 'done',
       deviceId: device.id,
       deviceName: device.name || device.remoteName || device.id.slice(0, 8),
       sessionId: te.sessionId,
       title: session?.title ?? null,
       reason: te.reason || '',
       at: te.at ?? Date.now(),
+    })
+    if (this.notifications.length > 30) this.notifications.splice(0, this.notifications.length - 30)
+    return true
+  }
+
+  /** A remote session started waiting for the user (approval or question). */
+  _recordAttention(device, s, a) {
+    if (!a?.sessionId) return false
+    const session = (s.sessions ?? []).find((x) => x.sessionId === a.sessionId)
+    this.notifications.push({
+      id: `${device.id}:${s.w.boot}:a${a.seq}`,
+      kind: 'attention',
+      deviceId: device.id,
+      deviceName: device.name || device.remoteName || device.id.slice(0, 8),
+      sessionId: a.sessionId,
+      title: session?.title ?? null,
+      pendingKind: a.kind,
+      toolName: a.toolName ?? null,
+      at: a.at ?? Date.now(),
     })
     if (this.notifications.length > 30) this.notifications.splice(0, this.notifications.length - 30)
     return true
@@ -420,13 +456,214 @@ export class DeviceManager {
       protocolMismatch: !!(device.versions?.protocol && device.versions.protocol !== PROTOCOL_VERSION),
       sessions: s.sessions,
       sessionsAt: s.sessionsAt,
+      archived: s.archived ?? [],
+      pendingCount: (s.sessions ?? []).filter((x) => x.pending).length,
       workspaces: (s.workspaces ?? []).map((w) => ({ id: w.id, title: w.title, path: w.path })),
       uptimeSec: s.info?.uptimeSec ?? null,
       model: s.info?.model ?? null,
+      features: s.features ?? [],
       live: !!s.watchToken,
       editorHost: this.editorHost(device),
       loadavg: s.info?.loadavg ?? null,
+      autoForwardPorts: device.autoForwardPorts !== false,
+      portsKnown: Array.isArray(s.ports),
+      ports: (s.ports ?? []).map((p) => ({ port: p.port, label: p.label ?? p.command ?? null, cwd: p.cwd ?? null, scope: p.scope ?? null, fromAgent: p.fromAgent !== false || !!p.inWorkspace, localPort: this.ports.get(device.id, p.port)?.localPort ?? null })),
+      portMap: this.ports.map(device.id),
     }
+  }
+
+  _requireFeature(device, s, feature) {
+    if (!(s.features ?? []).includes(feature)) {
+      throw Object.assign(new Error(`${device.name || device.remoteName || 'this device'} runs an older device host; update it to use this`), { code: 'HOST_OUTDATED', status: 409 })
+    }
+  }
+
+  async _ready(id) {
+    const device = this.registry.get(id)
+    if (!device) throw new Error('unknown device')
+    const s = this._ensureState(id)
+    s.baseUrl = await this._transport(device, s)
+    return { device, s, client: this._client(device, s) }
+  }
+
+  // ── sessions: rename, pin, archive, search ───────────────────────────────
+
+  async sessionAction(id, { sessionId, action, title, force } = {}) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'session-actions')
+    const r = await client.sessionAction({ sessionId, action, title, force: force === true })
+    const fresh = await client.sessions().catch(() => null)
+    if (fresh) {
+      s.sessions = fresh.items ?? []
+      s.archived = fresh.archived ?? []
+      s.sessionsAt = Date.now()
+    }
+    this._changed()
+    return r
+  }
+
+  async search(id, q) {
+    const { device, s, client } = await this._ready(id)
+    if (!(s.features ?? []).includes('search')) return { items: [], unsupported: true }
+    return client.search(String(q ?? '').slice(0, 200))
+  }
+
+  // ── DeepSeek account sign-in on a device ─────────────────────────────────
+
+  async _localGrant() {
+    const credentials = this.credentials()
+    if (!credentials || typeof credentials.readRecord !== 'function') return null
+    try {
+      const record = await credentials.readRecord(ACCOUNT_GRANT_KEY)
+      if (record?.kind === 'grant' && typeof record.payload?.token === 'string' && record.payload.token) return record.payload
+    } catch {}
+    return null
+  }
+
+  /** Whether this desktop is signed in to a DeepSeek account it could share. */
+  async localAccount() {
+    return { available: !!(await this._localGrant()) }
+  }
+
+  async shareAccount(id) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'account')
+    const grant = await this._localGrant()
+    if (!grant) throw new Error('this computer is not signed in to a DeepSeek account')
+    const account = await client.setAccount(grant)
+    if (s.info?.model) s.info = { ...s.info, model: { ...s.info.model, account, ready: true } }
+    this._changed()
+    this.refresh(id)
+    return { account }
+  }
+
+  async clearAccount(id) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'account')
+    const account = await client.clearAccount()
+    if (s.info?.model) s.info = { ...s.info, model: { ...s.info.model, account, ready: !!s.info.model.configured } }
+    this._changed()
+    this.refresh(id)
+    return { account }
+  }
+
+  // ── "Sync with device" ───────────────────────────────────────────────────
+
+  async _collectLocal() {
+    let entries = []
+    try {
+      entries = [...(this.local.loaderEntries() ?? [])]
+    } catch {}
+    return collectLocal({ loaderEntries: entries, profileDir: this.local.profileDir(), pluginManager: this.local.pluginManager() })
+  }
+
+  /** What would be copied, with a status per item (new / changed / same / unsupported). */
+  async syncPlan(id) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'sync')
+    const [local, remote] = await Promise.all([this._collectLocal(), client.syncState()])
+    return { items: planSync(local, remote, { profileDir: this.local.profileDir() }), device: { pluginManager: remote.pluginManager !== false, profile: remote.profile !== false } }
+  }
+
+  sync(id, keys) {
+    const device = this.registry.get(id)
+    if (!device) throw new Error('unknown device')
+    const picked = Array.isArray(keys) ? keys.map(String) : []
+    if (picked.length === 0) throw new Error('nothing selected')
+    return this._job('sync', async (log) => {
+      const { s, client } = await this._ready(id)
+      this._requireFeature(device, s, 'sync')
+      const local = await this._collectLocal()
+      const bundle = buildBundle(local, picked, { profileDir: this.local.profileDir() })
+      const count = bundle.instructions.length + bundle.skills.length + bundle.rows.length + bundle.plugins.length
+      log(`sending ${count} item(s) to ${device.name || device.remoteName}`)
+      if (bundle.plugins.length) log('installing plugins on the device can take a few minutes')
+      // Files and rows in one request; each plugin (a tarball can be tens of MB) in its own,
+      // so one large or failing package never blocks the rest.
+      const report = []
+      const send = async (part, label) => {
+        try {
+          const r = await client.syncApply({ ...part, from: this._label() })
+          for (const line of r.log ?? []) log(line)
+          report.push(...(r.report ?? []))
+        } catch (error) {
+          log(`failed ${label}: ${errorText(error)}`)
+          for (const item of part.instructions ?? []) report.push({ kind: 'instructions', name: item.target, ok: false, detail: errorText(error) })
+          for (const item of part.skills ?? []) report.push({ kind: 'skill', name: item.name, root: item.root, ok: false, detail: errorText(error) })
+          for (const item of part.rows ?? []) report.push({ kind: 'row', name: item.id, ok: false, detail: errorText(error) })
+          for (const item of part.plugins ?? []) report.push({ kind: 'plugin', name: item.name, ok: false, detail: errorText(error) })
+        }
+      }
+      const { plugins, ...rest } = bundle
+      if (rest.instructions.length || rest.skills.length || rest.rows.length) await send(rest, 'files')
+      for (const plugin of plugins) await send({ plugins: [plugin] }, plugin.name)
+      const failed = report.filter((x) => !x.ok)
+      log(failed.length ? `${failed.length} item(s) failed` : 'done')
+      this.refresh(id)
+      return { report }
+    })
+  }
+
+  // ── port previews ────────────────────────────────────────────────────────
+
+  async _portStream(id, remotePort) {
+    const { device, s, client } = await this._ready(id)
+    if (device.transport.kind === 'ssh' && s.ssh && !s.ssh.closed) {
+      try {
+        return await s.ssh.openStream('127.0.0.1', remotePort)
+      } catch (error) {
+        // Dev servers bound to "localhost" may listen on ::1 only.
+        try {
+          return await s.ssh.openStream('::1', remotePort)
+        } catch {}
+        throw error
+      }
+    }
+    return client.portTunnel(remotePort)
+  }
+
+  async listPorts(id) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'ports')
+    const r = await client.ports()
+    s.ports = r.items ?? []
+    await this.ports.reconcile(id, s.ports, { auto: device.autoForwardPorts !== false })
+    this._changed()
+    return this.view(this.registry.get(id)).ports
+  }
+
+  async forwardPort(id, port) {
+    const device = this.registry.get(id)
+    if (!device) throw new Error('unknown device')
+    const localPort = await this.ports.forward(id, Number(port))
+    return { localPort, url: `http://localhost:${localPort}/` }
+  }
+
+  closePort(id, port) {
+    return { closed: this.ports.close(id, Number(port)) }
+  }
+
+  setAutoForward(id, on) {
+    const d = this.registry.update(id, { autoForwardPorts: !!on })
+    if (!d) throw new Error('unknown device')
+    if (on && this.state.get(id)?.ports) this.ports.reconcile(id, this.state.get(id).ports, { auto: true }).catch(() => {})
+    this._changed()
+    return this.view(d)
+  }
+
+  /** Open a forwarded dev server in this computer's browser. Only our own forwards. */
+  async openForwarded(url) {
+    let u
+    try {
+      u = new URL(String(url))
+    } catch {
+      throw new Error('invalid url')
+    }
+    const local = Number(u.port)
+    const ours = [...this.ports.forwards.values()].some((e) => e.localPort === local)
+    if (!/^https?:$/.test(u.protocol) || !['localhost', '127.0.0.1'].includes(u.hostname) || !ours) throw new Error('not a forwarded port')
+    await openUrl(u.toString())
+    return { opened: true }
   }
 
   /** Keep session lists near-live while a UI is polling (health checks stay at pollMs). */
@@ -855,6 +1092,7 @@ export class DeviceManager {
       }
     }
     await this._teardown(id)
+    this.ports.closeDevice(id)
     this.state.delete(id)
     this.registry.remove(id)
     this._savedCache = null

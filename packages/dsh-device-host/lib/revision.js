@@ -14,6 +14,9 @@ export class RevisionFeed {
     /** @type {{ seq: number, sessionId: string, reason: string, at: number }[]} */
     this.turnEnds = []
     this.turnSeq = 0
+    /** Sessions that started waiting for the user. @type {{ seq: number, sessionId: string, kind: string, toolName: string|null, at: number }[]} */
+    this.attention = []
+    this.attSeq = 0
     /** @type {Set<() => void>} */
     this.waiters = new Set()
     this._timer = null
@@ -42,6 +45,20 @@ export class RevisionFeed {
   turnEndsSince(since) {
     const s = Number(since)
     return Number.isFinite(s) ? this.turnEnds.filter((e) => e.seq > s) : []
+  }
+
+  /** Record that a session now waits for the user (and bump). */
+  needsAttention(sessionId, kind, toolName) {
+    this.attSeq += 1
+    this.attention.push({ seq: this.attSeq, sessionId, kind, toolName: toolName || null, at: this.now() })
+    if (this.attention.length > this.maxTurnEnds) this.attention.splice(0, this.attention.length - this.maxTurnEnds)
+    this.bump()
+  }
+
+  /** Attention events after `since`. */
+  attentionSince(since) {
+    const s = Number(since)
+    return Number.isFinite(s) ? this.attention.filter((e) => e.seq > s) : []
   }
 
   /**

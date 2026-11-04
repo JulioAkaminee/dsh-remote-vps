@@ -9,6 +9,14 @@
 //   GET    /info             device facts and versions            (token)
 //   GET    /sessions         session rows for the device sidebar  (token)
 //   GET    /workspaces       workspace rows                       (token)
+//   GET    /watch            long-poll change feed                (token)
+//   GET|PUT|DELETE /model-key DeepSeek API key on this device      (token)
+//   GET|PUT|DELETE /account   DeepSeek account sign-in here        (token)
+//   POST   /session-action   rename / pin / archive a session     (token)
+//   GET    /search           message-content search               (token)
+//   GET|POST /sync           customisations copied from a desktop (token)
+//   GET    /ports            listening dev servers                (token)
+//   UPGRADE /port-tunnel     raw TCP to one of them               (token)
 //   DELETE /clients/self     unpair the calling client            (token)
 //   *      /t/...            tunnel to this instance's DSH web UI (token)
 
@@ -18,9 +26,22 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { HostAuth, parsePublicKey } from './auth.js'
 import { readJsonBody, remoteAddress, sendError, sendJson } from './http-util.js'
-import { DEVICE_BASE, HOST_FEATURES, MODEL_KEY_REF, PROTOCOL_VERSION, ROUTES, TOKEN_HEADER, TUNNEL_UPGRADE_PATHS, WATCH_MAX_MS } from './protocol.js'
+import { PendingTracker } from './pending.js'
+import { handlePortTunnel, PortWatcher } from './ports.js'
+import {
+  ACCOUNT_GRANT_KEY,
+  DEVICE_BASE,
+  HOST_FEATURES,
+  MODEL_KEY_REF,
+  PROTOCOL_VERSION,
+  ROUTES,
+  TOKEN_HEADER,
+  TUNNEL_UPGRADE_PATHS,
+  WATCH_MAX_MS,
+} from './protocol.js'
 import { RevisionFeed } from './revision.js'
 import { HostStore } from './store.js'
+import { DeviceSync } from './sync.js'
 import { LocalTunnel } from './tunnel.js'
 
 export const name = 'dsh-device-host'
@@ -98,9 +119,41 @@ export function apply(ctx, rawConfig) {
   // Change feed: session events bump a revision that long-polling desktops wait on.
   const feed = new RevisionFeed()
   ctx.effect(() => () => feed.dispose(), 'dsh-device-host: change feed')
+  // Sessions waiting for the user (approvals, questions), folded from the same events.
+  const pending = new PendingTracker()
   ctx.on('session/event', (session, event) => {
+    const r = pending.observe(session?.id, event)
+    if (r.started) feed.needsAttention(session.id, r.started.kind, r.started.toolName)
     if (event?.type === 'turn/end') feed.turnEnded(session?.id, event?.data?.reason?.kind)
     else feed.bump()
+  })
+  // Dev servers: re-scan listening ports while a desktop is watching, wake it on change.
+  const ports = new PortWatcher({
+    excludePorts: () => [Number(new URL(ctx.webServer.getOrigin()).port) || 0],
+    workspaces: () => (ctx.get('workspaceRegistry')?.list?.() ?? []).map((w) => w.path).filter(Boolean),
+  })
+  let portsKey = null
+  ctx.effect(() => {
+    const timer = setInterval(async () => {
+      if (feed.waiters.size === 0) return
+      const key = PortWatcher.key(await ports.list())
+      if (portsKey !== null && key !== portsKey) feed.bump()
+      portsKey = key
+    }, 3000)
+    return () => clearInterval(timer)
+  }, 'dsh-device-host: port watcher')
+  const sync = new DeviceSync({
+    profileDir: () => ctx.get('profileContext')?.dir ?? null,
+    loaderRowIds: () => {
+      try {
+        return [...(ctx.get('loader')?.entries?.() ?? [])].map((e) => e?.options?.id).filter((id) => typeof id === 'string')
+      } catch {
+        return []
+      }
+    },
+    pluginManager: () => ctx.get('pluginManager'),
+    stateDir: store.dir,
+    logger,
   })
   // Changes that arrive without a session event (workspaces, titles) surface within a minute.
   ctx.effect(() => {
@@ -133,13 +186,16 @@ export function apply(ctx, rawConfig) {
     return client
   }
 
-  /** Session rows, cached per change-feed revision (and at most 10 s). */
+  /** Session rows, cached per change-feed revision (and at most 10 s); waiting state is always fresh. */
   const listSessions = async () => {
-    if (sessionsCache && sessionsCache.rev === feed.rev && Date.now() - sessionsCache.at < 10_000) return sessionsCache.value
-    const rev = feed.rev
-    const value = await listSessionsUncached()
-    sessionsCache = { rev, at: Date.now(), value }
-    return value
+    let value
+    if (sessionsCache && sessionsCache.rev === feed.rev && Date.now() - sessionsCache.at < 10_000) value = sessionsCache.value
+    else {
+      const rev = feed.rev
+      value = await listSessionsUncached()
+      sessionsCache = { rev, at: Date.now(), value }
+    }
+    return { ...value, items: value.items.map((row) => ({ ...row, pending: pending.get(row.sessionId) })) }
   }
 
   const listSessionsUncached = async () => {
@@ -149,11 +205,15 @@ export function apply(ctx, rawConfig) {
     const timer = setTimeout(() => abort.abort(), 10_000)
     try {
       const value = await controller.list({}, abort.signal)
-      const workspaces = ctx.get('workspaceRegistry')?.list?.() ?? []
-      const items = (value?.items ?? [])
+      const registry = ctx.get('workspaceRegistry')
+      const workspaces = registry?.list?.() ?? []
+      const pinnedIds = [...(registry?.pinnedSessionIds ?? [])]
+      const archivedIds = new Set(registry?.archivedSessionIds ?? [])
+      const rows = (value?.items ?? [])
         .filter((row) => !row.parentSessionId && row.origin !== 'subagent' && !row.blank)
         .map((row) => {
           const ws = workspaces.find((w) => row.cwd && (row.cwd === w.path || row.cwd.startsWith(w.path + path.sep)))
+          const pin = pinnedIds.indexOf(row.sessionId)
           return {
             sessionId: row.sessionId,
             title: sessionTitle(row.projections?.values) ?? null,
@@ -163,10 +223,16 @@ export function apply(ctx, rawConfig) {
             running: !!row.running,
             live: !!row.agentAvailable,
             updatedAt: row.updatedAt ?? null,
+            pinned: pin >= 0,
+            ...(pin >= 0 ? { pinRank: pin } : {}),
           }
         })
         .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
-      return { items, available: true }
+      const items = rows.filter((row) => !archivedIds.has(row.sessionId))
+      const archived = rows
+        .filter((row) => archivedIds.has(row.sessionId))
+        .map(({ sessionId, title, workspaceTitle, cwd, updatedAt }) => ({ sessionId, title, workspaceTitle, cwd, updatedAt }))
+      return { items, archived, available: true }
     } finally {
       clearTimeout(timer)
     }
@@ -178,16 +244,63 @@ export function apply(ctx, rawConfig) {
     return list.map((w) => ({ id: w.id, path: w.path, title: w.title, updatedAt: w.updatedAt }))
   }
 
+  /** Whether a DeepSeek account is signed in here (never the token). */
+  const accountStatus = async () => {
+    const credentials = ctx.get('credentials')
+    if (!credentials || typeof credentials.readRecord !== 'function') return { available: false, signedIn: false }
+    try {
+      const record = await credentials.readRecord(ACCOUNT_GRANT_KEY)
+      const ok = record?.kind === 'grant' && typeof record.payload?.token === 'string' && !!record.payload.token
+      return { available: true, signedIn: ok, issuer: ok ? record.payload.issuer ?? null : null }
+    } catch {
+      return { available: true, signedIn: false }
+    }
+  }
+
   /** Whether the agent here has a model credential (never the value). */
   const modelStatus = async () => {
     const credentials = ctx.get('credentials')
-    if (!credentials) return { configured: !!process.env[MODEL_KEY_REF], source: process.env[MODEL_KEY_REF] ? 'env' : null, writable: false }
-    try {
-      const info = await credentials.describe(MODEL_KEY_REF)
-      return { configured: !!info?.configured, source: info?.source ?? null, writable: info?.writable !== false }
-    } catch {
-      return { configured: false, source: null, writable: true }
+    const account = await accountStatus()
+    let key
+    if (!credentials) key = { configured: !!process.env[MODEL_KEY_REF], source: process.env[MODEL_KEY_REF] ? 'env' : null, writable: false }
+    else {
+      try {
+        const info = await credentials.describe(MODEL_KEY_REF)
+        key = { configured: !!info?.configured, source: info?.source ?? null, writable: info?.writable !== false }
+      } catch {
+        key = { configured: false, source: null, writable: true }
+      }
     }
+    return { ...key, account, ready: key.configured || account.signedIn }
+  }
+
+  const SESSION_ACTIONS = new Set(['rename', 'pin', 'unpin', 'archive', 'unarchive'])
+  /** Rename / pin / archive one session through DSH's own controllers. */
+  const sessionAction = async ({ sessionId, action, title, force }) => {
+    if (typeof sessionId !== 'string' || !sessionId || !SESSION_ACTIONS.has(action)) throw Object.assign(new Error('invalid-action'), { status: 400 })
+    if (action === 'rename') {
+      const name = String(title ?? '').trim()
+      if (!name || name.length > 200) throw Object.assign(new Error('invalid-title'), { status: 400 })
+      const controller = ctx.get('sessionController')
+      if (!controller?.rename) throw Object.assign(new Error('rename-unavailable'), { status: 501 })
+      const r = await controller.rename({ sessionId, title: name })
+      return { title: r?.title ?? name }
+    }
+    const registry = ctx.get('workspaceRegistry')
+    if (!registry) throw Object.assign(new Error('workspaces-unavailable'), { status: 501 })
+    try {
+      if (action === 'pin') await registry.pinSession(sessionId)
+      if (action === 'unpin') await registry.unpinSession(sessionId)
+      if (action === 'archive') await registry.archiveSession(sessionId, force ? { stopActivity: true } : {})
+      if (action === 'unarchive') await registry.unarchiveSession(sessionId)
+    } catch (error) {
+      const name = error?.name ?? ''
+      if (/ActiveSession/.test(name)) throw Object.assign(new Error('session-active'), { status: 409 })
+      if (/UnknownSession/.test(name)) throw Object.assign(new Error('session-not-found'), { status: 404 })
+      if (/ArchivedSessionPin/.test(name)) throw Object.assign(new Error('session-archived'), { status: 409 })
+      throw error
+    }
+    return {}
   }
 
   const routes = {
@@ -257,20 +370,118 @@ export function apply(ctx, rawConfig) {
       const sameBoot = url.searchParams.get('boot') === boot
       const rev = sameBoot ? Number(url.searchParams.get('rev') ?? 0) : 0
       const since = sameBoot && url.searchParams.has('turns') ? Number(url.searchParams.get('turns')) : feed.turnSeq
+      const attSince = sameBoot && url.searchParams.has('att') ? Number(url.searchParams.get('att')) : feed.attSeq
       const timeout = Math.min(WATCH_MAX_MS, Math.max(0, Number(url.searchParams.get('timeout') ?? 25_000) || 0))
       const abort = new AbortController()
       res.on('close', () => abort.abort())
-      if (rev === feed.rev && feed.turnEndsSince(since).length === 0) await feed.wait(rev, timeout, abort.signal)
+      if (rev === feed.rev && feed.turnEndsSince(since).length === 0 && feed.attentionSince(attSince).length === 0) await feed.wait(rev, timeout, abort.signal)
       if (abort.signal.aborted) return
-      const body = { boot, rev: feed.rev, turnSeq: feed.turnSeq, turnEnds: feed.turnEndsSince(since) }
+      const body = {
+        boot,
+        rev: feed.rev,
+        turnSeq: feed.turnSeq,
+        turnEnds: feed.turnEndsSince(since),
+        attSeq: feed.attSeq,
+        attention: feed.attentionSince(attSince),
+      }
       if (rev !== feed.rev) {
         try {
           Object.assign(body, await listSessions(), { workspaces: listWorkspaces() })
         } catch (error) {
           body.error = error.message
         }
+        try {
+          body.ports = await ports.list()
+          portsKey = PortWatcher.key(body.ports)
+        } catch {}
       }
       sendJson(res, 200, body)
+    },
+
+    async [ROUTES.sessionAction](req, res) {
+      const client = requireClient(req, res)
+      if (!client) return
+      if (req.method !== 'POST') return sendError(res, 405, 'method-not-allowed')
+      const body = (await readJsonBody(req, 16 * 1024)) ?? {}
+      const result = await sessionAction(body)
+      sessionsCache = null
+      feed.bump()
+      logger.info(`session ${body.sessionId} ${body.action} by ${client.label}`)
+      sendJson(res, 200, { ok: true, ...result })
+    },
+
+    async [ROUTES.search](req, res) {
+      if (!requireClient(req, res)) return
+      if (req.method !== 'GET') return sendError(res, 405, 'method-not-allowed')
+      const q = String(new URL(req.url, 'http://device').searchParams.get('q') ?? '').trim().slice(0, 200)
+      if (!q) return sendJson(res, 200, { items: [] })
+      const controller = ctx.get('sessionController')
+      if (!controller?.search) return sendError(res, 501, 'search-unavailable')
+      const abort = new AbortController()
+      res.on('close', () => abort.abort())
+      const timer = setTimeout(() => abort.abort(), 15_000)
+      try {
+        const result = await controller.search({ query: q }, abort.signal)
+        const titles = new Map(((await listSessions().catch(() => null))?.items ?? []).map((s) => [s.sessionId, s.title]))
+        const items = (result?.items ?? []).slice(0, 50).map((item) => {
+          const match = item.match ?? item.matches?.[0] ?? item.snippet ?? item.excerpt ?? null
+          const snippet = typeof match === 'string' ? match : typeof match?.text === 'string' ? match.text : typeof match?.snippet === 'string' ? match.snippet : null
+          return {
+            sessionId: item.sessionId,
+            title: titles.get(item.sessionId) ?? item.title ?? sessionTitle(item.projections?.values) ?? null,
+            snippet: snippet ? snippet.replace(/\s+/g, ' ').slice(0, 240) : null,
+          }
+        })
+        sendJson(res, 200, { items })
+      } finally {
+        clearTimeout(timer)
+      }
+    },
+
+    async [ROUTES.account](req, res) {
+      const client = requireClient(req, res)
+      if (!client) return
+      if (req.method === 'GET') return sendJson(res, 200, await accountStatus())
+      const credentials = ctx.get('credentials')
+      if (!credentials || typeof credentials.modifyRecord !== 'function') return sendError(res, 501, 'credentials-unavailable')
+      if (req.method === 'PUT') {
+        const body = await readJsonBody(req, 16 * 1024)
+        const grant = body?.grant
+        if (!grant || grant.version !== 1 || typeof grant.token !== 'string' || !grant.token || typeof grant.issuer !== 'string' || !/^https?:\/\//.test(grant.issuer)) {
+          return sendError(res, 400, 'invalid-grant')
+        }
+        const payload = { version: 1, token: grant.token, issuer: grant.issuer }
+        await credentials.modifyRecord(ACCOUNT_GRANT_KEY, async () => ({ kind: 'grant', payload }))
+        logger.info(`DeepSeek account sign-in copied from ${client.label}`)
+        feed.bump()
+        return sendJson(res, 200, await accountStatus())
+      }
+      if (req.method === 'DELETE') {
+        // Local only: the desktop the sign-in came from stays signed in.
+        await credentials.deleteRecord(ACCOUNT_GRANT_KEY)
+        logger.info(`DeepSeek account signed out on this device by ${client.label}`)
+        feed.bump()
+        return sendJson(res, 200, await accountStatus())
+      }
+      sendError(res, 405, 'method-not-allowed')
+    },
+
+    async [ROUTES.sync](req, res) {
+      const client = requireClient(req, res)
+      if (!client) return
+      if (req.method === 'GET') return sendJson(res, 200, await sync.state())
+      if (req.method !== 'POST') return sendError(res, 405, 'method-not-allowed')
+      const bundle = await readJsonBody(req, 64 * 1024 * 1024)
+      const lines = []
+      const report = await sync.apply(bundle ?? {}, { from: client.label, log: (line) => lines.push(line) })
+      logger.info(`sync from ${client.label}: ${report.filter((r) => r.ok).length}/${report.length} applied`)
+      sendJson(res, 200, { report, log: lines, state: await sync.state() })
+    },
+
+    async [ROUTES.ports](req, res) {
+      if (!requireClient(req, res)) return
+      if (req.method !== 'GET') return sendError(res, 405, 'method-not-allowed')
+      sendJson(res, 200, { items: await ports.list() })
     },
 
     async [ROUTES.modelKey](req, res) {
@@ -337,6 +548,24 @@ export function apply(ctx, rawConfig) {
         }),
       }),
     'dsh-device-host: tunnel http',
+  )
+
+  // Port previews: raw TCP to a loopback port of this device.
+  ctx.effect(
+    () =>
+      ctx.webServer.registerUpgrade({
+        path: ROUTES.portTunnel,
+        handler: async (req, socket, head) => {
+          const client = auth.authenticate(req.headers[TOKEN_HEADER])
+          if (!client) {
+            socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n')
+            return
+          }
+          const port = Number(new URL(req.url, 'http://device').searchParams.get('port'))
+          handlePortTunnel(req, socket, head, port)
+        },
+      }),
+    'dsh-device-host: port tunnel',
   )
 
   for (const upgradePath of TUNNEL_UPGRADE_PATHS) {

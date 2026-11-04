@@ -97,7 +97,7 @@ try {
   await page.waitForSelector('[data-testid=dsh-devices-settings]', { timeout: 10000 })
   await shot(page, 'live-01-settings')
   check('Settings has a Devices section', true)
-  const toggle = page.locator('[data-testid=dsh-devices-settings] [role=switch]').first()
+  const toggle = page.locator('[data-testid=dsh-devices-settings]').getByRole('switch', { name: 'Show remote chats in the sidebar' })
   await toggle.click()
   await page.waitForTimeout(500)
   const hidden = (await page.locator('[data-dsh-devices=sidebar] [data-dshdev-device]').count()) === 0

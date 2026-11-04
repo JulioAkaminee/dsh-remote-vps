@@ -38,6 +38,12 @@ export function apply(ctx, config) {
   const manager = new DeviceManager({
     pollMs,
     credentials: () => ctx.get('credentials'),
+    // This desktop's own composition, read when the user syncs a device.
+    local: {
+      loaderEntries: () => ctx.get('loader')?.entries?.() ?? [],
+      profileDir: () => ctx.get('profileContext')?.dir ?? null,
+      pluginManager: () => ctx.get('pluginManager'),
+    },
     logger: { info: (...a) => console.log('[dsh-devices]', ...a), warn: (...a) => console.warn('[dsh-devices]', ...a) },
   })
   manager.start()
@@ -142,6 +148,63 @@ export function apply(ctx, config) {
     ['POST', '/devices/update', async (request) => {
       const b = await body(request)
       return json(manager.update(b.id))
+    }],
+    // remote sessions: rename / pin / archive, and search
+    ['POST', '/devices/session-action', async (request) => {
+      const b = await body(request)
+      try {
+        return json(await manager.sessionAction(b.id, b))
+      } catch (error) {
+        return json({ error: error.detail || error.message, code: error.code ?? null }, error.status && error.status < 500 ? error.status : 400)
+      }
+    }],
+    ['GET', '/devices/search', async (request) => {
+      const q = new URL(request.url).searchParams.get('q') ?? ''
+      const only = new URL(request.url).searchParams.get('id')
+      const online = manager.list().devices.filter((d) => d.status === 'online' && (!only || d.id === only))
+      const results = await Promise.all(
+        online.map((d) =>
+          manager.search(d.id, q).then(
+            (r) => ({ deviceId: d.id, items: r.items ?? [], unsupported: !!r.unsupported }),
+            (e) => ({ deviceId: d.id, items: [], error: e.message }),
+          ),
+        ),
+      )
+      return json({ results })
+    }],
+    // DeepSeek account sign-in
+    ['GET', '/devices/local-account', async () => json(await manager.localAccount())],
+    ['POST', '/devices/account', async (request) => {
+      const b = await body(request)
+      return json(await manager.shareAccount(b.id))
+    }],
+    ['POST', '/devices/account/clear', async (request) => {
+      const b = await body(request)
+      return json(await manager.clearAccount(b.id))
+    }],
+    // "Sync with device"
+    ['GET', '/devices/sync-plan', async (request) => json(await manager.syncPlan(new URL(request.url).searchParams.get('id')))],
+    ['POST', '/devices/sync', async (request) => {
+      const b = await body(request)
+      return json(manager.sync(b.id, b.keys))
+    }],
+    // port previews
+    ['GET', '/devices/ports', async (request) => json({ ports: await manager.listPorts(new URL(request.url).searchParams.get('id')) })],
+    ['POST', '/devices/port-forward', async (request) => {
+      const b = await body(request)
+      return json(await manager.forwardPort(b.id, b.port))
+    }],
+    ['POST', '/devices/port-close', async (request) => {
+      const b = await body(request)
+      return json(manager.closePort(b.id, b.port))
+    }],
+    ['POST', '/devices/port-auto', async (request) => {
+      const b = await body(request)
+      return json({ device: manager.setAutoForward(b.id, b.on !== false) })
+    }],
+    ['POST', '/devices/open-forwarded', async (request) => {
+      const b = await body(request)
+      return json(await manager.openForwarded(b.url))
     }],
   ]
 

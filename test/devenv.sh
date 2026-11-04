@@ -11,6 +11,23 @@ DSH="${DSH:-/root/.dsh-desktop/dependencies/dsh/node_modules/@deepseek-ai/dsh/li
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 mkdir -p "$BASE"
 
+# Test profiles never talk to the real DeepSeek account platform: point it at the
+# local mock (its 404s are plain request failures, which keep a stored sign-in).
+ensure_test_rows() {
+  f="$1/cordis.patch.yml"
+  grep -q "id: deepseek-account" "$f" 2>/dev/null && return 0
+  sed -i 's/^\[\]$//' "$f"
+  cat >> "$f" <<'YML'
+
+# test env: the account platform is a local mock
+- id: deepseek-account
+  config:
+    desktopPlatform: null
+    platformOrigin: http://127.0.0.1:4598
+    allowLoopbackHttp: true
+YML
+}
+
 start_one() {
   name="$1"
   pidf="$BASE/$name.pid"
@@ -22,11 +39,13 @@ start_one() {
       nohup "$NODE" "$ROOT/test/mock-llm.mjs" 4598 DESKTOP > "$BASE/mockdesk.log" 2>&1 & ;;
     host)
       "$NODE" "$ROOT/scripts/make-profile.mjs" --home "$BASE/host-home" --profile device-host --link "$ROOT/packages/dsh-device-host" > /dev/null
+      ensure_test_rows "$BASE/host-home/profiles/device-host"
       (cd "$BASE" && DSH_HOME="$BASE/host-home" DEEPSEEK_API_KEY="${HOST_KEY-test-key}" DEEPSEEK_BASE_URL=http://127.0.0.1:4599 \
         nohup "$NODE" "$DSH" --profile device-host --no-open --host 127.0.0.1 --port 3181 > "$BASE/host.log" 2>&1 &
         echo $! > "$pidf") ;;
     ctrl)
       "$NODE" "$ROOT/scripts/make-profile.mjs" --home "$BASE/ctrl-home" --profile web --link "$ROOT/packages/dsh-devices" > /dev/null
+      ensure_test_rows "$BASE/ctrl-home/profiles/web"
       (cd "$BASE" && HOME="${CTRL_HOME_DIR:-$HOME}" DSH_DEVICES_OPEN_CMD="${DSH_DEVICES_OPEN_CMD-$ROOT/test/fake-open.sh}" DSH_HOME="$BASE/ctrl-home" DEEPSEEK_API_KEY=test-key DEEPSEEK_BASE_URL=http://127.0.0.1:4598 \
         nohup "$NODE" "$DSH" --profile web --no-open --host 127.0.0.1 --port 3281 > "$BASE/ctrl.log" 2>&1 &
         echo $! > "$pidf") ;;
