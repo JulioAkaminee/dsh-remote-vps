@@ -143,3 +143,11 @@ test('ssh: machines saved by dsh-tauri-remote are listed with their accepted hos
     else process.env.DSH_HOME = prev
   }
 })
+
+test('versions: device hosts older than the desktop plugin are detected', async () => {
+  const { compareVersions } = await import('../../packages/dsh-devices/lib/manager.js')
+  assert.equal(compareVersions('0.1.3', '0.1.4'), -1)
+  assert.equal(compareVersions('0.1.10', '0.1.9'), 1)
+  assert.equal(compareVersions('0.2.1-rc.5', '0.2.1'), 0)
+  assert.equal(compareVersions('1.0', '1.0.0'), 0)
+})

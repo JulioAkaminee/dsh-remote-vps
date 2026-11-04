@@ -19,11 +19,16 @@ export const ROUTES = Object.freeze({
   info: `${DEVICE_BASE}/info`,
   sessions: `${DEVICE_BASE}/sessions`,
   workspaces: `${DEVICE_BASE}/workspaces`,
+  /** Authenticated. GET model-credential status; PUT { apiKey } stores it; DELETE removes it. */
+  modelKey: `${DEVICE_BASE}/model-key`,
   /** Authenticated. DELETE removes the calling client (unpair from the desktop). */
   self: `${DEVICE_BASE}/clients/self`,
   /** Authenticated. Everything below is proxied to the host's own DSH web UI. */
   tunnel: `${DEVICE_BASE}/t`,
 })
+
+/** Credential reference the DeepSeek provider resolves (its default `apiKeyEnv`). */
+export const MODEL_KEY_REF = 'DEEPSEEK_API_KEY'
 
 /** Header carrying the short-lived access token on authenticated requests. */
 export const TOKEN_HEADER = 'x-dsh-device-token'

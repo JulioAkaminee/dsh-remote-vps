@@ -18,7 +18,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { HostAuth, parsePublicKey } from './auth.js'
 import { readJsonBody, remoteAddress, sendError, sendJson } from './http-util.js'
-import { DEVICE_BASE, PROTOCOL_VERSION, ROUTES, TOKEN_HEADER, TUNNEL_UPGRADE_PATHS } from './protocol.js'
+import { DEVICE_BASE, MODEL_KEY_REF, PROTOCOL_VERSION, ROUTES, TOKEN_HEADER, TUNNEL_UPGRADE_PATHS } from './protocol.js'
 import { HostStore } from './store.js'
 import { LocalTunnel } from './tunnel.js'
 
@@ -153,6 +153,18 @@ export function apply(ctx, rawConfig) {
     return list.map((w) => ({ id: w.id, path: w.path, title: w.title, updatedAt: w.updatedAt }))
   }
 
+  /** Whether the agent here has a model credential (never the value). */
+  const modelStatus = async () => {
+    const credentials = ctx.get('credentials')
+    if (!credentials) return { configured: !!process.env[MODEL_KEY_REF], source: process.env[MODEL_KEY_REF] ? 'env' : null, writable: false }
+    try {
+      const info = await credentials.describe(MODEL_KEY_REF)
+      return { configured: !!info?.configured, source: info?.source ?? null, writable: info?.writable !== false }
+    } catch {
+      return { configured: false, source: null, writable: true }
+    }
+  }
+
   const routes = {
     async [ROUTES.hello](req, res) {
       if (req.method !== 'GET') return sendError(res, 405, 'method-not-allowed')
@@ -195,7 +207,7 @@ export function apply(ctx, rawConfig) {
 
     async [ROUTES.info](req, res) {
       if (!requireClient(req, res)) return
-      sendJson(res, 200, info())
+      sendJson(res, 200, { ...info(), model: await modelStatus() })
     },
 
     async [ROUTES.sessions](req, res) {
@@ -210,6 +222,28 @@ export function apply(ctx, rawConfig) {
     async [ROUTES.workspaces](req, res) {
       if (!requireClient(req, res)) return
       sendJson(res, 200, { items: listWorkspaces() })
+    },
+
+    async [ROUTES.modelKey](req, res) {
+      const client = requireClient(req, res)
+      if (!client) return
+      if (req.method === 'GET') return sendJson(res, 200, await modelStatus())
+      const credentials = ctx.get('credentials')
+      if (!credentials) return sendError(res, 501, 'credentials-unavailable')
+      if (req.method === 'PUT') {
+        const body = await readJsonBody(req, 8 * 1024)
+        const apiKey = typeof body?.apiKey === 'string' ? body.apiKey.trim() : ''
+        if (apiKey.length < 8 || apiKey.length > 512 || /\s/.test(apiKey)) return sendError(res, 400, 'invalid-api-key')
+        await credentials.set(MODEL_KEY_REF, apiKey)
+        logger.info(`model credential ${MODEL_KEY_REF} updated by ${client.label}`)
+        return sendJson(res, 200, await modelStatus())
+      }
+      if (req.method === 'DELETE') {
+        await credentials.unset(MODEL_KEY_REF)
+        logger.info(`model credential ${MODEL_KEY_REF} removed by ${client.label}`)
+        return sendJson(res, 200, await modelStatus())
+      }
+      sendError(res, 405, 'method-not-allowed')
     },
 
     async [ROUTES.self](req, res) {

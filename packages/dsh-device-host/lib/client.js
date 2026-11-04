@@ -40,6 +40,86 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
       setTimeout(run, 0)
     }
 
+    /** Open this UI's Settings (its sidebar is hidden while embedded). */
+    function openSettings(ctx) {
+      const dialogs = () => document.querySelectorAll('[role=dialog]').length
+      const before = dialogs()
+      try {
+        const shortcuts = ctx.get ? ctx.get('shortcuts') : undefined
+        const entries = shortcuts?.catalog?.getSnapshot?.() ?? []
+        const binding = entries.find((e) => e.id === 'settings.open')?.binding
+        if (binding?.code) {
+          const mods = new Set(binding.modifiers ?? [])
+          const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+          const primary = mods.has('primary')
+          const init = {
+            code: binding.code,
+            key: binding.code === 'Comma' ? ',' : binding.code.replace(/^Key/, '').toLowerCase(),
+            metaKey: mods.has('meta') || (primary && mac),
+            ctrlKey: mods.has('ctrl') || mods.has('control') || (primary && !mac),
+            altKey: mods.has('alt'),
+            shiftKey: mods.has('shift'),
+            bubbles: true,
+            cancelable: true,
+          }
+          ;(document.activeElement || document.body).dispatchEvent(new KeyboardEvent('keydown', init))
+        }
+      } catch {}
+      // Fallback: the hidden sidebar's own Settings control.
+      setTimeout(() => {
+        if (dialogs() > before) return
+        const trigger = document.querySelector('[data-slot="sidebar.settings"] button')
+        if (!trigger) return
+        trigger.click()
+        setTimeout(() => {
+          if (dialogs() > before) return
+          const item = [...document.querySelectorAll('[role=menuitem]')].find((el) => /settings|configura|设置|ajustes|preferen/i.test(el.textContent || ''))
+          if (item) item.click()
+        }, 250)
+      }, 300)
+    }
+
+    /** While embedded: a device pill before the workspace chooser lets the desktop switch devices. */
+    function mountDevicePill(ctx, deviceName) {
+      const icon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="color:rgb(65,118,230)"><rect x="1.5" y="6.5" width="10" height="7.5" rx="1.6" fill="currentColor" opacity="0.16"/><rect x="1.5" y="6.5" width="10" height="7.5" rx="1.6" stroke="currentColor"/><path d="M4 10.25h.01M6.5 10.25h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M10.2 3.6a3.3 3.3 0 0 1 3.3 3.3M10.2 1.6a5.3 5.3 0 0 1 5.3 5.3" stroke="currentColor" stroke-linecap="round"/></svg>'
+      const chevron = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      const place = () => {
+        for (const chooser of document.querySelectorAll('button[aria-haspopup="menu"]:not([data-dsh-device-pill])')) {
+          if (![...chooser.classList].some((c) => /_workspace$/.test(c))) continue
+          const prev = chooser.previousElementSibling
+          if (prev && prev.getAttribute('data-dsh-device-pill') === '1') continue
+          const pill = document.createElement('button')
+          pill.type = 'button'
+          pill.className = chooser.className
+          pill.style.marginRight = '6px'
+          pill.setAttribute('data-dsh-device-pill', '1')
+          pill.setAttribute('aria-haspopup', 'menu')
+          const labelCls = chooser.querySelector('[class*="_workspaceLabel"]')?.className || ''
+          pill.innerHTML = `${icon}<span class="${labelCls}"></span>${chevron}`
+          pill.querySelector('span').textContent = deviceName
+          pill.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            const r = pill.getBoundingClientRect()
+            window.parent.postMessage({ source: 'dsh-device-host', type: 'pick-device', rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom } }, '*')
+          })
+          chooser.parentElement.insertBefore(pill, chooser)
+        }
+      }
+      let queued = false
+      const observer = new MutationObserver(() => {
+        if (queued) return
+        queued = true
+        requestAnimationFrame(() => {
+          queued = false
+          place()
+        })
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+      place()
+      return () => observer.disconnect()
+    }
+
     function apply(ctx) {
       const params = new URLSearchParams(window.location.search)
       const embedded = params.get('dsh-embed') === '1' || window.self !== window.top
@@ -96,6 +176,7 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
           if (msg.type === 'open-session' && typeof msg.sessionId === 'string') openSession(msg.sessionId)
           if (msg.type === 'new-session') newSession(typeof msg.workspaceId === 'string' ? msg.workspaceId : undefined)
           if (msg.type === 'ping') post({ type: 'ready' })
+          if (msg.type === 'open-settings') openSettings(ctx)
         }
         window.addEventListener('message', onMessage)
         // Report the current session so the desktop can highlight its row.
@@ -114,6 +195,7 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
           }
         }, 1000)
         post({ type: 'ready' })
+        ctx.effect(() => mountDevicePill(ctx, deviceName || 'Device'), 'dsh-device-host: device pill')
         ctx.effect(() => () => {
           window.removeEventListener('message', onMessage)
           clearInterval(timer)

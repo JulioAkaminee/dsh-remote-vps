@@ -161,4 +161,16 @@ export class DeviceClient {
   unpair() {
     return this.call('DELETE', ROUTES.self)
   }
+
+  modelStatus() {
+    return this.call('GET', ROUTES.modelKey)
+  }
+
+  setModelKey(apiKey) {
+    return this.call('PUT', ROUTES.modelKey, { apiKey })
+  }
+
+  clearModelKey() {
+    return this.call('DELETE', ROUTES.modelKey)
+  }
 }

@@ -22,7 +22,7 @@ start_one() {
       nohup "$NODE" "$ROOT/test/mock-llm.mjs" 4598 DESKTOP > "$BASE/mockdesk.log" 2>&1 & ;;
     host)
       "$NODE" "$ROOT/scripts/make-profile.mjs" --home "$BASE/host-home" --profile device-host --link "$ROOT/packages/dsh-device-host" > /dev/null
-      (cd "$BASE" && DSH_HOME="$BASE/host-home" DEEPSEEK_API_KEY=test-key DEEPSEEK_BASE_URL=http://127.0.0.1:4599 \
+      (cd "$BASE" && DSH_HOME="$BASE/host-home" DEEPSEEK_API_KEY="${HOST_KEY-test-key}" DEEPSEEK_BASE_URL=http://127.0.0.1:4599 \
         nohup "$NODE" "$DSH" --profile device-host --no-open --host 127.0.0.1 --port 3181 > "$BASE/host.log" 2>&1 &
         echo $! > "$pidf") ;;
     ctrl)

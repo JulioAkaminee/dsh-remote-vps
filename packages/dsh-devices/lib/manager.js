@@ -11,7 +11,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DeviceClient, DeviceHttpError, generateClientKey, hello, pair } from './device-client.js'
 import { DeviceGateway } from './gateway.js'
-import { parsePairingInput, PROTOCOL_VERSION } from './protocol.js'
+import { MODEL_KEY_REF, parsePairingInput, PROTOCOL_VERSION } from './protocol.js'
 import { DeviceRegistry } from './registry.js'
 import { listSavedMachines, resolveSshTarget, shq, SshConnection } from './ssh.js'
 
@@ -42,6 +42,17 @@ export function localDshVersion() {
   return process.env.DSH_DEVICES_DSH_VERSION || null
 }
 
+/** Compare dotted versions ("0.1.10" > "0.1.9"); prerelease tails are ignored. */
+export function compareVersions(a, b) {
+  const pa = String(a ?? '').split('-')[0].split('.').map((n) => Number(n) || 0)
+  const pb = String(b ?? '').split('-')[0].split('.').map((n) => Number(n) || 0)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (d) return d > 0 ? 1 : -1
+  }
+  return 0
+}
+
 function backoffMs(failures) {
   const base = Math.min(30_000, 1000 * 2 ** Math.max(0, failures - 1))
   return base / 2 + Math.random() * (base / 2)
@@ -54,8 +65,10 @@ function errorText(error) {
 }
 
 export class DeviceManager {
-  constructor({ registry = new DeviceRegistry(), logger = console, pollMs = POLL_MS } = {}) {
+  constructor({ registry = new DeviceRegistry(), logger = console, pollMs = POLL_MS, credentials = () => undefined } = {}) {
     this.registry = registry
+    /** This desktop's credential service (to reuse its DeepSeek key on a device). */
+    this.credentials = credentials
     this.logger = logger
     this.pollMs = pollMs
     /** @type {Map<string, any>} device id -> runtime state */
@@ -274,6 +287,8 @@ export class DeviceManager {
     const s = this._ensureState(device.id)
     const localDsh = localDshVersion()
     const remoteDsh = device.versions?.dsh ?? null
+    const remotePlugin = device.versions?.plugin ?? null
+    const hostBehind = !!(PLUGIN_VERSION && remotePlugin && compareVersions(remotePlugin, PLUGIN_VERSION) < 0)
     return {
       id: device.id,
       name: device.name || device.remoteName || device.id.slice(0, 8),
@@ -288,12 +303,15 @@ export class DeviceManager {
       addedAt: device.addedAt,
       lastSeenAt: device.lastSeenAt ?? null,
       versions: device.versions ?? null,
-      outdated: !!(localDsh && remoteDsh && localDsh !== remoteDsh),
+      outdated: !!(localDsh && remoteDsh && localDsh !== remoteDsh) || hostBehind,
+      hostBehind,
+      canUpdate: device.transport.kind === 'ssh',
       protocolMismatch: !!(device.versions?.protocol && device.versions.protocol !== PROTOCOL_VERSION),
       sessions: s.sessions,
       sessionsAt: s.sessionsAt,
       workspaces: (s.workspaces ?? []).map((w) => ({ id: w.id, title: w.title, path: w.path })),
       uptimeSec: s.info?.uptimeSec ?? null,
+      model: s.info?.model ?? null,
       loadavg: s.info?.loadavg ?? null,
     }
   }
@@ -607,6 +625,48 @@ export class DeviceManager {
       this.refresh(id)
       return { ok: true }
     })
+  }
+
+  // ── model credential on the device ───────────────────────────────────────
+
+  /** Whether this desktop has a DeepSeek API key it could hand to a device. */
+  async localModelKey() {
+    const credentials = this.credentials()
+    try {
+      if (credentials) {
+        const r = await credentials.resolve(MODEL_KEY_REF)
+        if (r?.value) return r.value
+      }
+    } catch {}
+    return process.env[MODEL_KEY_REF] || null
+  }
+
+  /**
+   * Store the DeepSeek API key on a device: typed by the user, or this
+   * desktop's own key (resolved here, never sent to the browser).
+   */
+  async setModelKey(id, { apiKey, fromDesktop } = {}) {
+    const device = this.registry.get(id)
+    if (!device) throw new Error('unknown device')
+    const s = this._ensureState(id)
+    const key = fromDesktop ? await this.localModelKey() : String(apiKey ?? '').trim()
+    if (!key) throw new Error(fromDesktop ? 'this desktop has no DeepSeek API key to share' : 'enter the API key')
+    s.baseUrl = await this._transport(device, s)
+    const model = await this._client(device, s).setModelKey(key)
+    if (s.info) s.info = { ...s.info, model }
+    this.refresh(id)
+    return { model }
+  }
+
+  async clearModelKey(id) {
+    const device = this.registry.get(id)
+    if (!device) throw new Error('unknown device')
+    const s = this._ensureState(id)
+    s.baseUrl = await this._transport(device, s)
+    const model = await this._client(device, s).clearModelKey()
+    if (s.info) s.info = { ...s.info, model }
+    this.refresh(id)
+    return { model }
   }
 
   // ── other operations ─────────────────────────────────────────────────────

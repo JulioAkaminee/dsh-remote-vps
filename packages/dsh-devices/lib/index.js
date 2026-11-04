@@ -36,6 +36,7 @@ export function apply(ctx, config) {
   const pollMs = Number(config?.pollMs) > 0 ? Number(config.pollMs) : undefined
   const manager = new DeviceManager({
     pollMs,
+    credentials: () => ctx.get('credentials'),
     logger: { info: (...a) => console.log('[dsh-devices]', ...a), warn: (...a) => console.warn('[dsh-devices]', ...a) },
   })
   manager.start()
@@ -104,6 +105,15 @@ export function apply(ctx, config) {
       const b = await body(request)
       manager.refresh(b.id)
       return json({ ok: true })
+    }],
+    ['GET', '/devices/local-model-key', async () => json({ available: !!(await manager.localModelKey()) })],
+    ['POST', '/devices/model-key', async (request) => {
+      const b = await body(request)
+      return json(await manager.setModelKey(b.id, { apiKey: b.apiKey, fromDesktop: b.fromDesktop === true }))
+    }],
+    ['POST', '/devices/model-key/clear', async (request) => {
+      const b = await body(request)
+      return json(await manager.clearModelKey(b.id))
     }],
     ['POST', '/devices/update', async (request) => {
       const b = await body(request)

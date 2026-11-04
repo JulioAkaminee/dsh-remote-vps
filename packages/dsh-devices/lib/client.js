@@ -172,6 +172,34 @@ window.__ModuleLoader__.load({
     en.codeHint = 'Paste the dsh-device:// link, or type the code.'
     Object.assign(zh, { suggestions: '建议', fromSshConfig: '~/.ssh/config', trusted: '已信任', codeStep1: '在 VPS 上运行：', codeStep2: '把输出的链接粘贴到这里（或输入配对码和 HTTPS 地址）。', orType: '或输入', advanced: '高级：端口、用户、密钥' })
 
+
+    Object.assign(en, {
+      thisMac: 'This computer', chooseDevice: 'Where should this session run?', addDeviceMenu: 'Add device…',
+      modelMissing: '{device} has no DeepSeek API key yet, so its chats have no models.',
+      modelOk: 'DeepSeek API key configured', modelSource: 'source: {source}',
+      useMacKey: 'Use this computer’s key', pasteKey: 'Paste key', changeKey: 'Change key', removeKey: 'Remove key',
+      saveKey: 'Save key', keyPlaceholder: 'sk-…', keySaved: 'Key saved on {device}.', deviceSettings: 'Device settings',
+      needsUpdate: 'This device runs an older device host ({remote}); update it to manage its key from here.', updateNow: 'Update device',
+      updateWarn: 'Updating restarts the device host; running turns on it stop.',
+      modelLabel: 'Models', keyHint: 'Stored on the device (its credential store). It never stays on this computer.',
+    })
+    Object.assign(ptBR, {
+      thisMac: 'Este computador', chooseDevice: 'Onde esta sessão vai rodar?', addDeviceMenu: 'Adicionar device…',
+      modelMissing: '{device} ainda não tem chave da API do DeepSeek, então os chats dele ficam sem modelos.',
+      modelOk: 'Chave da API do DeepSeek configurada', modelSource: 'origem: {source}',
+      useMacKey: 'Usar a chave deste computador', pasteKey: 'Colar chave', changeKey: 'Trocar chave', removeKey: 'Remover chave',
+      saveKey: 'Salvar chave', keyPlaceholder: 'sk-…', keySaved: 'Chave salva em {device}.', deviceSettings: 'Configurações do device',
+      needsUpdate: 'Este device roda um device host antigo ({remote}); atualize para gerenciar a chave por aqui.', updateNow: 'Atualizar device',
+      updateWarn: 'Atualizar reinicia o device host; turnos rodando nele param.',
+      modelLabel: 'Modelos', keyHint: 'Fica guardada no device (no cofre de credenciais dele). Não fica neste computador.',
+    })
+    Object.assign(zh, {
+      thisMac: '本机', chooseDevice: '会话在哪里运行？', addDeviceMenu: '添加设备…', modelMissing: '{device} 还没有 DeepSeek API Key，会话没有可用模型。',
+      modelOk: '已配置 DeepSeek API Key', modelSource: '来源：{source}', useMacKey: '使用本机的 Key', pasteKey: '粘贴 Key', changeKey: '更换 Key',
+      removeKey: '移除 Key', saveKey: '保存 Key', keyPlaceholder: 'sk-…', keySaved: '已保存到 {device}。', deviceSettings: '设备设置', modelLabel: '模型',
+      keyHint: '保存在设备上（设备的凭据存储），不会留在本机。',
+    })
+
     function fill(text, vars) {
       return String(text).replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : ''))
     }
@@ -219,6 +247,8 @@ window.__ModuleLoader__.load({
       embedded: {},
       activePanel: null,
       collapsed: readCollapsed(),
+      localKey: null,
+      openAdd: false,
       version: 0,
       listeners: new Set(),
     }
@@ -243,6 +273,12 @@ window.__ModuleLoader__.load({
       return store
     }
     let pollTimer = null
+    async function refreshLocalKey() {
+      try {
+        const r = await api('/devices/local-model-key')
+        if (store.localKey !== !!r.available) setStore({ localKey: !!r.available })
+      } catch {}
+    }
     async function refreshDevices() {
       try {
         const data = await api('/devices')
@@ -253,6 +289,7 @@ window.__ModuleLoader__.load({
     }
     function startPolling() {
       refreshDevices()
+      refreshLocalKey()
       pollTimer = setInterval(refreshDevices, 3000)
     }
     function stopPolling() {
@@ -312,6 +349,10 @@ window.__ModuleLoader__.load({
             f.ready = true
             for (const m of f.pending.splice(0)) this.send(deviceId, m)
           }
+          if (msg.type === 'pick-device' && msg.rect) {
+            const r = f.iframe.getBoundingClientRect()
+            openDeviceMenu({ x: r.left + msg.rect.left, y: r.top + msg.rect.bottom + 6, current: deviceId })
+          }
           if (msg.type === 'session') {
             store.embedded = { ...store.embedded, [deviceId]: msg.sessionId || null }
             if (store.selection && store.selection.deviceId === deviceId && msg.sessionId) store.selection = { deviceId, sessionId: msg.sessionId }
@@ -344,6 +385,7 @@ window.__ModuleLoader__.load({
           iframe.src = `${root}?${params.toString()}`
           this.host.appendChild(iframe)
           f = { iframe, root, ready: false, pending: [] }
+          if (command && command.type !== 'open-session' && command.type !== 'new-session') f.pending.push(command)
           this.byDevice.set(deviceId, f)
           iframe.addEventListener('load', () => {
             // The device UI announces readiness itself; this covers older hosts.
@@ -358,6 +400,17 @@ window.__ModuleLoader__.load({
         this.active = deviceId
         for (const [id, x] of this.byDevice) x.iframe.style.display = id === deviceId ? 'block' : 'none'
         this.layout()
+      },
+      reload(deviceId) {
+        const f = this.byDevice.get(deviceId)
+        if (!f) return
+        f.ready = false
+        f.pending = []
+        const src = f.iframe.src
+        f.iframe.src = 'about:blank'
+        setTimeout(() => {
+          f.iframe.src = src
+        }, 50)
       },
       drop(deviceId) {
         const f = this.byDevice.get(deviceId)
@@ -494,7 +547,31 @@ window.__ModuleLoader__.load({
 .dshdev-menu-caption{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--dsw-alias-label-tertiary);padding:8px 10px 4px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:4px}
 .dshdev-menu-suffix{color:var(--dsw-alias-label-tertiary);margin-left:6px;font-size:12px}
 .dshdev-menu-item{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:6px 10px;font:inherit;color:inherit;cursor:pointer}
-.dshdev-chat-panel{position:relative;width:100%;height:100%}
+.dshdev-chat-wrap{display:flex;flex-direction:column;width:100%;height:100%}
+.dshdev-chat-banner{padding:calc(var(--dsh-frame-top-clearance,0px) + 12px) 16px 12px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));background:var(--dsw-alias-bg-base,#fff)}
+.dshdev-chat-panel{position:relative;width:100%;flex:1;min-height:0}
+.dshdev-model{border-radius:10px;padding:10px 12px;font-size:13px;line-height:20px}
+.dshdev-model.ok{display:flex;align-items:center;gap:8px;background:transparent;padding:4px 0}
+.dshdev-model.warn{background:color-mix(in srgb,var(--dsw-alias-state-warn-label,#d97706) 9%,transparent);border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-label,#d97706) 35%,transparent);display:flex;flex-direction:column;gap:8px}
+.dshdev-model.banner{max-width:880px;margin:0 auto}
+.dshdev-model-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dshdev-model-dot{width:8px;height:8px;border-radius:4px;background:var(--dsw-alias-state-warn-label,#d97706);flex-shrink:0}
+.dshdev-model-dot.ok{background:var(--dsw-alias-state-business-primary,#16a34a)}
+.dshdev-model-text{flex:1;min-width:0;color:var(--dsw-alias-label-primary)}
+.dshdev-model.ok .dshdev-model-text{color:var(--dsw-alias-label-secondary);font-size:12px;flex:0 1 auto}
+.dshdev-model-actions{display:flex;gap:4px;margin-left:auto}
+.dshdev-key-input{flex:1;min-width:180px;max-width:320px}
+.dshdev-dm{position:fixed;z-index:60;min-width:260px;max-width:320px;padding:6px;border-radius:12px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#fff)));box-shadow:var(--dsw-elevation-prominent,0 12px 32px rgba(0,0,0,.18));backdrop-filter:var(--dsw-menu-backdrop-filter,none);color:var(--dsw-alias-label-primary)}
+.dshdev-dm-title{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--dsw-alias-label-tertiary);padding:6px 10px 4px}
+.dshdev-dm-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 10px;font:inherit;font-size:13px;color:inherit;cursor:pointer}
+.dshdev-dm-item:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05))}
+.dshdev-dm-item:disabled{opacity:.5;cursor:default}
+.dshdev-dm-icon{display:inline-flex;width:16px;justify-content:center;color:var(--dsw-alias-label-secondary)}
+.dshdev-dm-label{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dshdev-dm-meta{font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.dshdev-dm-check{color:var(--dsw-focus-ring-color,#4176e6);font-size:13px}
+.dshdev-dm-sep{height:1px;margin:4px 6px;background:var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
+.dshdev-pill{margin-right:6px}
 .dshdev-chat-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:13px;padding:24px;text-align:center}
 `
     function ensureStyles() {
@@ -743,6 +820,250 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // ── "where should this session run?" device menu ────────────────────────
+    let appCtx = null
+    let menuRoot = null
+    let menuEl = null
+    function startLocalSession() {
+      try {
+        const ws = appCtx.get ? appCtx.get('uiWorkspace') : appCtx.uiWorkspace
+        if (ws && typeof ws.startSession === 'function') ws.startSession()
+        else appCtx.layout.selectPanel(null)
+      } catch {
+        try {
+          appCtx.layout.selectPanel(null)
+        } catch {}
+      }
+    }
+    function closeDeviceMenu() {
+      if (menuRoot) menuRoot.render(null)
+    }
+    function DeviceMenu({ x, y, current, t, onClose }) {
+      const st = useStore()
+      const ref = useRef(null)
+      useEffect(() => {
+        const down = (e) => {
+          if (ref.current && !ref.current.contains(e.target)) onClose()
+        }
+        const key = (e) => e.key === 'Escape' && onClose()
+        document.addEventListener('pointerdown', down, true)
+        document.addEventListener('keydown', key, true)
+        return () => {
+          document.removeEventListener('pointerdown', down, true)
+          document.removeEventListener('keydown', key, true)
+        }
+      }, [])
+      const left = Math.max(8, Math.min(x, window.innerWidth - 300))
+      const item = (key, icon, label, meta, onPick, opts = {}) =>
+        h(
+          'button',
+          { key, type: 'button', role: 'menuitemradio', 'aria-checked': !!opts.checked, disabled: !!opts.disabled, className: `dshdev-dm-item${opts.checked ? ' on' : ''}`, onClick: () => (onClose(), onPick()) },
+          h('span', { className: 'dshdev-dm-icon' }, icon),
+          h('span', { className: 'dshdev-dm-label' }, label, meta ? h('span', { className: 'dshdev-dm-meta' }, meta) : null),
+          opts.checked ? h('span', { className: 'dshdev-dm-check' }, '✓') : null,
+        )
+      const devices = st.data.devices || []
+      return h(
+        'div',
+        { ref, className: 'dshdev-dm', role: 'menu', 'aria-label': t('chooseDevice'), style: { left, top: y } },
+        h('div', { className: 'dshdev-dm-title' }, t('chooseDevice')),
+        item('local', h(LaptopIcon), t('thisMac'), null, () => startLocalSession(), { checked: !current }),
+        devices.map((d) =>
+          item(
+            d.id,
+            h('span', { style: { color: 'rgb(65,118,230)', display: 'inline-flex' } }, h(RemoteIcon, { size: 16 })),
+            d.name,
+            d.status === 'online' ? (d.model && d.model.configured === false ? t('modelLabel') + ' ⚠' : null) : t(`status_${d.status}`),
+            () => newRemote(appCtx, d, null),
+            { checked: current === d.id, disabled: d.status !== 'online' },
+          ),
+        ),
+        h('div', { className: 'dshdev-dm-sep' }),
+        item('add', h(PlusIcon), t('addDeviceMenu'), null, () => {
+          setStore({ openAdd: true })
+          try {
+            appCtx.layout.selectPanel(PANEL_ID)
+          } catch {}
+        }),
+      )
+    }
+    function openDeviceMenu({ x, y, current = null }) {
+      if (!menuEl) {
+        menuEl = document.createElement('div')
+        menuEl.setAttribute('data-dsh-devices', 'device-menu')
+        document.body.appendChild(menuEl)
+        menuRoot = ReactDOMClient.createRoot(menuEl)
+      }
+      ensureStyles()
+      menuRoot.render(h(DeviceMenu, { x, y, current, t: appT, onClose: closeDeviceMenu }))
+    }
+    let appT = (k) => k
+
+    function LaptopIcon() {
+      return h(
+        'svg',
+        { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+        h('rect', { x: 2.5, y: 3, width: 11, height: 7.5, rx: 1.3, stroke: 'currentColor' }),
+        h('path', { d: 'M1 12.5h14', stroke: 'currentColor', strokeLinecap: 'round' }),
+      )
+    }
+
+    /** A device picker pill before the composer's workspace chooser on the new-session page. */
+    function mountDevicePill(ctx, t) {
+      const laptop = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="3" width="11" height="7.5" rx="1.3" stroke="currentColor"/><path d="M1 12.5h14" stroke="currentColor" stroke-linecap="round"/></svg>'
+      const chevron = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      const place = () => {
+        if ((store.data.devices || []).length === 0) {
+          document.querySelectorAll('[data-dsh-devices=device-pill]').forEach((el) => el.remove())
+          return
+        }
+        for (const chooser of document.querySelectorAll('button[aria-haspopup="menu"]:not([data-dsh-devices])')) {
+          if (![...chooser.classList].some((c) => /_workspace$/.test(c))) continue
+          const prev = chooser.previousElementSibling
+          if (prev && prev.getAttribute('data-dsh-devices') === 'device-pill') continue
+          const pill = document.createElement('button')
+          pill.type = 'button'
+          pill.className = `${chooser.className} dshdev-pill`
+          pill.setAttribute('data-dsh-devices', 'device-pill')
+          pill.setAttribute('aria-haspopup', 'menu')
+          pill.setAttribute('aria-label', t('chooseDevice'))
+          const labelCls = chooser.querySelector('[class*="_workspaceLabel"]')?.className || ''
+          pill.innerHTML = `${laptop}<span class="${labelCls}"></span>${chevron}`
+          pill.querySelector('span').textContent = t('thisMac')
+          pill.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            const r = pill.getBoundingClientRect()
+            openDeviceMenu({ x: r.left, y: r.bottom + 6, current: null })
+          })
+          chooser.parentElement.insertBefore(pill, chooser)
+        }
+      }
+      let queued = false
+      const observer = new MutationObserver(() => {
+        if (queued) return
+        queued = true
+        requestAnimationFrame(() => {
+          queued = false
+          place()
+        })
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+      const unsub = subscribe(() => place())
+      place()
+      return () => {
+        observer.disconnect()
+        unsub()
+        document.querySelectorAll('[data-dsh-devices=device-pill]').forEach((el) => el.remove())
+      }
+    }
+
+    // ── DeepSeek API key on a device ────────────────────────────────────────
+    function ModelKeyPanel({ device, t, variant = 'card', onSaved, onUpdate }) {
+      const st = useStore()
+      const [editing, setEditing] = useState(false)
+      const [value, setValue] = useState('')
+      const [busy, setBusy] = useState(false)
+      const [error, setError] = useState(null)
+      const [ok, setOk] = useState(null)
+      const model = device.model
+      if (device.status !== 'online') return null
+      if (!model) {
+        if (variant === 'banner') return null
+        return h(
+          'div',
+          { className: 'dshdev-model warn card' },
+          h('div', { className: 'dshdev-model-row' }, h('span', { className: 'dshdev-model-dot' }), h('span', { className: 'dshdev-model-text' }, fill(t('needsUpdate'), { remote: (device.versions && device.versions.plugin) || '?' }))),
+          h(
+            'div',
+            { className: 'dshdev-model-row' },
+            device.canUpdate ? h(Btn, { variant: 'primary', onClick: () => onUpdate && onUpdate(device) }, t('updateNow')) : null,
+            h(Btn, { variant: 'ghost', onClick: () => openDeviceSettings(device) }, t('deviceSettings')),
+          ),
+          device.canUpdate ? h('div', { className: 'dshdev-hint' }, t('updateWarn')) : null,
+        )
+      }
+      const save = async (payload) => {
+        setBusy(true)
+        setError(null)
+        setOk(null)
+        try {
+          await post('/devices/model-key', { id: device.id, ...payload })
+          setOk(fill(t('keySaved'), { device: device.name }))
+          setEditing(false)
+          setValue('')
+          await refreshDevices()
+          if (onSaved) onSaved()
+        } catch (e) {
+          setError(e.message)
+        } finally {
+          setBusy(false)
+        }
+      }
+      const remove = async () => {
+        setBusy(true)
+        try {
+          await post('/devices/model-key/clear', { id: device.id })
+          await refreshDevices()
+        } catch (e) {
+          setError(e.message)
+        } finally {
+          setBusy(false)
+        }
+      }
+      const settings = () => openDeviceSettings(device)
+      if (model.configured && !editing) {
+        if (variant === 'banner') return null
+        return h(
+          'div',
+          { className: 'dshdev-model ok' },
+          h('span', { className: 'dshdev-model-dot ok' }),
+          h('span', { className: 'dshdev-model-text' }, t('modelOk')),
+          h('span', { className: 'dshdev-model-actions' }, h(Btn, { variant: 'ghost', onClick: () => setEditing(true) }, t('changeKey')), h(Btn, { variant: 'ghost', onClick: remove, disabled: busy }, t('removeKey')), h(Btn, { variant: 'ghost', onClick: settings }, t('deviceSettings'))),
+        )
+      }
+      return h(
+        'div',
+        { className: `dshdev-model warn ${variant}`, role: variant === 'banner' ? 'alert' : undefined, 'data-testid': `model-key-${device.id}` },
+        h(
+          'div',
+          { className: 'dshdev-model-row' },
+          h('span', { className: 'dshdev-model-dot' }),
+          h('span', { className: 'dshdev-model-text' }, model.configured ? t('changeKey') : fill(t('modelMissing'), { device: device.name })),
+        ),
+        h(
+          'div',
+          { className: 'dshdev-model-row' },
+          st.localKey && !model.configured ? h(Btn, { variant: 'primary', disabled: busy, onClick: () => save({ fromDesktop: true }) }, t('useMacKey')) : null,
+          h('input', {
+            className: 'dshdev-input dshdev-key-input',
+            type: 'password',
+            value,
+            placeholder: t('keyPlaceholder'),
+            'aria-label': t('pasteKey'),
+            autoComplete: 'off',
+            spellCheck: false,
+            onChange: (e) => setValue(e.target.value),
+            onKeyDown: (e) => e.key === 'Enter' && value.trim() && save({ apiKey: value.trim() }),
+          }),
+          h(Btn, { variant: st.localKey && !model.configured ? 'outline' : 'primary', disabled: busy || !value.trim(), onClick: () => save({ apiKey: value.trim() }) }, t('saveKey')),
+          h(Btn, { variant: 'ghost', onClick: settings }, t('deviceSettings')),
+          editing ? h(Btn, { variant: 'ghost', onClick: () => setEditing(false) }, t('cancel')) : null,
+        ),
+        h('div', { className: 'dshdev-hint' }, t('keyHint')),
+        error ? h('div', { className: 'dshdev-err' }, error) : null,
+        ok ? h('div', { className: 'dshdev-ok' }, ok) : null,
+      )
+    }
+
+    function openDeviceSettings(device) {
+      setStore({ selection: { deviceId: device.id, sessionId: store.embedded[device.id] || null } })
+      try {
+        appCtx.layout.selectPanel(CHAT_PANEL_ID)
+      } catch {}
+      frames.show(device.id, device, { type: 'open-settings' }).catch(() => {})
+    }
+
     // ── the composer's workspace chooser also lists device workspaces ───────
     /**
      * When the "Choose workspace" menu opens, append the workspaces of every
@@ -756,7 +1077,7 @@ window.__ModuleLoader__.load({
       const isWorkspaceChooser = (button) => !!button && [...button.classList].some((c) => /_workspace$/.test(c))
       const enhance = (menu) => {
         if (menu.dataset.dshdevEnhanced) return
-        const anchor = document.querySelector('button[aria-haspopup="menu"][aria-expanded="true"]')
+        const anchor = document.querySelector('button[aria-haspopup="menu"][aria-expanded="true"]:not([data-dsh-devices])')
         if (!isWorkspaceChooser(anchor)) return
         menu.dataset.dshdevEnhanced = '1'
         const online = (store.data.devices || []).filter((d) => d.status === 'online')
@@ -830,7 +1151,13 @@ window.__ModuleLoader__.load({
       if (!device) status = st.loaded ? null : '…'
       else if (device.status === 'offline' || device.status === 'error' || device.status === 'revoked') status = fill(t('deviceOffline'), { device: device.name })
       else if (!frames.byDevice.has(device.id)) status = fill(t('connecting'), { device: device.name })
-      return h('div', { className: 'dshdev-chat-panel', ref, 'data-testid': 'dsh-devices-chat' }, status ? h('div', { className: 'dshdev-chat-status' }, status) : null)
+      const banner = device && device.status === 'online' && device.model && device.model.configured === false
+      return h(
+        'div',
+        { className: 'dshdev-chat-wrap', 'data-testid': 'dsh-devices-chat' },
+        banner ? h('div', { className: 'dshdev-chat-banner' }, h(ModelKeyPanel, { device, t, variant: 'banner', onSaved: () => frames.reload(device.id) })) : null,
+        h('div', { className: 'dshdev-chat-panel', ref }, status ? h('div', { className: 'dshdev-chat-status' }, status) : null),
+      )
     }
 
     // ── Devices page (management) ───────────────────────────────────────────
@@ -900,6 +1227,7 @@ window.__ModuleLoader__.load({
             h('div', { className: 'dshdev-meta' }, [statusText, via, versions].filter(Boolean).join('  ·  ')),
             device.error && device.status !== 'online' ? h('div', { className: 'dshdev-err' }, device.error) : null,
           ),
+          device.outdated && device.canUpdate && device.model ? h(Btn, { variant: 'outline', onClick: () => onAction('update', device) }, t('updateNow')) : null,
           h(Btn, { variant: 'primary', disabled: device.status !== 'online', onClick: () => onOpen(device) }, t('open')),
           h(
             'div',
@@ -911,6 +1239,7 @@ window.__ModuleLoader__.load({
                   { className: 'dshdev-pop', role: 'menu' },
                   item('refresh', t('refresh')),
                   item('window', t('openWindow')),
+                  item('settings', t('deviceSettings')),
                   item('rename', t('rename')),
                   device.transport.kind === 'ssh' ? item('update', t('update')) : null,
                   item('remove', t('remove'), 'danger'),
@@ -918,6 +1247,7 @@ window.__ModuleLoader__.load({
               : null,
           ),
         ),
+        device.status === 'online' ? h('div', { style: { padding: '0 16px 12px' } }, h(ModelKeyPanel, { device, t, variant: 'card', onUpdate: (d) => onAction('update', d) })) : null,
         sessions.length
           ? h(
               'div',
@@ -1208,12 +1538,19 @@ window.__ModuleLoader__.load({
       }, [updateJob && updateJob.id, updateJob && updateJob.state])
 
       const onOpen = (device, session) => openRemote(ctx, device, session ? session.sessionId : null)
+      useEffect(() => {
+        if (st.openAdd) {
+          setStore({ openAdd: false })
+          setAdding({})
+        }
+      }, [st.openAdd])
 
       async function onAction(kind, device) {
         setNotice(null)
         try {
           if (kind === 'refresh') await post('/devices/refresh', { id: device.id })
           if (kind === 'window') await openInWindow(device)
+          if (kind === 'settings') openDeviceSettings(device)
           if (kind === 'rename') {
             setRenameValue(device.name)
             setRenaming(device)
@@ -1322,6 +1659,9 @@ window.__ModuleLoader__.load({
         }, `dsh-devices: ${tag} dictionary`)
       }
       const t = ctx.locale.bind(NS)
+      appCtx = ctx
+      appT = t
+      ctx.effect(() => mountDevicePill(ctx, t), 'dsh-devices: device picker')
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID, locale: NS, inject: () => ({ ctx, t }) }, DevicesPage))
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: CHAT_PANEL_ID, locale: NS, inject: () => ({ t }) }, RemoteChatPanel))
       ctx.slots.inject('sidebar.panellist', () =>
