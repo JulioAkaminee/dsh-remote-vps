@@ -35,7 +35,17 @@ npm run build        # → dist/dsh-devices-0.1.0.tgz, dist/dsh-device-host-0.1.
 
 ### 1. No Mac: instalar o `dsh-devices`
 
-Copie `dist/dsh-devices-0.1.0.tgz` e `dist/install-desktop.sh` para o Mac e rode:
+Direto do GitHub (usa o Node do próprio DSH desktop para gerar o pacote):
+
+```sh
+git clone https://github.com/JulioDevEnviagora/dsh-remote-vps.git ~/dsh-remote-vps
+sh ~/dsh-remote-vps/deploy/install-desktop.sh
+```
+
+Para atualizar depois: `cd ~/dsh-remote-vps && git pull && sh deploy/install-desktop.sh`.
+Os pacotes prontos também estão nas *Releases* do repositório.
+
+Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.0.tgz` e `install-desktop.sh` para o Mac e rode:
 
 ```sh
 sh install-desktop.sh ./dsh-devices-0.1.0.tgz            # detecta o profile do app

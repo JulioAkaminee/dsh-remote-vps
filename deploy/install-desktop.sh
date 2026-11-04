@@ -1,6 +1,7 @@
 #!/bin/sh
 # Install (or remove) the dsh-devices plugin in your desktop DeepSeek Harness.
 #
+#   sh deploy/install-desktop.sh                      # from a git checkout: builds, then installs
 #   sh install-desktop.sh ./dsh-devices-X.Y.Z.tgz [--profile NAME]
 #   sh install-desktop.sh --uninstall [--profile NAME]
 #
@@ -29,6 +30,17 @@ for c in "$HOME/.dsh-desktop/runtime/bin/node" "$(command -v node 2>/dev/null ||
   if [ -n "$c" ] && [ -x "$c" ]; then NODE="$c"; break; fi
 done
 [ -n "$NODE" ] || { echo "error: node not found (install DeepSeek Harness desktop first)"; exit 1; }
+
+# From a git checkout without a tarball: build the packages first.
+CHECKOUT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd || true)"
+if [ "$UNINSTALL" = 0 ] && [ -z "$TARBALL" ] && [ -f "$CHECKOUT/scripts/build.mjs" ]; then
+  NPM="$(dirname "$NODE")/npm"
+  [ -x "$NPM" ] || NPM="$(command -v npm 2>/dev/null || true)"
+  [ -n "$NPM" ] || { echo "error: npm not found next to $NODE"; exit 1; }
+  echo "building from $CHECKOUT"
+  (cd "$CHECKOUT" && PATH="$(dirname "$NODE"):$PATH" NPM="$NPM" "$NODE" scripts/build.mjs) || { echo "error: build failed"; exit 1; }
+  TARBALL="$(ls "$CHECKOUT"/dist/dsh-devices-*.tgz | tail -1)"
+fi
 
 # Pick the profile the desktop app boots: explicit, else the one carrying the
 # desktop app's own dsh-tauri plugins, else "desktop", else "web".
