@@ -1,0 +1,19 @@
+# dsh-device-host bundle layer: mount the device host on the web surface.
+# Override `config` in your profile's cordis.patch.yml, for example:
+#   - id: dsh-device-host
+#     config:
+#       name: VPS ENVIAGORA
+#       publicUrl: https://vps.example.ts.net
+- insert:
+    - id: dsh-device-host
+      name: dsh-device-host
+
+# A device host is reached through its authenticated tunnel, never through the
+# launch URL, so keep that process credential out of service logs. A patch
+# replaces the row's whole config: every key of the web-app row is restated.
+- id: web-runtime
+  config:
+    openBrowser: false
+    printUrl: false
+    publicUrl: !!js ctx.webStartup.publicUrl
+    surfaceContext: true

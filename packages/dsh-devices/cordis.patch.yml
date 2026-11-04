@@ -1,0 +1,4 @@
+# dsh-devices bundle layer: the Devices panel and its host-side manager.
+- insert:
+    - id: dsh-devices
+      name: dsh-devices

@@ -1,0 +1,41 @@
+{
+  "name": "dsh-devices",
+  "version": "0.1.0",
+  "description": "Control remote DeepSeek Harness (dsh) devices from your desktop dsh: pair over SSH (auto-install) or with a one-time code, see every device's sessions, and open its UI. The agent runs on the device.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "assets",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.1-rc.1"
+  },
+  "dependencies": {
+    "ssh2": "1.17.0"
+  },
+  "bundleDependencies": [
+    "ssh2"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}

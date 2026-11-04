@@ -1,0 +1,16 @@
+{
+  "name": "dsh-remote-vps",
+  "private": true,
+  "description": "Remote devices for DeepSeek Harness: run the agent on your VPS, see its chats next to your local ones in the desktop app.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/unit/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "dev": "sh test/devenv.sh start all",
+    "dev:stop": "sh test/devenv.sh stop all",
+    "e2e": "node test/e2e-ui.mjs"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

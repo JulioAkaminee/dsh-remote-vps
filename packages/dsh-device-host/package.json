@@ -1,0 +1,37 @@
+{
+  "name": "dsh-device-host",
+  "version": "0.1.0",
+  "description": "Make a DeepSeek Harness (dsh) instance a remote device: pairing, short-lived device tokens, and an authenticated tunnel to its web UI. The agent runs here; a desktop dsh controls it.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./protocol": "./lib/protocol.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-device": "./bin/dsh-device.mjs"
+  },
+  "files": [
+    "lib",
+    "bin",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.1-rc.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
+    }
+  }
+}
