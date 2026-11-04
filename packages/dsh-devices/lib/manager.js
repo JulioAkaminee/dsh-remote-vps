@@ -82,8 +82,39 @@ export class DeviceManager {
     this.state = new Map()
     /** @type {Map<string, any>} */
     this.jobs = new Map()
+    /** Bumped whenever anything a UI shows changes; long-polling browsers wait on it. */
+    this.version = 1
+    /** @type {Set<() => void>} */
+    this.versionWaiters = new Set()
+    /** Recent finished turns on devices, for desktop notifications. */
+    this.notifications = []
+    this._savedCache = null
     this.timer = null
     this.disposed = false
+  }
+
+  // ── change notification for long-polling UIs ─────────────────────────────
+
+  _changed() {
+    this.version += 1
+    for (const wake of [...this.versionWaiters]) wake()
+  }
+
+  /** Resolve when `version` moves past `v` (or after `timeoutMs`). */
+  waitForChange(v, timeoutMs = 25_000, signal) {
+    if (Number(v) !== this.version || this.disposed) return Promise.resolve()
+    return new Promise((resolve) => {
+      let timer
+      const done = () => {
+        clearTimeout(timer)
+        this.versionWaiters.delete(done)
+        signal?.removeEventListener?.('abort', done)
+        resolve()
+      }
+      this.versionWaiters.add(done)
+      timer = setTimeout(done, timeoutMs)
+      signal?.addEventListener?.('abort', done, { once: true })
+    })
   }
 
   // ── lifecycle ────────────────────────────────────────────────────────────
@@ -97,6 +128,7 @@ export class DeviceManager {
   async dispose() {
     this.disposed = true
     clearInterval(this.timer)
+    for (const wake of [...this.versionWaiters]) wake()
     await Promise.all([...this.state.keys()].map((id) => this._teardown(id)))
   }
 
@@ -123,6 +155,7 @@ export class DeviceManager {
   async _teardown(id) {
     const s = this.state.get(id)
     if (!s) return
+    s.watchToken = null
     try {
       await s.gateway?.stop()
     } catch {}
@@ -153,6 +186,11 @@ export class DeviceManager {
       })
     }
     for (const [id, job] of this.jobs) if (now - job.createdAt > 3600_000) this.jobs.delete(id)
+    // Devices without the live feed (older hosts) still refresh their sessions every few seconds.
+    if (now - (this._lastSessionSweep ?? 0) > 8000) {
+      this._lastSessionSweep = now
+      this._refreshSessionsIfStale(8000)
+    }
   }
 
   /** Force an immediate health check (UI refresh button, wake from sleep). */
@@ -261,16 +299,22 @@ export class DeviceManager {
         s.sessionsAt = Date.now()
       }
       if (workspaces) s.workspaces = workspaces.items ?? []
+      const wasOnline = s.status === 'online'
       s.status = 'online'
       s.error = null
       s.failures = 0
       s.nextCheckAt = Date.now() + this.pollMs
+      s.features = Array.isArray(info.features) ? info.features : []
+      if (s.features.includes('watch') && !s.watchToken) this._startWatch(id, s)
+      if (!wasOnline) this._changed()
       const patch = { lastSeenAt: new Date().toISOString(), versions: info.versions, platform: info.platform }
       if (info.name && info.name !== device.remoteName) patch.remoteName = info.name
       this.registry.update(id, patch)
     } catch (error) {
       s.failures += 1
       s.error = errorText(error)
+      s.watchToken = null
+      queueMicrotask(() => this._changed())
       if (error instanceof DeviceHttpError && error.status === 401 && /unknown-or-revoked-client/.test(error.code ?? '')) {
         s.status = 'revoked'
         this._closeTransport(s)
@@ -286,6 +330,65 @@ export class DeviceManager {
       s.nextCheckAt = Date.now() + backoffMs(s.failures)
       this._closeTransport(s)
     }
+  }
+
+  // ── live session feed (device long-poll) ─────────────────────────────────
+
+  _startWatch(id, s) {
+    const token = {}
+    s.watchToken = token
+    s.w = { boot: undefined, rev: undefined, turns: undefined, failures: 0 }
+    this._watchLoop(id, s, token).catch(() => {})
+  }
+
+  async _watchLoop(id, s, token) {
+    while (!this.disposed && s.watchToken === token) {
+      const device = this.registry.get(id)
+      if (!device || s.status !== 'online' || !s.client) break
+      try {
+        const r = await s.client.watch({ boot: s.w.boot, rev: s.w.rev, turns: s.w.turns, timeout: 25_000 })
+        if (s.watchToken !== token) break
+        const firstOfBoot = s.w.boot !== r.boot
+        s.w.boot = r.boot
+        s.w.rev = r.rev
+        s.w.turns = r.turnSeq
+        s.w.failures = 0
+        let changed = false
+        if (Array.isArray(r.items)) {
+          s.sessions = r.items
+          s.sessionsAt = Date.now()
+          changed = true
+        }
+        if (Array.isArray(r.workspaces)) s.workspaces = r.workspaces
+        if (!firstOfBoot) for (const te of r.turnEnds ?? []) changed = this._recordTurnEnd(device, s, te) || changed
+        if (changed) this._changed()
+      } catch (error) {
+        if (s.watchToken !== token) break
+        if (error instanceof DeviceHttpError && error.status === 404) {
+          s.watchToken = null // older host without the feed: plain polling continues
+          break
+        }
+        s.w.failures += 1
+        await new Promise((r) => setTimeout(r, Math.min(10_000, 500 * 2 ** s.w.failures)))
+        if (s.w.failures >= 2) this.refresh(id)
+      }
+    }
+  }
+
+  _recordTurnEnd(device, s, te) {
+    if (!te?.sessionId) return false
+    const session = (s.sessions ?? []).find((x) => x.sessionId === te.sessionId)
+    this.notifications.push({
+      id: `${device.id}:${s.w.boot}:${te.seq}`,
+      deviceId: device.id,
+      deviceName: device.name || device.remoteName || device.id.slice(0, 8),
+      sessionId: te.sessionId,
+      title: session?.title ?? null,
+      reason: te.reason || '',
+      at: te.at ?? Date.now(),
+    })
+    if (this.notifications.length > 30) this.notifications.splice(0, this.notifications.length - 30)
+    return true
   }
 
   // ── views ────────────────────────────────────────────────────────────────
@@ -310,7 +413,7 @@ export class DeviceManager {
       addedAt: device.addedAt,
       lastSeenAt: device.lastSeenAt ?? null,
       versions: device.versions ?? null,
-      outdated: !!(localDsh && remoteDsh && localDsh !== remoteDsh) || hostBehind,
+      outdated: !!(localDsh && remoteDsh && localDsh !== remoteDsh) || hostBehind || !!(PLUGIN_VERSION && remotePlugin && compareVersions(remotePlugin, PLUGIN_VERSION) < 0),
       hostBehind,
       canUpdate: device.transport.kind === 'ssh',
       protocolMismatch: !!(device.versions?.protocol && device.versions.protocol !== PROTOCOL_VERSION),
@@ -319,6 +422,7 @@ export class DeviceManager {
       workspaces: (s.workspaces ?? []).map((w) => ({ id: w.id, title: w.title, path: w.path })),
       uptimeSec: s.info?.uptimeSec ?? null,
       model: s.info?.model ?? null,
+      live: !!s.watchToken,
       loadavg: s.info?.loadavg ?? null,
     }
   }
@@ -327,7 +431,7 @@ export class DeviceManager {
   _refreshSessionsIfStale(maxAgeMs = 4000) {
     for (const d of this.registry.list()) {
       const s = this.state.get(d.id)
-      if (!s || s.status !== 'online' || s.sessionsLoading || !s.client) continue
+      if (!s || s.status !== 'online' || s.sessionsLoading || !s.client || s.watchToken) continue
       if (Date.now() - (s.sessionsAt ?? 0) < maxAgeMs) continue
       s.sessionsLoading = true
       Promise.all([s.client.sessions(), s.client.workspaces().catch(() => null)])
@@ -335,6 +439,7 @@ export class DeviceManager {
           s.sessions = r.items ?? []
           s.sessionsAt = Date.now()
           if (w) s.workspaces = w.items ?? []
+          this._changed()
         })
         .catch(() => {
           s.nextCheckAt = 0
@@ -350,6 +455,8 @@ export class DeviceManager {
     return {
       devices: this.registry.list().map((d) => this.view(d)),
       saved: this.savedMachines(),
+      notifications: this.notifications,
+      version: this.version,
       self: { hostname: os.hostname(), platform: process.platform, dsh: localDshVersion(), plugin: PLUGIN_VERSION },
     }
   }
@@ -373,6 +480,7 @@ export class DeviceManager {
             job.state = 'done'
             job.result = result ?? null
           }
+          this._changed()
         },
         (error) => {
           job.state = 'error'
@@ -431,6 +539,8 @@ export class DeviceManager {
       gatewayPort: existing?.gatewayPort ?? null,
     })
     this._ensureState(deviceId)
+    this._savedCache = null
+    this._changed()
     // Callers hand over any live transport first, then call refresh().
     return this.view(record)
   }
@@ -456,7 +566,8 @@ export class DeviceManager {
   /** Machines saved on this computer (dsh-tauri-remote), marked when already paired. */
   savedMachines() {
     const devices = this.registry.list()
-    return listSavedMachines().map((m) => {
+    if (!this._savedCache || Date.now() - this._savedCache.at > 10_000) this._savedCache = { at: Date.now(), items: listSavedMachines() }
+    return this._savedCache.items.map((m) => {
       const paired = devices.find(
         (d) => d.transport.kind === 'ssh' && (d.transport.savedMachineId === m.id || d.transport.target === m.target || d.transport.target === m.host),
       )
@@ -665,6 +776,7 @@ export class DeviceManager {
     s.baseUrl = await this._transport(device, s)
     const model = await this._client(device, s).setModelKey(key)
     if (s.info) s.info = { ...s.info, model }
+    this._changed()
     this.refresh(id)
     return { model }
   }
@@ -676,6 +788,7 @@ export class DeviceManager {
     s.baseUrl = await this._transport(device, s)
     const model = await this._client(device, s).clearModelKey()
     if (s.info) s.info = { ...s.info, model }
+    this._changed()
     this.refresh(id)
     return { model }
   }
@@ -685,6 +798,7 @@ export class DeviceManager {
   rename(id, name) {
     const d = this.registry.update(id, { name: String(name ?? '').trim().slice(0, 80) || null })
     if (!d) throw new Error('unknown device')
+    this._changed()
     return this.view(d)
   }
 
@@ -705,6 +819,8 @@ export class DeviceManager {
     await this._teardown(id)
     this.state.delete(id)
     this.registry.remove(id)
+    this._savedCache = null
+    this._changed()
     return { removed: true, revoked }
   }
 
@@ -718,7 +834,13 @@ export class DeviceManager {
     const client = this._client(device, s)
     await client.token()
     if (!s.gateway) {
+      let secret = device.gatewaySecret
+      if (!secret) {
+        secret = crypto.randomBytes(24).toString('base64url')
+        this.registry.update(id, { gatewaySecret: secret })
+      }
       s.gateway = new DeviceGateway({
+        secret,
         deviceId: id,
         baseUrl: () => s.baseUrl,
         token: async (opts) => {

@@ -30,16 +30,16 @@ Dois pacotes:
 Gere os pacotes (na VPS ou em qualquer máquina com Node ≥ 22.19):
 
 ```sh
-npm run build        # → dist/dsh-devices-0.1.5.tgz, dist/dsh-device-host-0.1.4.tgz, dist/install-*.sh
+npm run build        # → dist/dsh-devices-0.1.6.tgz, dist/dsh-device-host-0.1.6.tgz, dist/install-*.sh
 ```
 
 ### 1. No Mac: instalar o `dsh-devices`
 
 **Pelo próprio app (mais simples):**
 
-1. Baixe **`dsh-devices-0.1.5.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
+1. Baixe **`dsh-devices-0.1.6.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
 2. No DeepSeek Harness: **Plug-ins → Adicionar plug-in**. No campo, cole o **caminho completo** do
-   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.5.tgz`
+   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.6.tgz`
    (no Finder: clique com o botão direito no arquivo, segure **Option** → *Copiar "…" como Nome de Caminho*).
 3. **Instalar**. Pronto: aparece **Devices** na barra lateral.
 
@@ -59,17 +59,17 @@ sh ~/dsh-remote-vps/deploy/install-desktop.sh
 Para atualizar depois: `cd ~/dsh-remote-vps && git pull && sh deploy/install-desktop.sh`.
 Os pacotes prontos também estão nas *Releases* do repositório.
 
-Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.5.tgz` e `install-desktop.sh` para o Mac e rode:
+Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.6.tgz` e `install-desktop.sh` para o Mac e rode:
 
 ```sh
-sh install-desktop.sh ./dsh-devices-0.1.5.tgz            # detecta o profile do app
-sh install-desktop.sh ./dsh-devices-0.1.5.tgz --profile NOME
+sh install-desktop.sh ./dsh-devices-0.1.6.tgz            # detecta o profile do app
+sh install-desktop.sh ./dsh-devices-0.1.6.tgz --profile NOME
 ```
 
 Ou, direto do Mac, puxando da VPS por SSH:
 
 ```sh
-ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.5.tgz' > /tmp/dsh-devices.tgz
+ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.6.tgz' > /tmp/dsh-devices.tgz
 ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/install-desktop.sh' | sh -s /tmp/dsh-devices.tgz
 ```
 
@@ -95,7 +95,7 @@ mostra um código `XXXX-XXXX` (5 min, uso único) e um link `dsh-device://…`. 
 *Add device* → Pairing code → cole o link. Exige que o Mac alcance a VPS por HTTPS
 (Tailscale, Cloudflare Tunnel ou proxy reverso apontando para `127.0.0.1:3180`).
 
-Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.4.tgz`.
+Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.6.tgz`.
 
 ### 3. Chave do modelo na VPS
 
@@ -123,6 +123,15 @@ O mesmo fica no card do device em **Devices**. Devices com host antigo mostram *
   começa na VPS. Ou passe o mouse no workspace remoto da barra lateral → **+**.
 - **Devices:** status (online/offline, uptime, versão), renomear, atualizar o device (alinha a
   versão do dsh com a do Mac), remover (também despareia na VPS), abrir em janela separada.
+- **Ao vivo:** a VPS avisa o Mac quando uma sessão muda (long-poll), e o Mac avisa a interface
+  do mesmo jeito — o status "rodando" e as sessões novas aparecem na hora, sem polling.
+- **Notificação** quando um turno remoto termina (notificações do sistema pelo app; configurável).
+- **Abrir rápido:** passar o mouse num chat remoto pré-carrega a interface do device; o endereço
+  do gateway é estável por device, então o cache da interface sobrevive a reinícios.
+- **Cabeçalho do chat remoto** mostra o selo *Remoto · <device>*.
+- **Configurações → Devices:** notificações (nunca / só em segundo plano / sempre), mostrar ou
+  esconder chats remotos na barra lateral, sessões por workspace remoto (o resto fica em
+  *Mostrar mais*), pré-carregamento ao passar o mouse e **device padrão para novas sessões**.
 - Se o Mac dormir ou a rede cair, a sessão continua na VPS; o plugin reconecta sozinho
   (verificação a cada 15 s, espera crescente com jitter, revalidação ao acordar).
 
@@ -159,7 +168,9 @@ dsh-device service install|start|stop|restart|status|logs        serviço system
 ```sh
 npm test                  # testes unitários (protocolo, store, auth, túnel, gateway, ssh config)
 sh test/devenv.sh start   # "VPS" (3181) + "Mac" (3281) + modelos simulados (4598/4599)
-node test/e2e-ui.mjs      # teste de interface ponta a ponta (Chromium headless)
+node test/e2e-ui.mjs              # chats juntos, inline, troca instantânea (Chromium headless)
+node test/e2e-models-picker.mjs   # chave do modelo no device + seletor de device (HOST_KEY= no host)
+node test/e2e-live.mjs            # feed ao vivo, notificação, Mostrar mais, Configurações, cache
 sh test/devenv.sh stop
 ```
 

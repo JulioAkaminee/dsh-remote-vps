@@ -19,6 +19,11 @@ export const ROUTES = Object.freeze({
   info: `${DEVICE_BASE}/info`,
   sessions: `${DEVICE_BASE}/sessions`,
   workspaces: `${DEVICE_BASE}/workspaces`,
+  /**
+   * Authenticated long-poll: `?rev=<n>&turns=<seq>&timeout=<ms>` answers as soon as the session
+   * list changes (or at the timeout) with `{ boot, rev, turnSeq, turnEnds[], items?, workspaces? }`.
+   */
+  watch: `${DEVICE_BASE}/watch`,
   /** Authenticated. GET model-credential status; PUT { apiKey } stores it; DELETE removes it. */
   modelKey: `${DEVICE_BASE}/model-key`,
   /** Authenticated. DELETE removes the calling client (unpair from the desktop). */
@@ -29,6 +34,12 @@ export const ROUTES = Object.freeze({
 
 /** Credential reference the DeepSeek provider resolves (its default `apiKeyEnv`). */
 export const MODEL_KEY_REF = 'DEEPSEEK_API_KEY'
+
+/** Capabilities a device host advertises in /info (desktops degrade gracefully without them). */
+export const HOST_FEATURES = Object.freeze(['watch', 'model-key'])
+
+/** Longest long-poll a host holds open. */
+export const WATCH_MAX_MS = 30_000
 
 /** Header carrying the short-lived access token on authenticated requests. */
 export const TOKEN_HEADER = 'x-dsh-device-token'

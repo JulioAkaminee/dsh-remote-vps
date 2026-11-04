@@ -162,6 +162,24 @@ export class DeviceClient {
     return this.call('DELETE', ROUTES.self)
   }
 
+  /** Long-poll the device's change feed (resolves on change or after `timeout`). */
+  async watch({ boot, rev, turns, timeout = 25_000 } = {}) {
+    const q = new URLSearchParams({ timeout: String(timeout) })
+    if (boot) q.set('boot', boot)
+    if (rev !== undefined) q.set('rev', String(rev))
+    if (turns !== undefined) q.set('turns', String(turns))
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const token = await this.token({ force: attempt > 0 })
+      const res = await requestJson(this.baseUrl(), 'GET', `${ROUTES.watch}?${q}`, {
+        agent: this.agent(),
+        headers: { [TOKEN_HEADER]: token },
+        timeoutMs: timeout + 15_000,
+      })
+      if (res.status === 401 && attempt === 0) continue
+      return expectOk(res)
+    }
+  }
+
   modelStatus() {
     return this.call('GET', ROUTES.modelKey)
   }

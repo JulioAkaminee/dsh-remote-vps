@@ -18,7 +18,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { HostAuth, parsePublicKey } from './auth.js'
 import { readJsonBody, remoteAddress, sendError, sendJson } from './http-util.js'
-import { DEVICE_BASE, MODEL_KEY_REF, PROTOCOL_VERSION, ROUTES, TOKEN_HEADER, TUNNEL_UPGRADE_PATHS } from './protocol.js'
+import { DEVICE_BASE, HOST_FEATURES, MODEL_KEY_REF, PROTOCOL_VERSION, ROUTES, TOKEN_HEADER, TUNNEL_UPGRADE_PATHS, WATCH_MAX_MS } from './protocol.js'
+import { RevisionFeed } from './revision.js'
 import { HostStore } from './store.js'
 import { LocalTunnel } from './tunnel.js'
 
@@ -94,12 +95,27 @@ export function apply(ctx, rawConfig) {
 
   const hello = () => ({ protocol: PROTOCOL_VERSION, deviceId: device.id, name: deviceName() })
 
+  // Change feed: session events bump a revision that long-polling desktops wait on.
+  const feed = new RevisionFeed()
+  ctx.effect(() => () => feed.dispose(), 'dsh-device-host: change feed')
+  ctx.on('session/event', (session, event) => {
+    if (event?.type === 'turn/end') feed.turnEnded(session?.id, event?.data?.reason?.kind)
+    else feed.bump()
+  })
+  // Changes that arrive without a session event (workspaces, titles) surface within a minute.
+  ctx.effect(() => {
+    const timer = setInterval(() => feed.bump(), 60_000)
+    return () => clearInterval(timer)
+  }, 'dsh-device-host: periodic refresh')
+  let sessionsCache = null
+
   const info = () => ({
     ...hello(),
     platform: process.platform,
     arch: process.arch,
     hostname: os.hostname(),
     versions: { plugin: PLUGIN_VERSION, dsh: dshVersion(), node: process.versions.node, protocol: PROTOCOL_VERSION },
+    features: HOST_FEATURES,
     startedAt: startedAt.toISOString(),
     uptimeSec: Math.round(process.uptime()),
     loadavg: os.loadavg(),
@@ -117,7 +133,16 @@ export function apply(ctx, rawConfig) {
     return client
   }
 
+  /** Session rows, cached per change-feed revision (and at most 10 s). */
   const listSessions = async () => {
+    if (sessionsCache && sessionsCache.rev === feed.rev && Date.now() - sessionsCache.at < 10_000) return sessionsCache.value
+    const rev = feed.rev
+    const value = await listSessionsUncached()
+    sessionsCache = { rev, at: Date.now(), value }
+    return value
+  }
+
+  const listSessionsUncached = async () => {
     const controller = ctx.get('sessionController')
     if (!controller) return { items: [], available: false }
     const abort = new AbortController()
@@ -222,6 +247,30 @@ export function apply(ctx, rawConfig) {
     async [ROUTES.workspaces](req, res) {
       if (!requireClient(req, res)) return
       sendJson(res, 200, { items: listWorkspaces() })
+    },
+
+    async [ROUTES.watch](req, res) {
+      if (!requireClient(req, res)) return
+      if (req.method !== 'GET') return sendError(res, 405, 'method-not-allowed')
+      const url = new URL(req.url, 'http://device')
+      const boot = startedAt.toISOString()
+      const sameBoot = url.searchParams.get('boot') === boot
+      const rev = sameBoot ? Number(url.searchParams.get('rev') ?? 0) : 0
+      const since = sameBoot && url.searchParams.has('turns') ? Number(url.searchParams.get('turns')) : feed.turnSeq
+      const timeout = Math.min(WATCH_MAX_MS, Math.max(0, Number(url.searchParams.get('timeout') ?? 25_000) || 0))
+      const abort = new AbortController()
+      res.on('close', () => abort.abort())
+      if (rev === feed.rev && feed.turnEndsSince(since).length === 0) await feed.wait(rev, timeout, abort.signal)
+      if (abort.signal.aborted) return
+      const body = { boot, rev: feed.rev, turnSeq: feed.turnSeq, turnEnds: feed.turnEndsSince(since) }
+      if (rev !== feed.rev) {
+        try {
+          Object.assign(body, await listSessions(), { workspaces: listWorkspaces() })
+        } catch (error) {
+          body.error = error.message
+        }
+      }
+      sendJson(res, 200, body)
     },
 
     async [ROUTES.modelKey](req, res) {

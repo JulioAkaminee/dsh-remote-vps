@@ -151,3 +151,78 @@ test('versions: device hosts older than the desktop plugin are detected', async 
   assert.equal(compareVersions('0.2.1-rc.5', '0.2.1'), 0)
   assert.equal(compareVersions('1.0', '1.0.0'), 0)
 })
+
+test('manager: long-poll waiters wake on change and time out otherwise', async () => {
+  const { DeviceManager } = await import('../../packages/dsh-devices/lib/manager.js')
+  const { DeviceRegistry } = await import('../../packages/dsh-devices/lib/registry.js')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-reg-'))
+  const m = new DeviceManager({ registry: new DeviceRegistry(dir) })
+  const v = m.version
+  const t0 = Date.now()
+  await m.waitForChange(v, 40)
+  assert.ok(Date.now() - t0 >= 35, 'no change: waits for the timeout')
+  const waiting = m.waitForChange(m.version, 5000)
+  m._changed()
+  await waiting
+  assert.equal(m.version, v + 1)
+  await m.waitForChange(v, 5000) // stale version answers immediately
+  await m.dispose()
+})
+
+test('browser modules load: factories run without throwing (catches TDZ/syntax slips)', async () => {
+  const vm = await import('node:vm')
+  for (const file of ['packages/dsh-devices/lib/client.js', 'packages/dsh-device-host/lib/client.js']) {
+    const loaded = []
+    const store = new Map()
+    const el = () => ({ style: {}, setAttribute() {}, appendChild() {}, addEventListener() {}, querySelector: () => null, querySelectorAll: () => [], classList: { add() {}, remove() {} } })
+    const sandbox = {
+      window: { __ModuleLoader__: { load: (m) => loaded.push(m) }, location: { search: '', pathname: '/', hash: '' }, addEventListener() {}, history: { replaceState() {} } },
+      document: { getElementById: () => null, createElement: el, head: el(), body: el(), documentElement: el(), querySelector: () => null, querySelectorAll: () => [], addEventListener() {} },
+      localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) },
+      navigator: { platform: 'MacIntel', userAgent: '' },
+      URLSearchParams, setTimeout, clearTimeout, setInterval, clearInterval, console,
+    }
+    sandbox.window.document = sandbox.document
+    vm.runInNewContext(fs.readFileSync(path.join(root, file), 'utf8'), sandbox, { filename: file })
+    assert.equal(loaded.length, 1, `${file} registers one module`)
+    const react = { createElement: () => null, useState: (v) => [typeof v === 'function' ? v() : v, () => {}], useEffect() {}, useLayoutEffect() {}, useRef: () => ({ current: null }), useCallback: (f) => f, useSyncExternalStore: () => 0, Fragment: 'f' }
+    const requireStub = (id) => (id === 'react' ? react : id === 'react-dom/client' ? { createRoot: () => ({ render() {}, unmount() {} }) } : {})
+    const exportsObj = loaded[0].factory(requireStub)
+    assert.equal(typeof exportsObj.apply, 'function', `${file} exports apply`)
+    assert.ok(Array.isArray(exportsObj.inject))
+  }
+})
+
+test('manager: an older device host without the live feed falls back to polling', async () => {
+  const { DeviceManager } = await import('../../packages/dsh-devices/lib/manager.js')
+  const { DeviceRegistry } = await import('../../packages/dsh-devices/lib/registry.js')
+  const { DeviceHttpError } = await import('../../packages/dsh-devices/lib/device-client.js')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-reg-'))
+  const registry = new DeviceRegistry(dir)
+  registry.upsert({ id: '11111111-1111-1111-1111-111111111111', name: 'old', clientId: 'cl_x', transport: { kind: 'url', url: 'http://127.0.0.1:9' } })
+  const m = new DeviceManager({ registry })
+  const s = m._ensureState('11111111-1111-1111-1111-111111111111')
+  s.status = 'online'
+  let watchCalls = 0
+  let sessionCalls = 0
+  s.client = {
+    watch: async () => {
+      watchCalls += 1
+      throw new DeviceHttpError(404, 'not-found')
+    },
+    sessions: async () => {
+      sessionCalls += 1
+      return { items: [{ sessionId: 'a', title: 'A' }] }
+    },
+    workspaces: async () => ({ items: [] }),
+  }
+  m._startWatch('11111111-1111-1111-1111-111111111111', s)
+  await new Promise((r) => setTimeout(r, 20))
+  assert.equal(watchCalls, 1)
+  assert.equal(s.watchToken, null, 'feed disabled after 404')
+  m._refreshSessionsIfStale(0)
+  await new Promise((r) => setTimeout(r, 20))
+  assert.equal(sessionCalls, 1, 'plain session polling resumes')
+  assert.equal(s.sessions[0].title, 'A')
+  await m.dispose()
+})

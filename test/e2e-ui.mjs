@@ -119,14 +119,14 @@ try {
   check('switching back to a remote chat is instant', switchMs < 1500, `${switchMs} ms`)
 
   // 6. a new remote session from the remote workspace row
-  const rows = await page.locator('[data-dshdev-session]').count()
+  const idsBefore = await page.locator('[data-dshdev-session]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dshdev-session')))
   const projectRow = page.locator('[data-dsh-devices=sidebar] [role=treeitem][aria-expanded]').first()
   await projectRow.hover()
   await projectRow.getByRole('button', { name: /New session on/ }).click()
   await page.waitForTimeout(2500)
   await send(frame, 'second remote chat')
   await waitMore(frame, '[VPS] MOCK-REPLY', 0)
-  await page.waitForFunction((n) => document.querySelectorAll('[data-dshdev-session]').length > n, rows, { timeout: 30000 })
+  await page.waitForFunction((ids) => [...document.querySelectorAll('[data-dshdev-session]')].some((e) => !ids.includes(e.getAttribute('data-dshdev-session'))), idsBefore, { timeout: 30000 })
   check('new remote session appears in the sidebar', true)
   await shot(page, 'e2e-04-new-remote')
 

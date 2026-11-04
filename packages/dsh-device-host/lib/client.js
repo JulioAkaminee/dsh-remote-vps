@@ -13,12 +13,50 @@
 //   { source: 'dsh-device-host', type: 'ready' | 'session', sessionId? }
 window.__ModuleLoader__.load({
   id: 'dsh-device-host',
-  factory: () => {
+  factory: (require) => {
     const module = { exports: {} }
     const exports = module.exports
     Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
 
-    const inject = ['uiWorkspace']
+    const inject = ['uiWorkspace', 'slots']
+    let React = null
+    try {
+      React = require('react')
+    } catch {}
+
+    /** "Remote · <device>" in the embedded session header (official header slot). */
+    function mountHeaderBadge(ctx, deviceName) {
+      if (!React || !ctx.slots) return () => {}
+      const h = React.createElement
+      function RemoteBadge() {
+        return h(
+          'span',
+          {
+            title: deviceName,
+            style: {
+              display: 'inline-flex', alignItems: 'center', gap: '6px', height: '24px', padding: '0 10px', borderRadius: '999px',
+              fontSize: '12px', lineHeight: '24px', whiteSpace: 'nowrap', color: 'rgb(65,118,230)',
+              background: 'color-mix(in srgb, rgb(65,118,230) 10%, transparent)', border: '1px solid color-mix(in srgb, rgb(65,118,230) 28%, transparent)',
+            },
+          },
+          h(
+            'svg',
+            { width: 13, height: 13, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+            h('rect', { x: 1.5, y: 6.5, width: 10, height: 7.5, rx: 1.6, stroke: 'currentColor' }),
+            h('path', { d: 'M4 10.25h.01M6.5 10.25h3', stroke: 'currentColor', strokeWidth: 1.2, strokeLinecap: 'round' }),
+            h('path', { d: 'M10.2 3.6a3.3 3.3 0 0 1 3.3 3.3M10.2 1.6a5.3 5.3 0 0 1 5.3 5.3', stroke: 'currentColor', strokeLinecap: 'round' }),
+          ),
+          deviceName,
+        )
+      }
+      try {
+        return ctx.slots.inject('conversation.session.header.utilities', () =>
+          ctx.slots.register({ name: 'conversation.session.header.utilities', id: 'dsh-device-remote-badge', order: -100 }, RemoteBadge),
+        )
+      } catch {
+        return () => {}
+      }
+    }
 
     const EMBED_CSS = `
 html.dsh-device-embed [class*="_sidebarCol"]{display:none!important}
@@ -196,6 +234,7 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
         }, 1000)
         post({ type: 'ready' })
         ctx.effect(() => mountDevicePill(ctx, deviceName || 'Device'), 'dsh-device-host: device pill')
+        if (deviceName) mountHeaderBadge(ctx, deviceName)
         ctx.effect(() => () => {
           window.removeEventListener('message', onMessage)
           clearInterval(timer)

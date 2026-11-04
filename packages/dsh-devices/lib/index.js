@@ -57,6 +57,16 @@ export function apply(ctx, config) {
     ['GET', '/devices', async () => json(manager.list())],
     [
       'GET',
+      '/devices/watch',
+      async (request) => {
+        // Long-poll: answers as soon as anything changes (or after 25 s).
+        const v = Number(new URL(request.url).searchParams.get('v') ?? 0)
+        await manager.waitForChange(v, 25_000, request.signal)
+        return json(manager.list())
+      },
+    ],
+    [
+      'GET',
       '/devices/ssh-hosts',
       async () => {
         const hosts = listSshAliases().map((alias) => {

@@ -174,6 +174,16 @@ window.__ModuleLoader__.load({
 
 
     Object.assign(en, {
+      settingsNav: 'Devices', settingsTitle: 'Devices', settingsSub: 'How remote devices show up and behave on this computer.',
+      setNotify: 'Notify when a remote turn finishes', setNotifyHint: 'Uses the app’s system notifications.',
+      notifyNever: 'Never', notifyBackground: 'Only when the app is in the background', notifyAlways: 'Always',
+      setSidebar: 'Show remote chats in the sidebar', setSidebarHint: 'Device workspaces appear below your local ones, marked as remote.',
+      setPerGroup: 'Sessions per remote workspace', setPerGroupHint: 'The rest stays behind “Show more”.', allSessions: 'All',
+      setPreload: 'Preload a device’s interface on hover', setPreloadHint: 'Opening a remote chat becomes instant; uses a bit more memory.',
+      setDefault: 'Default for new sessions', setDefaultHint: 'Where “New session” starts. You can always switch with the device picker.',
+      manageDevices: 'Manage devices', showMore: 'Show {n} more sessions', showLess: 'Show fewer', notifyDone: 'Finished on {device}',
+      notifyTest: 'Send a test notification', notifyTestBody: 'Notifications from your devices will look like this.', remoteBadge: 'Remote · {device}',
+      on: 'On', off: 'Off',
       thisMac: 'This computer', chooseDevice: 'Where should this session run?', addDeviceMenu: 'Add device…',
       modelMissing: '{device} has no DeepSeek API key yet, so its chats have no models.',
       modelOk: 'DeepSeek API key configured', modelSource: 'source: {source}',
@@ -185,6 +195,16 @@ window.__ModuleLoader__.load({
       modelLabel: 'Models', keyHint: 'Stored on the device (its credential store). It never stays on this computer.',
     })
     Object.assign(ptBR, {
+      settingsNav: 'Devices', settingsTitle: 'Devices', settingsSub: 'Como os devices remotos aparecem e se comportam neste computador.',
+      setNotify: 'Avisar quando um turno remoto terminar', setNotifyHint: 'Usa as notificações do sistema do app.',
+      notifyNever: 'Nunca', notifyBackground: 'Só quando o app estiver em segundo plano', notifyAlways: 'Sempre',
+      setSidebar: 'Mostrar chats remotos na barra lateral', setSidebarHint: 'Os workspaces dos devices aparecem abaixo dos locais, marcados como remotos.',
+      setPerGroup: 'Sessões por workspace remoto', setPerGroupHint: 'O resto fica em “Mostrar mais”.', allSessions: 'Todas',
+      setPreload: 'Pré-carregar a interface do device ao passar o mouse', setPreloadHint: 'Abrir um chat remoto fica instantâneo; usa um pouco mais de memória.',
+      setDefault: 'Padrão para novas sessões', setDefaultHint: 'Onde a “Nova sessão” começa. Você sempre pode trocar pelo seletor de device.',
+      manageDevices: 'Gerenciar devices', showMore: 'Mostrar mais {n} sessões', showLess: 'Mostrar menos', notifyDone: 'Terminou em {device}',
+      notifyTest: 'Enviar notificação de teste', notifyTestBody: 'As notificações dos seus devices vão aparecer assim.', remoteBadge: 'Remoto · {device}',
+      on: 'Ligado', off: 'Desligado',
       thisMac: 'Este computador', chooseDevice: 'Onde esta sessão vai rodar?', addDeviceMenu: 'Adicionar device…',
       modelMissing: '{device} ainda não tem chave da API do DeepSeek, então os chats dele ficam sem modelos.',
       modelOk: 'Chave da API do DeepSeek configurada', modelSource: 'origem: {source}',
@@ -196,6 +216,12 @@ window.__ModuleLoader__.load({
       modelLabel: 'Modelos', keyHint: 'Fica guardada no device (no cofre de credenciais dele). Não fica neste computador.',
     })
     Object.assign(zh, {
+      settingsNav: '设备', settingsTitle: '设备', settingsSub: '远程设备在本机上的显示与行为。', setNotify: '远程轮次完成时通知', setNotifyHint: '使用应用的系统通知。',
+      notifyNever: '从不', notifyBackground: '仅在应用处于后台时', notifyAlways: '始终', setSidebar: '在侧边栏显示远程会话', setSidebarHint: '设备的工作区显示在本地工作区下方，并标记为远程。',
+      setPerGroup: '每个远程工作区显示的会话数', setPerGroupHint: '其余会话折叠在“显示更多”中。', allSessions: '全部', setPreload: '悬停时预加载设备界面',
+      setPreloadHint: '打开远程会话会更快，但会占用更多内存。', setDefault: '新会话默认位置', setDefaultHint: '“新会话”从哪里开始。随时可以用设备选择器切换。',
+      manageDevices: '管理设备', showMore: '显示另外 {n} 个会话', showLess: '收起', notifyDone: '已在 {device} 完成', notifyTest: '发送测试通知',
+      notifyTestBody: '来自设备的通知会这样显示。', remoteBadge: '远程 · {device}', on: '开', off: '关',
       thisMac: '本机', chooseDevice: '会话在哪里运行？', addDeviceMenu: '添加设备…', modelMissing: '{device} 还没有 DeepSeek API Key，会话没有可用模型。',
       modelOk: '已配置 DeepSeek API Key', modelSource: '来源：{source}', useMacKey: '使用本机的 Key', pasteKey: '粘贴 Key', changeKey: '更换 Key',
       removeKey: '移除 Key', saveKey: '保存 Key', keyPlaceholder: 'sk-…', keySaved: '已保存到 {device}。', deviceSettings: '设备设置', modelLabel: '模型',
@@ -251,6 +277,9 @@ window.__ModuleLoader__.load({
       collapsed: readCollapsed(),
       localKey: null,
       openAdd: false,
+      settings: readSettings(),
+      expanded: {},
+      localUntil: 0,
       version: 0,
       listeners: new Set(),
     }
@@ -289,14 +318,112 @@ window.__ModuleLoader__.load({
         setStore({ error: e.message })
       }
     }
+    // Live updates: one long-poll that the host answers as soon as anything changes.
+    let watching = false
+    async function watchLoop() {
+      if (watching) return
+      watching = true
+      let failures = 0
+      while (store.listeners.size > 0) {
+        try {
+          const data = await api(`/devices/watch?v=${encodeURIComponent(store.data.version ?? 0)}`)
+          failures = 0
+          setStore({ data, loaded: true, error: null })
+          handleNotifications(data.notifications)
+        } catch (e) {
+          failures += 1
+          if (failures > 1) setStore({ error: e.message })
+          await new Promise((r) => setTimeout(r, Math.min(10_000, 500 * 2 ** failures)))
+        }
+      }
+      watching = false
+    }
     function startPolling() {
-      refreshDevices()
+      refreshDevices().then(() => handleNotifications(store.data.notifications))
       refreshLocalKey()
-      pollTimer = setInterval(refreshDevices, 3000)
+      watchLoop()
+      pollTimer = setInterval(refreshLocalKey, 60_000)
     }
     function stopPolling() {
       clearInterval(pollTimer)
       pollTimer = null
+    }
+
+    // ── notifications for finished remote turns ──────────────────────────────
+    const seenNotes = new Set()
+    let notesPrimed = false
+    function handleNotifications(list) {
+      if (!Array.isArray(list)) return
+      if (!notesPrimed) {
+        for (const n of list) seenNotes.add(n.id)
+        notesPrimed = true
+        return
+      }
+      for (const n of list) {
+        if (seenNotes.has(n.id)) continue
+        seenNotes.add(n.id)
+        maybeNotify(n)
+      }
+    }
+    function maybeNotify(n) {
+      const mode = store.settings.notify
+      if (mode === 'never') return
+      if (/abort|cancel|interrupt/i.test(n.reason || '')) return
+      if (mode === 'background' && document.visibilityState === 'visible' && document.hasFocus()) return
+      const device = (store.data.devices || []).find((d) => d.id === n.deviceId)
+      const title = n.title || appT('untitled')
+      const body = fill(appT('notifyDone'), { device: n.deviceName })
+      sendNotification({ key: n.id, title, body, onClick: () => device && openRemote(appCtx, device, n.sessionId) })
+    }
+    function hashId(text) {
+      let h = 0
+      for (const ch of String(text)) h = (h * 31 + ch.charCodeAt(0)) | 0
+      return Math.abs(h) % 2147483647 || 1
+    }
+    /** System notification through the desktop app when available, the browser otherwise. */
+    async function sendNotification({ key, title, body, onClick }) {
+      const tauri = window.__TAURI_INTERNALS__
+      if (tauri && typeof tauri.invoke === 'function') {
+        try {
+          const granted = (await tauri.invoke('plugin:notifications|is_permission_granted')) || (await tauri.invoke('plugin:notifications|request_permission')) === 'granted'
+          if (granted) {
+            await tauri.invoke('plugin:notifications|notify', { options: { id: hashId(key), title, body } })
+            return true
+          }
+        } catch {}
+      }
+      try {
+        if (typeof Notification === 'undefined') return false
+        if (Notification.permission === 'default') await Notification.requestPermission()
+        if (Notification.permission !== 'granted') return false
+        const note = new Notification(title, { body, tag: key })
+        note.onclick = () => {
+          window.focus()
+          onClick && onClick()
+        }
+        window.__dshDevicesLastNotification = { title, body }
+        return true
+      } catch {
+        return false
+      }
+    }
+    // Function (hoisted), not a const: the store object above reads settings at module start.
+    function settingsDefaults() {
+      return { notify: 'background', showInSidebar: true, sessionsPerGroup: 5, preload: true, defaultDevice: 'local' }
+    }
+    function readSettings() {
+      try {
+        return { ...settingsDefaults(), ...JSON.parse(localStorage.getItem('dsh-devices.settings') || '{}') }
+      } catch {
+        return settingsDefaults()
+      }
+    }
+    function setSetting(key, value) {
+      const next = { ...store.settings, [key]: value }
+      try {
+        localStorage.setItem('dsh-devices.settings', JSON.stringify(next))
+      } catch {}
+      setStore({ settings: next })
     }
     function readCollapsed() {
       try {
@@ -376,8 +503,19 @@ window.__ModuleLoader__.load({
         }
         f.iframe.contentWindow.postMessage({ source: 'dsh-devices', ...msg }, '*')
       },
+      /** Boot a device's UI in the background so opening it later is instant. */
+      async preload(deviceId, device) {
+        if (this.byDevice.has(deviceId) || this.preloading?.has(deviceId)) return
+        this.preloading = this.preloading || new Set()
+        this.preloading.add(deviceId)
+        try {
+          await this.show(deviceId, device, null, { background: true })
+        } finally {
+          this.preloading.delete(deviceId)
+        }
+      },
       /** Show `deviceId` and run `command` in it: { type: 'open-session', sessionId } | { type: 'new-session', workspaceId } */
-      async show(deviceId, device, command) {
+      async show(deviceId, device, command, { background = false } = {}) {
         this.ensureHost()
         let f = this.byDevice.get(deviceId)
         if (!f) {
@@ -407,6 +545,7 @@ window.__ModuleLoader__.load({
           })
           this.watch(deviceId)
         } else if (command) this.send(deviceId, command)
+        if (background) return
         this.active = deviceId
         for (const [id, x] of this.byDevice) x.iframe.style.display = id === deviceId ? 'block' : 'none'
         this.renderStatus()
@@ -651,6 +790,24 @@ window.__ModuleLoader__.load({
 .dshdev-dm-check{color:var(--dsw-focus-ring-color,#4176e6);font-size:13px}
 .dshdev-dm-sep{height:1px;margin:4px 6px;background:var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
 .dshdev-pill{margin-right:6px}
+.dshdev-more{display:block;background:none;border:0;padding:6px 8px 6px 36px;font:inherit;font-size:12px;color:var(--dsw-alias-label-tertiary,#8a8f98);cursor:pointer;text-align:left}
+.dshdev-more:hover{color:var(--dsw-alias-label-secondary)}
+.dshdev-settings{display:flex;flex-direction:column;gap:2px;color:var(--dsw-alias-label-primary)}
+.dshdev-set-head{padding-bottom:12px}
+.dshdev-set-h1{font-size:16px;font-weight:600;line-height:24px}
+.dshdev-set-row{display:flex;align-items:center;gap:16px;padding:14px 0;border-top:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
+.dshdev-set-text{flex:1;min-width:0}
+.dshdev-set-title{font-size:14px;line-height:20px}
+.dshdev-set-hint{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);margin-top:2px}
+.dshdev-set-control{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.dshdev-set-foot{padding-top:14px;border-top:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
+.dshdev-linkbtn{background:none;border:0;padding:0;margin-top:6px;font:inherit;font-size:12px;color:var(--dsw-focus-ring-color,#4176e6);cursor:pointer}
+.dshdev-linkbtn:hover{text-decoration:underline}
+.dshdev-select{height:32px;border-radius:8px;border:1px solid var(--dsw-alias-border-l3,rgba(0,0,0,.18));background:var(--dsw-alias-bg-base,#fff);color:inherit;font:inherit;font-size:13px;padding:0 8px;max-width:260px}
+.dshdev-switch{position:relative;width:36px;height:20px;border-radius:10px;border:0;background:var(--dsw-alias-border-l3,rgba(0,0,0,.25));cursor:pointer;padding:0;transition:background .15s}
+.dshdev-switch.on{background:var(--dsw-focus-ring-color,#4176e6)}
+.dshdev-switch-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.dshdev-switch.on .dshdev-switch-knob{left:18px}
 .dshdev-chat-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:13px;padding:24px;text-align:center}
 `
     /**
@@ -781,8 +938,10 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer)
       }, [st.data.devices.length])
       const devices = st.data.devices || []
-      if (devices.length === 0) return null
+      if (devices.length === 0 || !st.settings.showInSidebar) return null
       const chatActive = st.activePanel === CHAT_PANEL_ID
+      const perGroup = Number(st.settings.sessionsPerGroup) || 0
+      const hover = (device) => () => prefetchDevice(device)
       const out = []
       for (const device of devices) {
         const online = device.status === 'online'
@@ -804,6 +963,7 @@ window.__ModuleLoader__.load({
                   'aria-expanded': !collapsed,
                   title: `${g.title} — ${label}${online ? '' : ` (${t('offlineShort')})`}`,
                   onClick: () => toggleCollapsed(ckey),
+                  onMouseEnter: hover(device),
                 },
                 h('span', { className: cls.folder }, h('span', { className: 'dshdev-remote-folder' }, h(RemoteIcon, { size: 16 }))),
                 cls.chevron ? h('span', { className: cls.chevron }, P.IconChevronRightOutlineRegular ? h(P.IconChevronRightOutlineRegular, { size: 14 }) : '›') : null,
@@ -840,7 +1000,7 @@ window.__ModuleLoader__.load({
               ),
               collapsed
                 ? null
-                : g.sessions.map((s) => {
+                : (perGroup && !st.expanded[ckey] ? g.sessions.slice(0, perGroup) : g.sessions).map((s) => {
                     const selected =
                       chatActive &&
                       st.selection &&
@@ -856,17 +1016,36 @@ window.__ModuleLoader__.load({
                         'data-dshdev-session': s.sessionId,
                         title: `${s.title || t('untitled')} — ${label}`,
                         onClick: () => openRemote(ctx, device, s.sessionId),
+                        onMouseEnter: hover(device),
                       },
                       h('span', { className: cls.slot }, s.running ? h(P.StateDot || 'span', { state: 'ongoing' }) : h('span', { className: 'dshdev-remote-mark' }, h(RemoteIcon, { size: 14 }))),
                       h('span', { className: cls.title }, s.title || t('untitled')),
                       h('span', { className: cls.time }, s.running ? '' : shortAgo(s.updatedAt, t)),
                     )
                   }),
+              !collapsed && perGroup && g.sessions.length > perGroup
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'dshdev-more',
+                      onClick: () => setStore({ expanded: { ...st.expanded, [ckey]: !st.expanded[ckey] } }),
+                    },
+                    st.expanded[ckey] ? t('showLess') : fill(t('showMore'), { n: g.sessions.length - perGroup }),
+                  )
+                : null,
             ),
           )
         }
       }
       return h('div', { className: 'dshdev-remote-root', role: 'group', 'aria-label': t('remote') }, out)
+    }
+
+    let prefetchTimer = null
+    function prefetchDevice(device) {
+      if (!store.settings.preload || !device || device.status !== 'online' || frames.byDevice.has(device.id)) return
+      clearTimeout(prefetchTimer)
+      prefetchTimer = setTimeout(() => frames.preload(device.id, device).catch(() => {}), 150)
     }
 
     /** Mount RemoteSidebar in its own React root right below the local session tree. */
@@ -911,6 +1090,7 @@ window.__ModuleLoader__.load({
     let menuRoot = null
     let menuEl = null
     function startLocalSession() {
+      store.localUntil = Date.now() + 5000
       try {
         const ws = appCtx.get ? appCtx.get('uiWorkspace') : appCtx.uiWorkspace
         if (ws && typeof ws.startSession === 'function') ws.startSession()
@@ -1023,6 +1203,12 @@ window.__ModuleLoader__.load({
             openDeviceMenu({ x: r.left, y: r.bottom + 6, current: null })
           })
           chooser.parentElement.insertBefore(pill, chooser)
+          // A fresh local new-session page: honour the default device, unless the user just chose this computer.
+          const def = store.settings.defaultDevice
+          if (def && def !== 'local' && Date.now() > store.localUntil) {
+            const device = (store.data.devices || []).find((d) => d.id === def && d.status === 'online')
+            if (device) setTimeout(() => newRemote(ctx, device, null), 0)
+          }
         }
       }
       let queued = false
@@ -1243,6 +1429,90 @@ window.__ModuleLoader__.load({
         { className: 'dshdev-chat-wrap', 'data-testid': 'dsh-devices-chat', style: { display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 0 } },
         banner ? h('div', { className: 'dshdev-chat-banner' }, h(ModelKeyPanel, { device, t, variant: 'banner', onSaved: () => frames.reload(device.id) })) : null,
         h('div', { className: 'dshdev-chat-panel', ref, style: { position: 'relative', width: '100%', flex: '1 1 auto', minHeight: 0 } }, status ? h('div', { className: 'dshdev-chat-status' }, status) : null),
+      )
+    }
+
+    // ── Settings → Devices ──────────────────────────────────────────────────
+    function SettingRow({ title, hint, children, extra }) {
+      return h(
+        'div',
+        { className: 'dshdev-set-row' },
+        h('div', { className: 'dshdev-set-text' }, h('div', { className: 'dshdev-set-title' }, title), hint ? h('div', { className: 'dshdev-set-hint' }, hint) : null, extra || null),
+        h('div', { className: 'dshdev-set-control' }, children),
+      )
+    }
+    function Toggle({ checked, onChange, label }) {
+      return h(
+        'button',
+        { type: 'button', role: 'switch', 'aria-checked': !!checked, 'aria-label': label, className: `dshdev-switch${checked ? ' on' : ''}`, onClick: () => onChange(!checked) },
+        h('span', { className: 'dshdev-switch-knob' }),
+      )
+    }
+    function Select({ value, onChange, options, label }) {
+      return h(
+        'select',
+        { className: 'dshdev-select', value: String(value), 'aria-label': label, onChange: (e) => onChange(e.target.value) },
+        options.map(([v, text]) => h('option', { key: v, value: String(v) }, text)),
+      )
+    }
+    function DevicesSettings({ t, close }) {
+      ensureStyles()
+      const st = useStore()
+      const cfg = st.settings
+      const devices = st.data.devices || []
+      return h(
+        'div',
+        { className: 'dshdev-settings', 'data-testid': 'dsh-devices-settings' },
+        h('div', { className: 'dshdev-set-head' }, h('div', { className: 'dshdev-set-h1' }, t('settingsTitle')), h('div', { className: 'dshdev-set-hint' }, t('settingsSub'))),
+        h(
+          SettingRow,
+          {
+            title: t('setNotify'),
+            hint: t('setNotifyHint'),
+            extra:
+              cfg.notify !== 'never'
+                ? h('button', { type: 'button', className: 'dshdev-linkbtn', onClick: () => sendNotification({ key: `test-${Date.now()}`, title: t('settingsTitle'), body: t('notifyTestBody') }) }, t('notifyTest'))
+                : null,
+          },
+          h(Select, {
+            label: t('setNotify'),
+            value: cfg.notify,
+            onChange: async (v) => {
+              setSetting('notify', v)
+              if (v !== 'never' && typeof Notification !== 'undefined' && Notification.permission === 'default' && !window.__TAURI_INTERNALS__) {
+                try {
+                  await Notification.requestPermission()
+                } catch {}
+              }
+            },
+            options: [['background', t('notifyBackground')], ['always', t('notifyAlways')], ['never', t('notifyNever')]],
+          }),
+        ),
+        h(SettingRow, { title: t('setSidebar'), hint: t('setSidebarHint') }, h(Toggle, { label: t('setSidebar'), checked: cfg.showInSidebar, onChange: (v) => setSetting('showInSidebar', v) })),
+        h(
+          SettingRow,
+          { title: t('setPerGroup'), hint: t('setPerGroupHint') },
+          h(Select, { label: t('setPerGroup'), value: cfg.sessionsPerGroup, onChange: (v) => setSetting('sessionsPerGroup', Number(v)), options: [[3, '3'], [5, '5'], [10, '10'], [20, '20'], [0, t('allSessions')]] }),
+        ),
+        h(SettingRow, { title: t('setPreload'), hint: t('setPreloadHint') }, h(Toggle, { label: t('setPreload'), checked: cfg.preload, onChange: (v) => setSetting('preload', v) })),
+        h(
+          SettingRow,
+          { title: t('setDefault'), hint: t('setDefaultHint') },
+          h(Select, { label: t('setDefault'), value: cfg.defaultDevice, onChange: (v) => setSetting('defaultDevice', v), options: [['local', t('thisMac')], ...devices.map((d) => [d.id, d.name])] }),
+        ),
+        h(
+          'div',
+          { className: 'dshdev-set-foot' },
+          h(Btn, {
+            variant: 'outline',
+            onClick: () => {
+              if (close) close()
+              try {
+                appCtx.layout.selectPanel(PANEL_ID)
+              } catch {}
+            },
+          }, t('manageDevices')),
+        ),
       )
     }
 
@@ -1751,6 +2021,9 @@ window.__ModuleLoader__.load({
       ctx.effect(() => mountDevicePill(ctx, t), 'dsh-devices: device picker')
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID, locale: NS, inject: () => ({ ctx, t }) }, DevicesPage))
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: CHAT_PANEL_ID, locale: NS, inject: () => ({ t }) }, RemoteChatPanel))
+      ctx.slots.inject('settings.section', () =>
+        ctx.slots.register({ name: 'settings.section', id: 'dsh-devices', order: 60, label: () => t('settingsNav'), locale: NS, inject: () => ({ t }) }, DevicesSettings),
+      )
       ctx.slots.inject('sidebar.panellist', () =>
         ctx.slots.register({ name: 'sidebar.panellist', id: PANEL_ID, order: 20, locale: NS, label: () => t('panel') }, DevicesIcon),
       )

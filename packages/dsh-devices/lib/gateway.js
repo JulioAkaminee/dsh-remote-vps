@@ -28,13 +28,15 @@ export class DeviceGateway {
    *   preferredPort?: number,
    * }} options
    */
-  constructor({ deviceId, baseUrl, token, agent, preferredPort }) {
+  constructor({ deviceId, baseUrl, token, agent, preferredPort, secret }) {
     this.deviceId = deviceId
     this.baseUrl = baseUrl
     this.token = token
     this.agent = agent ?? (() => undefined)
     this.preferredPort = preferredPort
-    this.secret = crypto.randomBytes(24).toString('base64url')
+    // A stable per-device secret keeps asset URLs stable, so the webview's
+    // HTTP cache survives restarts (the device UI opens much faster).
+    this.secret = typeof secret === 'string' && /^[A-Za-z0-9_-]{32,}$/.test(secret) ? secret : crypto.randomBytes(24).toString('base64url')
     this.server = null
     this.port = null
     this.sockets = new Set()
