@@ -61,6 +61,10 @@ try {
     if (!frame) await page.waitForTimeout(250)
   }
   await frame.waitForSelector('[contenteditable=true], textarea', { timeout: 30000 })
+  // DSH tucks header utilities away while the right panel narrows the header; close it if a previous run left it open.
+  const collapse = frame.getByRole('button', { name: /Collapse (right )?sidebar/ }).first()
+  if (await collapse.count()) await collapse.click().catch(() => {})
+  await frame.waitForTimeout(600)
   const badge = await frame.locator('span[title="VPS teste"]').count()
   check('embedded session header shows the remote badge', badge > 0)
   const rootBefore = rootOf(frame)

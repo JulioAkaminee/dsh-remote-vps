@@ -27,7 +27,7 @@ start_one() {
         echo $! > "$pidf") ;;
     ctrl)
       "$NODE" "$ROOT/scripts/make-profile.mjs" --home "$BASE/ctrl-home" --profile web --link "$ROOT/packages/dsh-devices" > /dev/null
-      (cd "$BASE" && HOME="${CTRL_HOME_DIR:-$HOME}" DSH_HOME="$BASE/ctrl-home" DEEPSEEK_API_KEY=test-key DEEPSEEK_BASE_URL=http://127.0.0.1:4598 \
+      (cd "$BASE" && HOME="${CTRL_HOME_DIR:-$HOME}" DSH_DEVICES_OPEN_CMD="${DSH_DEVICES_OPEN_CMD-$ROOT/test/fake-open.sh}" DSH_HOME="$BASE/ctrl-home" DEEPSEEK_API_KEY=test-key DEEPSEEK_BASE_URL=http://127.0.0.1:4598 \
         nohup "$NODE" "$DSH" --profile web --no-open --host 127.0.0.1 --port 3281 > "$BASE/ctrl.log" 2>&1 &
         echo $! > "$pidf") ;;
   esac

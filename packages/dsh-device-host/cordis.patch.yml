@@ -17,3 +17,9 @@
     printUrl: false
     publicUrl: !!js ctx.webStartup.publicUrl
     surfaceContext: true
+
+# "Open in…" would launch applications on this headless device. Desktops show
+# "Open in <editor>" instead, which opens these files on the desktop over
+# Remote-SSH (dsh-devices), so the device-side launcher is turned off.
+- id: ui-open-in-app
+  disabled: true

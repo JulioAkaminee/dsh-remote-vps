@@ -11,6 +11,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DeviceClient, DeviceHttpError, generateClientKey, hello, pair } from './device-client.js'
 import { DeviceGateway } from './gateway.js'
+import { editorUri, openUrl, pickEditor } from './editors.js'
 import { MODEL_KEY_REF, parsePairingInput, PROTOCOL_VERSION } from './protocol.js'
 import { DeviceRegistry } from './registry.js'
 import { listSavedMachines, resolveSshTarget, shq, SshConnection } from './ssh.js'
@@ -423,6 +424,7 @@ export class DeviceManager {
       uptimeSec: s.info?.uptimeSec ?? null,
       model: s.info?.model ?? null,
       live: !!s.watchToken,
+      editorHost: this.editorHost(device),
       loadavg: s.info?.loadavg ?? null,
     }
   }
@@ -791,6 +793,42 @@ export class DeviceManager {
     this._changed()
     this.refresh(id)
     return { model }
+  }
+
+  // ── open device files in an editor on this computer ──────────────────────
+
+  /** SSH destination editors use for this device: explicit override, else the SSH pairing target. */
+  editorHost(device) {
+    if (device.editorHost) return device.editorHost
+    return device.transport.kind === 'ssh' ? device.transport.target : null
+  }
+
+  setEditorHost(id, host) {
+    const value = String(host ?? '').trim()
+    if (value && /[\s/]/.test(value)) throw new Error('use an SSH alias or user@host')
+    const d = this.registry.update(id, { editorHost: value || null })
+    if (!d) throw new Error('unknown device')
+    this._changed()
+    return this.view(d)
+  }
+
+  /**
+   * Open a folder or file of a device in a desktop editor (Remote-SSH).
+   * `path` is an absolute device path; `sessionId` opens that session's folder.
+   */
+  async openInEditor(id, { path: devicePath, sessionId, editor } = {}) {
+    const device = this.registry.get(id)
+    if (!device) throw new Error('unknown device')
+    const s = this._ensureState(id)
+    let target = devicePath
+    if (!target && sessionId) target = (s.sessions ?? []).find((x) => x.sessionId === sessionId)?.cwd
+    if (!target) throw new Error('nothing to open: no folder for this session yet')
+    const host = this.editorHost(device)
+    if (!host) throw Object.assign(new Error('set this device’s SSH host for editors first'), { code: 'NO_EDITOR_HOST' })
+    const chosen = pickEditor(editor)
+    const url = editorUri(chosen, host, target)
+    await openUrl(url)
+    return { url, editor: chosen.id }
   }
 
   // ── other operations ─────────────────────────────────────────────────────

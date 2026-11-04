@@ -20,9 +20,86 @@ window.__ModuleLoader__.load({
 
     const inject = ['uiWorkspace', 'slots']
     let React = null
+    let P = {}
     try {
       React = require('react')
     } catch {}
+    try {
+      P = require('@deepseek-ai/dsh-client-ui-primitives') || {}
+    } catch {}
+
+    // ── "Open in <editor>" on the desktop (Remote-SSH), where DSH puts "Open in…" ──
+    let editorLabel = 'Editor'
+    let editorTitle = 'Open in the editor on your computer (Remote-SSH)'
+    const labelListeners = new Set()
+    function setEditorLabel(label, title) {
+      if (title) editorTitle = title
+      if (!label || label === editorLabel) return
+      editorLabel = label
+      for (const l of labelListeners) l(label)
+    }
+    function postToDesktop(msg) {
+      try {
+        window.parent.postMessage({ source: 'dsh-device-host', ...msg }, '*')
+      } catch {}
+    }
+    function currentSessionId() {
+      try {
+        const v = JSON.parse(localStorage.getItem('dsh.sessions.current') || 'null')
+        return typeof v === 'string' ? v : v?.sessionId ?? v?.id ?? undefined
+      } catch {
+        return undefined
+      }
+    }
+    function EditorIcon() {
+      const h = React.createElement
+      return h(
+        'svg',
+        { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+        h('path', { d: 'M11.5 1.8 6 7.2 3.2 5 1.8 5.8v4.4l1.4.8L6 8.8l5.5 5.4 2.7-1.3V3.1z', stroke: 'currentColor', strokeWidth: 1.1, strokeLinejoin: 'round' }),
+        h('path', { d: 'M11.5 5.2 8.3 8l3.2 2.8z', fill: 'currentColor', opacity: 0.3 }),
+      )
+    }
+    function OpenInEditorButton(props) {
+      const h = React.createElement
+      const [label, setLabel] = React.useState(editorLabel)
+      React.useEffect(() => {
+        labelListeners.add(setLabel)
+        return () => labelListeners.delete(setLabel)
+      }, [])
+      const cwd = typeof props.useSessions === 'function' && props.sessionId ? props.useSessions((st) => st?.byId?.[props.sessionId]?.cwd) : undefined
+      const target = props.absolutePath || cwd
+      const title = editorTitle.replace('{editor}', label)
+      const onClick = (e) => {
+        e?.stopPropagation?.()
+        postToDesktop({ type: 'open-editor', path: target || undefined, sessionId: props.sessionId || currentSessionId(), kind: props.kind })
+      }
+      const inner = [h(EditorIcon, { key: 'i' }), h('span', { key: 't', style: { marginLeft: 6, whiteSpace: 'nowrap' } }, label)]
+      return P.Button
+        ? h(P.Button, { size: 'sm', variant: 'ghost', title, 'aria-label': title, 'data-dsh-open-editor': props.kind, onClick, style: { whiteSpace: 'nowrap', flexShrink: 0 } }, inner)
+        : h('button', { type: 'button', title, 'aria-label': title, 'data-dsh-open-editor': props.kind, onClick, style: { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 0, font: 'inherit', fontSize: 12, cursor: 'pointer', color: 'inherit', padding: '4px 8px', borderRadius: 8 } }, inner)
+    }
+    function mountOpenInEditor(ctx) {
+      if (!React || !ctx.slots) return
+      const seats = [
+        ['conversation.session.header.utilities', 'session'],
+        ['sidebar.right.tab.files.actions', 'folder'],
+        ['sidebar.right.tab.document.actions', 'file'],
+      ]
+      for (const [slot, kind] of seats) {
+        const Component = (props) => React.createElement(OpenInEditorButton, { ...props, kind })
+        try {
+          ctx.slots.inject(slot, () => ctx.slots.register({ name: slot, id: 'dsh-device-open-editor', order: -20 }, Component))
+        } catch {}
+      }
+    }
+    function openFiles(ctx) {
+      retry(() => {
+        const sr = ctx.get ? ctx.get('sidebarRight') : ctx.sidebarRight
+        if (!sr || typeof sr.openTab !== 'function') throw new Error('right sidebar not ready')
+        sr.openTab('files')
+      }, 'open files')
+    }
 
     /** "Remote · <device>" in the embedded session header (official header slot). */
     function mountHeaderBadge(ctx, deviceName) {
@@ -164,7 +241,8 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
       const sessionId = params.get('dsh-session')
       const startNew = params.get('dsh-new')
       const deviceName = params.get('dsh-device')
-      for (const k of ['dsh-embed', 'dsh-session', 'dsh-new', 'dsh-device']) params.delete(k)
+      const filesAfter = params.get('dsh-files') === '1'
+      for (const k of ['dsh-embed', 'dsh-session', 'dsh-new', 'dsh-device', 'dsh-files']) params.delete(k)
       const query = params.toString()
       if (query !== window.location.search.slice(1)) {
         window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
@@ -198,8 +276,11 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
       const newSession = (workspaceId) =>
         retry(() => (workspaceId && workspaceId !== '1' ? ctx.uiWorkspace.openWorkspace(workspaceId) : ctx.uiWorkspace.startSession()), 'new session')
 
+      // Files after the session switch: opening the tab first would land on the previous surface.
+      const openFilesSoon = () => setTimeout(() => openFiles(ctx), 700)
       if (sessionId) openSession(sessionId)
       else if (startNew) newSession(startNew)
+      if (filesAfter && (sessionId || startNew)) openFilesSoon()
 
       if (embedded && window.parent !== window) {
         const post = (msg) => {
@@ -211,10 +292,18 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
           if (event.source !== window.parent) return
           const msg = event.data
           if (!msg || msg.source !== 'dsh-devices') return
-          if (msg.type === 'open-session' && typeof msg.sessionId === 'string') openSession(msg.sessionId)
-          if (msg.type === 'new-session') newSession(typeof msg.workspaceId === 'string' ? msg.workspaceId : undefined)
+          if (msg.type === 'open-session' && typeof msg.sessionId === 'string') {
+            openSession(msg.sessionId)
+            if (msg.files) openFilesSoon()
+          }
+          if (msg.type === 'new-session') {
+            newSession(typeof msg.workspaceId === 'string' ? msg.workspaceId : undefined)
+            if (msg.files) openFilesSoon()
+          }
           if (msg.type === 'ping') post({ type: 'ready' })
           if (msg.type === 'open-settings') openSettings(ctx)
+          if (msg.type === 'open-files') openFiles(ctx)
+          if (msg.type === 'config' && typeof msg.editorLabel === 'string') setEditorLabel(msg.editorLabel, msg.editorTitle)
         }
         window.addEventListener('message', onMessage)
         // Report the current session so the desktop can highlight its row.
@@ -235,6 +324,7 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
         post({ type: 'ready' })
         ctx.effect(() => mountDevicePill(ctx, deviceName || 'Device'), 'dsh-device-host: device pill')
         if (deviceName) mountHeaderBadge(ctx, deviceName)
+        mountOpenInEditor(ctx)
         ctx.effect(() => () => {
           window.removeEventListener('message', onMessage)
           clearInterval(timer)

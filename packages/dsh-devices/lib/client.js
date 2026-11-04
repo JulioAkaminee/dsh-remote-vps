@@ -184,6 +184,11 @@ window.__ModuleLoader__.load({
       manageDevices: 'Manage devices', showMore: 'Show {n} more sessions', showLess: 'Show fewer', notifyDone: 'Finished on {device}',
       notifyTest: 'Send a test notification', notifyTestBody: 'Notifications from your devices will look like this.', remoteBadge: 'Remote · {device}',
       on: 'On', off: 'Off',
+      openFiles: 'Files', openInEditor: 'Open in {editor}', editorTitle: 'Open in {editor} on this computer (Remote-SSH)',
+      setEditor: 'Editor for remote files', setEditorHint: 'Opens device folders and files in this computer’s editor over Remote-SSH.',
+      notInstalled: 'not installed', editorHost: 'SSH host for editors', editorHostMenu: 'SSH host for editors…',
+      editorHostHint: 'An alias from ~/.ssh/config, or user@host, that this computer’s editor uses to reach the device.',
+      editorHostNeeded: '{device} was paired with a code; tell this computer’s editor how to reach it over SSH.', editorOpening: 'Opening in {editor}…',
       thisMac: 'This computer', chooseDevice: 'Where should this session run?', addDeviceMenu: 'Add device…',
       modelMissing: '{device} has no DeepSeek API key yet, so its chats have no models.',
       modelOk: 'DeepSeek API key configured', modelSource: 'source: {source}',
@@ -205,6 +210,11 @@ window.__ModuleLoader__.load({
       manageDevices: 'Gerenciar devices', showMore: 'Mostrar mais {n} sessões', showLess: 'Mostrar menos', notifyDone: 'Terminou em {device}',
       notifyTest: 'Enviar notificação de teste', notifyTestBody: 'As notificações dos seus devices vão aparecer assim.', remoteBadge: 'Remoto · {device}',
       on: 'Ligado', off: 'Desligado',
+      openFiles: 'Arquivos', openInEditor: 'Abrir no {editor}', editorTitle: 'Abrir no {editor} deste computador (Remote-SSH)',
+      setEditor: 'Editor para arquivos remotos', setEditorHint: 'Abre pastas e arquivos do device no editor deste computador via Remote-SSH.',
+      notInstalled: 'não instalado', editorHost: 'Host SSH para editores', editorHostMenu: 'Host SSH para editores…',
+      editorHostHint: 'Um alias do ~/.ssh/config, ou usuário@host, que o editor deste computador usa para chegar ao device.',
+      editorHostNeeded: '{device} foi pareado por código; diga como o editor deste computador chega nele por SSH.', editorOpening: 'Abrindo no {editor}…',
       thisMac: 'Este computador', chooseDevice: 'Onde esta sessão vai rodar?', addDeviceMenu: 'Adicionar device…',
       modelMissing: '{device} ainda não tem chave da API do DeepSeek, então os chats dele ficam sem modelos.',
       modelOk: 'Chave da API do DeepSeek configurada', modelSource: 'origem: {source}',
@@ -222,6 +232,10 @@ window.__ModuleLoader__.load({
       setPreloadHint: '打开远程会话会更快，但会占用更多内存。', setDefault: '新会话默认位置', setDefaultHint: '“新会话”从哪里开始。随时可以用设备选择器切换。',
       manageDevices: '管理设备', showMore: '显示另外 {n} 个会话', showLess: '收起', notifyDone: '已在 {device} 完成', notifyTest: '发送测试通知',
       notifyTestBody: '来自设备的通知会这样显示。', remoteBadge: '远程 · {device}', on: '开', off: '关',
+      openFiles: '文件', openInEditor: '在 {editor} 中打开', editorTitle: '在本机的 {editor} 中打开（Remote-SSH）', setEditor: '远程文件编辑器',
+      setEditorHint: '通过 Remote-SSH 在本机编辑器中打开设备上的文件夹和文件。', notInstalled: '未安装', editorHost: '编辑器使用的 SSH 主机', editorHostMenu: '编辑器使用的 SSH 主机…',
+      editorHostHint: '本机编辑器通过 SSH 连接设备时使用的 ~/.ssh/config 别名或 user@host。', editorHostNeeded: '{device} 通过配对码配对；请告诉本机编辑器如何通过 SSH 连接它。',
+      editorOpening: '正在用 {editor} 打开…',
       thisMac: '本机', chooseDevice: '会话在哪里运行？', addDeviceMenu: '添加设备…', modelMissing: '{device} 还没有 DeepSeek API Key，会话没有可用模型。',
       modelOk: '已配置 DeepSeek API Key', modelSource: '来源：{source}', useMacKey: '使用本机的 Key', pasteKey: '粘贴 Key', changeKey: '更换 Key',
       removeKey: '移除 Key', saveKey: '保存 Key', keyPlaceholder: 'sk-…', keySaved: '已保存到 {device}。', deviceSettings: '设备设置', modelLabel: '模型',
@@ -278,6 +292,9 @@ window.__ModuleLoader__.load({
       localKey: null,
       openAdd: false,
       settings: readSettings(),
+      editors: [],
+      askEditorHost: null,
+      toast: null,
       expanded: {},
       localUntil: 0,
       version: 0,
@@ -349,6 +366,42 @@ window.__ModuleLoader__.load({
       pollTimer = null
     }
 
+    // ── editors on this computer ─────────────────────────────────────────────
+    let editorsLoaded = false
+    async function loadEditors() {
+      if (editorsLoaded) return
+      editorsLoaded = true
+      try {
+        const r = await api('/devices/editors')
+        setStore({ editors: r.editors || [] })
+        frames.broadcastConfig()
+      } catch {
+        editorsLoaded = false
+      }
+    }
+    function currentEditor() {
+      const list = store.editors || []
+      return list.find((e) => e.id === store.settings.editor) || list.find((e) => e.installed) || list[0] || { id: 'vscode', label: 'VS Code' }
+    }
+    function showToast(text) {
+      setStore({ toast: { text, at: Date.now() } })
+      setTimeout(() => {
+        if (store.toast && Date.now() - store.toast.at >= 3500) setStore({ toast: null })
+      }, 3600)
+      frames.renderToast(text)
+    }
+    async function openInEditor(deviceId, { path: target, sessionId } = {}) {
+      const device = (store.data.devices || []).find((d) => d.id === deviceId)
+      const editor = currentEditor()
+      try {
+        await post('/devices/open-editor', { id: deviceId, path: target, sessionId, editor: editor.id })
+        showToast(fill(appT('editorOpening'), { editor: editor.label }))
+      } catch (e) {
+        if (device && !device.editorHost) setStore({ askEditorHost: { deviceId, path: target, sessionId } })
+        else showToast(e.message)
+      }
+    }
+
     // ── notifications for finished remote turns ──────────────────────────────
     const seenNotes = new Set()
     let notesPrimed = false
@@ -409,7 +462,7 @@ window.__ModuleLoader__.load({
     }
     // Function (hoisted), not a const: the store object above reads settings at module start.
     function settingsDefaults() {
-      return { notify: 'background', showInSidebar: true, sessionsPerGroup: 5, preload: true, defaultDevice: 'local' }
+      return { notify: 'background', showInSidebar: true, sessionsPerGroup: 5, preload: true, defaultDevice: 'local', editor: '' }
     }
     function readSettings() {
       try {
@@ -471,6 +524,34 @@ window.__ModuleLoader__.load({
         this.host = host
         window.addEventListener('message', (event) => this.onMessage(event))
         window.addEventListener('resize', () => this.layout())
+        // Desktop dialogs (Settings, our prompts) must stay above the embedded device UI.
+        const lift = () => {
+          let open = false
+          for (const dialog of document.querySelectorAll('[role=dialog]')) {
+            if (host.contains(dialog)) continue
+            open = true
+            let el = dialog
+            while (el && el !== document.body) {
+              const cs = getComputedStyle(el)
+              if (cs.position === 'fixed') {
+                if (!(Number(cs.zIndex) > 4)) el.style.zIndex = '20'
+                break
+              }
+              el = el.parentElement
+            }
+          }
+          // Dim the device UI like the rest of the window while a desktop dialog is open.
+          host.style.filter = open ? 'brightness(0.62)' : ''
+        }
+        let queued = false
+        new MutationObserver(() => {
+          if (queued) return
+          queued = true
+          requestAnimationFrame(() => {
+            queued = false
+            lift()
+          })
+        }).observe(document.body, { childList: true, subtree: true })
         return host
       },
       onMessage(event) {
@@ -480,9 +561,11 @@ window.__ModuleLoader__.load({
           if (f.iframe.contentWindow !== event.source) continue
           if (msg.type === 'ready') {
             f.ready = true
+            this.sendConfig(deviceId)
             this.markLoaded(deviceId)
             for (const m of f.pending.splice(0)) this.send(deviceId, m)
           }
+          if (msg.type === 'open-editor') openInEditor(deviceId, { path: msg.path, sessionId: msg.sessionId })
           if (msg.type === 'pick-device' && msg.rect) {
             const r = f.iframe.getBoundingClientRect()
             openDeviceMenu({ x: r.left + msg.rect.left, y: r.top + msg.rect.bottom + 6, current: deviceId })
@@ -517,12 +600,27 @@ window.__ModuleLoader__.load({
       /** Show `deviceId` and run `command` in it: { type: 'open-session', sessionId } | { type: 'new-session', workspaceId } */
       async show(deviceId, device, command, { background = false } = {}) {
         this.ensureHost()
+        // One iframe per device even when several opens race (e.g. "Files" = open + show files).
+        this.creating = this.creating || new Map()
+        if (!this.byDevice.has(deviceId) && this.creating.has(deviceId)) {
+          await this.creating.get(deviceId)
+        }
         let f = this.byDevice.get(deviceId)
         if (!f) {
-          const root = await deviceRoot(deviceId)
+          let release
+          this.creating.set(deviceId, new Promise((r) => (release = r)))
+          let root
+          try {
+            root = await deviceRoot(deviceId)
+          } catch (error) {
+            this.creating.delete(deviceId)
+            release()
+            throw error
+          }
           const params = new URLSearchParams({ 'dsh-embed': '1', 'dsh-device': device ? device.name : '' })
           if (command && command.type === 'open-session' && command.sessionId) params.set('dsh-session', command.sessionId)
           if (command && command.type === 'new-session') params.set('dsh-new', command.workspaceId || '1')
+          if (command && command.files) params.set('dsh-files', '1')
           const iframe = document.createElement('iframe')
           iframe.title = device ? device.name : deviceId
           iframe.allow = 'clipboard-read; clipboard-write'
@@ -544,12 +642,39 @@ window.__ModuleLoader__.load({
             }, 8000)
           })
           this.watch(deviceId)
+          this.creating.delete(deviceId)
+          release()
         } else if (command) this.send(deviceId, command)
         if (background) return
         this.active = deviceId
         for (const [id, x] of this.byDevice) x.iframe.style.display = id === deviceId ? 'block' : 'none'
         this.renderStatus()
         this.layout()
+      },
+      sendConfig(deviceId) {
+        const editor = currentEditor()
+        const f = this.byDevice.get(deviceId)
+        if (!f || !f.iframe.contentWindow) return
+        try {
+          f.iframe.contentWindow.postMessage({ source: 'dsh-devices', type: 'config', editorLabel: editor.label, editorTitle: appT('editorTitle') }, '*')
+        } catch {}
+      },
+      broadcastConfig() {
+        for (const id of this.byDevice.keys()) this.sendConfig(id)
+      },
+      renderToast(text) {
+        if (!this.host) return
+        if (!this.toastEl) {
+          this.toastEl = document.createElement('div')
+          this.toastEl.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:3;padding:8px 14px;border-radius:10px;font:13px/18px system-ui,-apple-system,sans-serif;color:#fff;background:rgba(17,17,17,.88);box-shadow:0 6px 20px rgba(0,0,0,.2);pointer-events:none;transition:opacity .2s;opacity:0'
+          this.host.appendChild(this.toastEl)
+        }
+        this.toastEl.textContent = text
+        this.toastEl.style.opacity = '1'
+        clearTimeout(this.toastTimer)
+        this.toastTimer = setTimeout(() => {
+          if (this.toastEl) this.toastEl.style.opacity = '0'
+        }, 3200)
       },
       reload(deviceId) {
         const f = this.byDevice.get(deviceId)
@@ -848,6 +973,32 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function FolderIcon() {
+      return h(
+        'svg',
+        { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+        h('path', { d: 'M2 4.6c0-.6.5-1.1 1.1-1.1h3l1.4 1.5h5.4c.6 0 1.1.5 1.1 1.1v5.8c0 .6-.5 1.1-1.1 1.1H3.1c-.6 0-1.1-.5-1.1-1.1z', stroke: 'currentColor', strokeLinejoin: 'round' }),
+      )
+    }
+    function EditorGlyph() {
+      return h(
+        'svg',
+        { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+        h('path', { d: 'M11.5 1.8 6 7.2 3.2 5 1.8 5.8v4.4l1.4.8L6 8.8l5.5 5.4 2.7-1.3V3.1z', stroke: 'currentColor', strokeWidth: 1.1, strokeLinejoin: 'round' }),
+      )
+    }
+    /** Show a device workspace's file tree (DSH's own Files tab) inline. */
+    function openRemoteFiles(ctx, device, group) {
+      const latest = group.sessions && group.sessions[0]
+      setStore({ selection: { deviceId: device.id, sessionId: latest ? latest.sessionId : null } })
+      try {
+        ctx.layout.selectPanel(CHAT_PANEL_ID)
+      } catch {}
+      // One command: switch the session first, then open its Files tab.
+      const command = latest ? { type: 'open-session', sessionId: latest.sessionId, files: true } : { type: 'new-session', workspaceId: group.workspaceId, files: true }
+      frames.show(device.id, device, command).catch((e) => setStore({ error: e.message }))
+    }
+
     function PlusIcon() {
       return P.IconPlusOutlineRegular ? h(P.IconPlusOutlineRegular, { size: 16 }) : h('span', null, '+')
     }
@@ -981,6 +1132,39 @@ window.__ModuleLoader__.load({
                 h(
                   'span',
                   { className: cls.actions },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: cls.iconButton,
+                      'aria-label': `${t('openFiles')} — ${g.title}`,
+                      title: `${t('openFiles')} — ${g.title}`,
+                      'data-dshdev-action': 'files',
+                      disabled: !online,
+                      onClick: (e) => {
+                        e.stopPropagation()
+                        openRemoteFiles(ctx, device, g)
+                      },
+                    },
+                    h(FolderIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: cls.iconButton,
+                      'aria-label': fill(t('openInEditor'), { editor: currentEditor().label }),
+                      title: fill(t('editorTitle'), { editor: currentEditor().label }),
+                      'data-dshdev-action': 'editor',
+                      disabled: !online,
+                      onClick: (e) => {
+                        e.stopPropagation()
+                        const ws = (device.workspaces || []).find((w) => w.id === g.workspaceId)
+                        openInEditor(device.id, { path: ws ? ws.path : g.sessions[0] && g.sessions[0].cwd, sessionId: g.sessions[0] && g.sessions[0].sessionId })
+                      },
+                    },
+                    h(EditorGlyph),
+                  ),
                   h(
                     'button',
                     {
@@ -1428,6 +1612,7 @@ window.__ModuleLoader__.load({
         'div',
         { className: 'dshdev-chat-wrap', 'data-testid': 'dsh-devices-chat', style: { display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 0 } },
         banner ? h('div', { className: 'dshdev-chat-banner' }, h(ModelKeyPanel, { device, t, variant: 'banner', onSaved: () => frames.reload(device.id) })) : null,
+        h(EditorHostDialog, { t }),
         h('div', { className: 'dshdev-chat-panel', ref, style: { position: 'relative', width: '100%', flex: '1 1 auto', minHeight: 0 } }, status ? h('div', { className: 'dshdev-chat-status' }, status) : null),
       )
     }
@@ -1458,6 +1643,9 @@ window.__ModuleLoader__.load({
     function DevicesSettings({ t, close }) {
       ensureStyles()
       const st = useStore()
+      useEffect(() => {
+        loadEditors()
+      }, [])
       const cfg = st.settings
       const devices = st.data.devices || []
       return h(
@@ -1497,6 +1685,19 @@ window.__ModuleLoader__.load({
         h(SettingRow, { title: t('setPreload'), hint: t('setPreloadHint') }, h(Toggle, { label: t('setPreload'), checked: cfg.preload, onChange: (v) => setSetting('preload', v) })),
         h(
           SettingRow,
+          { title: t('setEditor'), hint: t('setEditorHint') },
+          h(Select, {
+            label: t('setEditor'),
+            value: cfg.editor || currentEditor().id,
+            onChange: (v) => {
+              setSetting('editor', v)
+              frames.broadcastConfig()
+            },
+            options: (st.editors.length ? st.editors : [{ id: 'vscode', label: 'VS Code', installed: true }]).map((e) => [e.id, e.installed ? e.label : `${e.label} (${t('notInstalled')})`]),
+          }),
+        ),
+        h(
+          SettingRow,
           { title: t('setDefault'), hint: t('setDefaultHint') },
           h(Select, { label: t('setDefault'), value: cfg.defaultDevice, onChange: (v) => setSetting('defaultDevice', v), options: [['local', t('thisMac')], ...devices.map((d) => [d.id, d.name])] }),
         ),
@@ -1514,6 +1715,43 @@ window.__ModuleLoader__.load({
           }, t('manageDevices')),
         ),
       )
+    }
+
+    function EditorHostDialog({ t }) {
+      const st = useStore()
+      const ask = st.askEditorHost
+      const device = ask && (st.data.devices || []).find((d) => d.id === ask.deviceId)
+      const [value, setValue] = useState('')
+      const [error, setError] = useState(null)
+      useEffect(() => {
+        setValue(device ? device.editorHost || '' : '')
+        setError(null)
+      }, [ask && ask.deviceId])
+      if (!ask || !device) return null
+      const close = () => setStore({ askEditorHost: null })
+      const save = async () => {
+        try {
+          await post('/devices/editor-host', { id: device.id, host: value })
+          await refreshDevices()
+          close()
+          if (ask.path || ask.sessionId) openInEditor(device.id, { path: ask.path, sessionId: ask.sessionId })
+        } catch (e) {
+          setError(e.message)
+        }
+      }
+      return h(SimpleDialog, {
+        t,
+        title: t('editorHost'),
+        description: device.transport.kind === 'url' ? fill(t('editorHostNeeded'), { device: device.name }) : t('editorHostHint'),
+        onClose: close,
+        footer: h(React.Fragment, null, h(Btn, { variant: 'outline', onClick: close }, t('cancel')), h(Btn, { variant: 'primary', disabled: !value.trim(), onClick: save }, t('save'))),
+        children: h(
+          'div',
+          { className: 'dshdev-form' },
+          h(Field, { label: t('editorHost'), hint: t('editorHostHint') }, h(TextInput, { value, onChange: setValue, placeholder: 'vps-julio  /  root@203.0.113.10', autoFocus: true })),
+          error ? h('div', { className: 'dshdev-err' }, error) : null,
+        ),
+      })
     }
 
     // ── Devices page (management) ───────────────────────────────────────────
@@ -1596,6 +1834,7 @@ window.__ModuleLoader__.load({
                   item('refresh', t('refresh')),
                   item('window', t('openWindow')),
                   item('settings', t('deviceSettings')),
+                  item('editorHost', t('editorHostMenu')),
                   item('rename', t('rename')),
                   device.transport.kind === 'ssh' ? item('update', t('update')) : null,
                   item('remove', t('remove'), 'danger'),
@@ -1907,6 +2146,7 @@ window.__ModuleLoader__.load({
           if (kind === 'refresh') await post('/devices/refresh', { id: device.id })
           if (kind === 'window') await openInWindow(device)
           if (kind === 'settings') openDeviceSettings(device)
+          if (kind === 'editorHost') setStore({ askEditorHost: { deviceId: device.id } })
           if (kind === 'rename') {
             setRenameValue(device.name)
             setRenaming(device)
@@ -1956,6 +2196,7 @@ window.__ModuleLoader__.load({
           devices.map((d) => h(DeviceCard, { key: d.id, device: d, t, self: st.data.self, onOpen, onAction })),
         ),
         adding ? h(AddDialog, { t, preset: adding.preset, onClose: () => setAdding(false), onDone: refreshDevices }) : null,
+        h(EditorHostDialog, { t }),
         renaming
           ? h(SimpleDialog, {
               t,
@@ -2018,6 +2259,7 @@ window.__ModuleLoader__.load({
       ensureStyles()
       appCtx = ctx
       appT = t
+      loadEditors()
       ctx.effect(() => mountDevicePill(ctx, t), 'dsh-devices: device picker')
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID, locale: NS, inject: () => ({ ctx, t }) }, DevicesPage))
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: CHAT_PANEL_ID, locale: NS, inject: () => ({ t }) }, RemoteChatPanel))

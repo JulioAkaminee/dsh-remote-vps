@@ -6,6 +6,7 @@
 // Devices panel. All routes below are exact routes on DSH's authenticated
 // /api channel, so only this desktop's owner browser reaches them.
 
+import { detectEditors } from './editors.js'
 import { DeviceManager } from './manager.js'
 import { listSshAliases, resolveSshTarget } from './ssh.js'
 
@@ -115,6 +116,19 @@ export function apply(ctx, config) {
       const b = await body(request)
       manager.refresh(b.id)
       return json({ ok: true })
+    }],
+    ['GET', '/devices/editors', async () => json({ editors: detectEditors() })],
+    ['POST', '/devices/open-editor', async (request) => {
+      const b = await body(request)
+      try {
+        return json(await manager.openInEditor(b.id, { path: b.path, sessionId: b.sessionId, editor: b.editor }))
+      } catch (error) {
+        return json({ error: error.message, code: error.code ?? null }, error.code === 'NO_EDITOR_HOST' ? 409 : 400)
+      }
+    }],
+    ['POST', '/devices/editor-host', async (request) => {
+      const b = await body(request)
+      return json({ device: manager.setEditorHost(b.id, b.host) })
     }],
     ['GET', '/devices/local-model-key', async () => json({ available: !!(await manager.localModelKey()) })],
     ['POST', '/devices/model-key', async (request) => {

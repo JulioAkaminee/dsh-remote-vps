@@ -226,3 +226,13 @@ test('manager: an older device host without the live feed falls back to polling'
   assert.equal(s.sessions[0].title, 'A')
   await m.dispose()
 })
+
+test('editors: Remote-SSH URIs for device paths', async () => {
+  const { editorUri, EDITORS } = await import('../../packages/dsh-devices/lib/editors.js')
+  const vscode = EDITORS.find((e) => e.id === 'vscode')
+  const cursor = EDITORS.find((e) => e.id === 'cursor')
+  assert.equal(editorUri(vscode, 'vps-julio', '/root/Projetos/cenora'), 'vscode://vscode-remote/ssh-remote+vps-julio/root/Projetos/cenora')
+  assert.equal(editorUri(cursor, 'root@203.0.113.10', '/srv/app/a b.ts'), 'cursor://vscode-remote/ssh-remote+root@203.0.113.10/srv/app/a%20b.ts')
+  assert.throws(() => editorUri(vscode, '', '/x'), /SSH host/)
+  assert.throws(() => editorUri(vscode, 'h', 'relative/path'), /absolute/)
+})
