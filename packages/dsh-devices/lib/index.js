@@ -7,7 +7,7 @@
 // /api channel, so only this desktop's owner browser reaches them.
 
 import { DeviceManager } from './manager.js'
-import { listSshAliases } from './ssh.js'
+import { listSshAliases, resolveSshTarget } from './ssh.js'
 
 export const name = 'dsh-devices'
 export const inject = ['connection']
@@ -54,7 +54,21 @@ export function apply(ctx, config) {
 
   const routes = [
     ['GET', '/devices', async () => json(manager.list())],
-    ['GET', '/devices/ssh-hosts', async () => json({ hosts: listSshAliases(), saved: manager.savedMachines() })],
+    [
+      'GET',
+      '/devices/ssh-hosts',
+      async () => {
+        const hosts = listSshAliases().map((alias) => {
+          try {
+            const r = resolveSshTarget(alias)
+            return { alias, host: r.host, user: r.username, port: r.port }
+          } catch {
+            return { alias }
+          }
+        })
+        return json({ hosts, saved: manager.savedMachines() })
+      },
+    ],
     [
       'GET',
       '/devices/job',

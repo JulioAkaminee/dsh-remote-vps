@@ -129,6 +129,49 @@ window.__ModuleLoader__.load({
       menuRemote: '你的设备', menuNewOn: '在 {device} 上新建…',
     }
 
+    const ptBR = {
+      panel: 'Devices', title: 'Devices',
+      subtitle: 'O DSH rodando nos seus servidores. Os chats deles aparecem na barra lateral junto com os locais, marcados como remotos; agente, ferramentas e terminais rodam no device.',
+      add: 'Adicionar device', refresh: 'Atualizar',
+      empty: 'Nenhum device ainda. Adicione um servidor por SSH (o DSH é instalado para você) ou pareie com um código do `dsh-device pair`.',
+      open: 'Abrir', openWindow: 'Abrir em nova janela', more: 'Mais', rename: 'Renomear', remove: 'Remover', update: 'Atualizar device',
+      updateHint: 'Este device roda dsh {remote}; este desktop roda {local}.',
+      status_online: 'Online', status_connecting: 'Conectando…', status_offline: 'Offline', status_error: 'Erro', status_revoked: 'Despareado no device',
+      lastSeen: 'visto há {when}', up: 'ligado há {when}', never: 'nunca', sessions: 'Sessões', noSessions: 'Nenhuma sessão ainda.',
+      untitled: 'Sessão sem título', running: 'rodando', viaSsh: 'SSH · {target}', viaUrl: 'URL · {url}',
+      addTitle: 'Adicionar device', addDescription: 'O agente roda no device. Escolha como este computador chega até ele.',
+      tabSsh: 'SSH', tabCode: 'Código de pareamento', sshTarget: 'Servidor SSH',
+      sshTargetHint: 'Um alias do ~/.ssh/config ou usuário@host[:porta]. Usa seu ssh-agent e suas chaves.',
+      advanced: 'Avançado: porta, usuário, chave', sshPort: 'Porta', sshUser: 'Usuário', sshKey: 'Arquivo de chave',
+      deviceName: 'Nome (opcional)', connect: 'Conectar',
+      codeInput: 'Link ou código de pareamento', codeHint: 'Cole o link dsh-device:// ou digite o código.',
+      codeUrl: 'Endereço do device', codeUrlHint: 'Endereço HTTPS do device (Tailscale, Cloudflare Tunnel, proxy reverso).',
+      pair: 'Parear', cancel: 'Cancelar', close: 'Fechar', done: 'Concluir', working: 'Trabalhando…',
+      hostKeyTitle: 'Confirme a identidade do servidor',
+      hostKeyBody: 'Primeira conexão com este servidor. Confira se a impressão digital bate com a do servidor (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub):',
+      trust: 'Confiar e continuar', paired: 'Pareado com {name}.', renamePrompt: 'Nome do device',
+      removeTitle: 'Remover {name}?', removeBody: 'Este computador também é despareado no device, se ele estiver acessível. As sessões no device são mantidas.',
+      save: 'Salvar', openFailed: 'Não foi possível abrir o device: {error}', outdated: 'atualização disponível',
+      remote: 'Remoto', remoteOn: 'Remoto · {device}', newRemote: 'Nova sessão em {device}', offlineShort: 'offline',
+      connecting: 'Conectando a {device}…', deviceOffline: '{device} está offline. Os chats dele voltam quando ele estiver acessível.',
+      now: 'agora', savedServers: 'Salvos neste computador',
+      savedHint: 'Servidores já salvos no Acesso remoto. Endereço, login e chave aceita são reaproveitados.',
+      savedTitle: 'Salvos neste computador — prontos para adicionar', addSaved: 'Adicionar', alreadyAdded: 'adicionado',
+      hostKeyKnown: 'chave do servidor já confiável', menuRemote: 'Nos seus devices', menuNewOn: 'Nova em {device}…',
+      suggestions: 'Sugestões', fromSshConfig: '~/.ssh/config', trusted: 'confiável',
+      codeStep1: 'Na VPS, rode:', codeStep2: 'Cole aqui o link que aparecer (ou o código + o endereço HTTPS).',
+      orType: 'ou digite',
+    }
+    en.suggestions = 'Suggestions'
+    en.fromSshConfig = '~/.ssh/config'
+    en.trusted = 'trusted'
+    en.codeStep1 = 'On the VPS, run:'
+    en.codeStep2 = 'Paste the link it prints here (or the code plus the HTTPS address).'
+    en.orType = 'or type'
+    en.advanced = 'Advanced: port, user, key'
+    en.codeHint = 'Paste the dsh-device:// link, or type the code.'
+    Object.assign(zh, { suggestions: '建议', fromSshConfig: '~/.ssh/config', trusted: '已信任', codeStep1: '在 VPS 上运行：', codeStep2: '把输出的链接粘贴到这里（或输入配对码和 HTTPS 地址）。', orType: '或输入', advanced: '高级：端口、用户、密钥' })
+
     function fill(text, vars) {
       return String(text).replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : ''))
     }
@@ -396,19 +439,34 @@ window.__ModuleLoader__.load({
 .dshdev-pop button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:6px;padding:7px 10px;color:inherit;font:inherit;font-size:13px;cursor:pointer}
 .dshdev-pop button:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .dshdev-pop button.danger{color:var(--dsw-alias-state-error-primary)}
-.dshdev-form{display:flex;flex-direction:column;gap:14px;min-width:min(520px,80vw)}
+.dshdev-modal{width:min(540px,calc(100vw - 48px))!important;max-width:none!important}
+.dshdev-modal.dshdev-modal-sm{width:min(440px,calc(100vw - 48px))!important}
+.dshdev-form{display:flex;flex-direction:column;gap:16px;width:100%;min-width:0;box-sizing:border-box}
+.dshdev-form *{box-sizing:border-box}
+.dshdev-field{min-width:0}
+.dshdev-disclosure{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:2px 0;font:inherit;font-size:13px;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.dshdev-disclosure:hover{color:var(--dsw-alias-label-primary)}
+.dshdev-chev{display:inline-block;width:10px;font-size:11px}
+.dshdev-span2{grid-column:1 / -1}
+.dshdev-steps{margin:0;padding:10px 12px 10px 30px;border-radius:10px;background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.04));font-size:13px;line-height:22px;color:var(--dsw-alias-label-secondary)}
+.dshdev-steps code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;padding:1px 6px;border-radius:6px;background:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));white-space:nowrap}
+.dshdev-tag.ok{border-color:var(--dsw-alias-state-business-primary,#16a34a);color:var(--dsw-alias-state-business-primary,#16a34a)}
+.dshdev-saved-text{display:flex;flex-direction:column;min-width:0;flex:1;line-height:18px}
+.dshdev-saved-text .dshdev-s-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dshdev-field label{display:block;font-size:12px;font-weight:500;margin-bottom:6px;color:var(--dsw-alias-label-secondary)}
-.dshdev-hint{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);margin-top:4px}
-.dshdev-grid{display:grid;grid-template-columns:90px 1fr 1fr;gap:10px}
-.dshdev-tabs{display:flex;gap:4px;padding:3px;border-radius:9px;background:var(--dsw-alias-interactive-bg-hover);align-self:flex-start}
+.dshdev-hint{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);margin-top:6px;overflow-wrap:anywhere}
+.dshdev-grid{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px}
+.dshdev-tabs{display:flex;gap:4px;padding:3px;border-radius:10px;background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05));align-self:stretch}
+.dshdev-tabs button{flex:1}
 .dshdev-tabs button{background:none;border:0;border-radius:7px;padding:5px 12px;font:inherit;font-size:13px;color:var(--dsw-alias-label-secondary);cursor:pointer}
 .dshdev-tabs button[aria-selected=true]{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .dshdev-log{max-height:220px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:17px;background:var(--dsw-alias-interactive-bg-hover);border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-word}
 .dshdev-fp{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);word-break:break-all}
 .dshdev-ok{color:var(--dsw-alias-state-business-primary);font-size:13px}
 .dshdev-text{font-size:13px;line-height:20px;color:var(--dsw-alias-label-secondary)}
-.dshdev-input{width:100%;box-sizing:border-box;height:34px;border-radius:8px;border:1px solid var(--dsw-alias-border-l3);background:transparent;color:inherit;font:inherit;font-size:13px;padding:0 10px}
-.dshdev-input:focus{outline:2px solid var(--dsw-focus-ring-color);outline-offset:0;border-color:transparent}
+.dshdev-input{width:100%;box-sizing:border-box;height:36px;border-radius:10px;border:1px solid var(--dsw-alias-border-l3,rgba(0,0,0,.18));background:var(--dsw-alias-bg-base,transparent);color:inherit;font:inherit;font-size:13px;padding:0 12px;transition:border-color .12s,box-shadow .12s}
+.dshdev-input::placeholder{color:var(--dsw-alias-label-tertiary,#9aa0a6)}
+.dshdev-input:focus{outline:none;border-color:var(--dsw-focus-ring-color,#4176e6);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-focus-ring-color,#4176e6) 22%,transparent)}
 .dshdev-remote-root{display:block}
 [class*="_list"]:has(> .dshdev-remote-root [data-dshdev-device]) > [class*="_emptyState"]{display:none}
 .dshdev-remote-root .dshdev-devname{color:var(--dsw-alias-label-tertiary);font-size:12px;margin-left:6px;white-space:nowrap}
@@ -427,9 +485,10 @@ window.__ModuleLoader__.load({
 .dshdev-fb-project:hover .dshdev-fb-actions{display:inline-flex}
 .dshdev-fb-iconbtn{background:none;border:0;padding:2px;border-radius:6px;color:inherit;cursor:pointer;display:inline-flex}
 .dshdev-saved{display:flex;flex-direction:column;gap:6px}
-.dshdev-saved-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;padding:8px 10px;color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.dshdev-saved-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));border-radius:10px;padding:8px 12px;color:inherit;font:inherit;font-size:13px;cursor:pointer;transition:background .12s,border-color .12s}
 .dshdev-saved-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshdev-saved-item.on{border-color:var(--dsw-focus-ring-color);background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-saved-item.on{border-color:var(--dsw-focus-ring-color,#4176e6);background:var(--dsw-alias-interactive-bg-hover);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-focus-ring-color,#4176e6) 18%,transparent)}
+.dshdev-saved-item:disabled{opacity:.6;cursor:default}
 .dshdev-saved-name{font-weight:600;white-space:nowrap}
 .dshdev-saved-item .dshdev-s-meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .dshdev-menu-caption{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--dsw-alias-label-tertiary);padding:8px 10px 4px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:4px}
@@ -907,7 +966,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         api('/devices/ssh-hosts').then((r) => {
-          setHosts(r.hosts || [])
+          setHosts((r.hosts || []).map((x) => (typeof x === 'string' ? { alias: x } : x)))
           setSaved(r.saved || [])
         }, () => {})
         if (preset) startSsh()
@@ -991,18 +1050,18 @@ window.__ModuleLoader__.load({
           ? h(
               React.Fragment,
               null,
-              saved.length
+              saved.length || hosts.length
                 ? h(
                     Field,
-                    { label: t('savedServers'), hint: t('savedHint') },
+                    { label: t('suggestions'), hint: saved.length ? t('savedHint') : null },
                     h(
                       'div',
-                      { className: 'dshdev-saved', role: 'listbox', 'aria-label': t('savedServers') },
+                      { className: 'dshdev-saved', role: 'listbox', 'aria-label': t('suggestions') },
                       saved.map((m) =>
                         h(
                           'button',
                           {
-                            key: m.id,
+                            key: `saved:${m.id}`,
                             type: 'button',
                             role: 'option',
                             'aria-selected': savedId === m.id,
@@ -1014,31 +1073,68 @@ window.__ModuleLoader__.load({
                               setName(m.name)
                             },
                           },
-                          h('span', { className: 'dshdev-remote-mark' }, h(RemoteIcon, { size: 16 })),
-                          h('span', { className: 'dshdev-saved-name' }, m.name),
-                          h('span', { className: 'dshdev-s-meta' }, m.target),
-                          m.pairedDeviceId ? h('span', { className: 'dshdev-tag' }, t('alreadyAdded')) : null,
+                          h('span', { className: 'dshdev-remote-mark', style: { color: 'rgb(65,118,230)' } }, h(RemoteIcon, { size: 16 })),
+                          h('span', { className: 'dshdev-saved-text' }, h('span', { className: 'dshdev-saved-name' }, m.name), h('span', { className: 'dshdev-s-meta' }, m.target)),
+                          m.pairedDeviceId ? h('span', { className: 'dshdev-tag' }, t('alreadyAdded')) : m.fingerprint ? h('span', { className: 'dshdev-tag ok' }, t('trusted')) : null,
                         ),
                       ),
+                      hosts.map((x) => {
+                        const value = x.alias
+                        const selected = !savedId && target === value
+                        return h(
+                          'button',
+                          {
+                            key: `alias:${value}`,
+                            type: 'button',
+                            role: 'option',
+                            'aria-selected': selected,
+                            className: `dshdev-saved-item${selected ? ' on' : ''}`,
+                            disabled: busy,
+                            onClick: () => {
+                              setSavedId(null)
+                              setTarget(value)
+                              if (!name) setName(value)
+                            },
+                          },
+                          h('span', { className: 'dshdev-remote-mark' }, h(RemoteIcon, { size: 16 })),
+                          h('span', { className: 'dshdev-saved-text' }, h('span', { className: 'dshdev-saved-name' }, value), h('span', { className: 'dshdev-s-meta' }, x.host ? `${x.user ? `${x.user}@` : ''}${x.host}${x.port && x.port !== 22 ? `:${x.port}` : ''}` : '')),
+                          h('span', { className: 'dshdev-tag' }, t('fromSshConfig')),
+                        )
+                      }),
                     ),
                   )
                 : null,
-              h(Field, { label: t('sshTarget'), hint: t('sshTargetHint') }, h(TextInput, { value: target, onChange: (v) => (setTarget(v), setSavedId(null)), placeholder: 'root@203.0.113.10', list: 'dshdev-hosts', autoFocus: !preset })),
-              h('datalist', { id: 'dshdev-hosts' }, hosts.map((x) => h('option', { key: x, value: x }))),
+              h(
+                Field,
+                { label: saved.length || hosts.length ? `${t('orType')} — ${t('sshTarget')}` : t('sshTarget'), hint: t('sshTargetHint') },
+                h(TextInput, { value: savedId ? '' : target, onChange: (v) => (setTarget(v), setSavedId(null)), placeholder: 'root@203.0.113.10', autoFocus: !preset && !saved.length && !hosts.length }),
+              ),
+              h(
+                'button',
+                { type: 'button', className: 'dshdev-disclosure', 'aria-expanded': advanced, onClick: () => setAdvanced(!advanced) },
+                h('span', { className: 'dshdev-chev', 'aria-hidden': true }, advanced ? '▾' : '▸'),
+                t('advanced'),
+              ),
               advanced
                 ? h(
                     'div',
                     { className: 'dshdev-grid' },
                     h(Field, { label: t('sshPort') }, h(TextInput, { value: port, onChange: setPort, placeholder: '22' })),
                     h(Field, { label: t('sshUser') }, h(TextInput, { value: user, onChange: setUser, placeholder: 'root' })),
-                    h(Field, { label: t('sshKey') }, h(TextInput, { value: identity, onChange: setIdentity, placeholder: '~/.ssh/id_ed25519' })),
+                    h('div', { className: 'dshdev-span2' }, h(Field, { label: t('sshKey') }, h(TextInput, { value: identity, onChange: setIdentity, placeholder: '~/.ssh/id_ed25519' }))),
                   )
-                : h('div', null, h(Btn, { variant: 'ghost', onClick: () => setAdvanced(true) }, t('advanced'))),
+                : null,
             )
           : h(
               React.Fragment,
               null,
-              h(Field, { label: t('codeInput'), hint: t('codeHint') }, h(TextInput, { value: code, onChange: setCode, placeholder: 'K7QF-2M9X', autoFocus: true })),
+              h(
+                'ol',
+                { className: 'dshdev-steps' },
+                h('li', null, t('codeStep1'), ' ', h('code', null, 'dsh-device pair --url https://…')),
+                h('li', null, t('codeStep2')),
+              ),
+              h(Field, { label: t('codeInput'), hint: t('codeHint') }, h(TextInput, { value: code, onChange: setCode, placeholder: 'dsh-device://pair?…  /  K7QF-2M9X', autoFocus: true })),
               linkMode ? null : h(Field, { label: t('codeUrl'), hint: t('codeUrlHint') }, h(TextInput, { value: url, onChange: setUrl, placeholder: 'https://vps.example.ts.net' })),
             ),
         h(Field, { label: t('deviceName') }, h(TextInput, { value: name, onChange: setName, placeholder: 'VPS' })),
@@ -1067,12 +1163,12 @@ window.__ModuleLoader__.load({
             : h(Btn, { variant: 'primary', disabled: !canSubmit, onClick: () => (tab === 'ssh' ? startSsh() : pairCode()) }, busy ? t('working') : tab === 'ssh' ? t('connect') : t('pair')),
       )
 
-      if (P.Modal) return h(P.Modal, { open: true, onClose, title: t('addTitle'), description: t('addDescription'), closeLabel: t('close'), footer }, body)
+      if (P.Modal) return h(P.Modal, { open: true, onClose, title: t('addTitle'), description: t('addDescription'), closeLabel: t('close'), footer, className: 'dshdev-modal' }, body)
       return h('div', { role: 'dialog', style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'grid', placeItems: 'center', zIndex: 50 } }, h('div', { style: { background: 'var(--dsw-alias-bg-base,#fff)', padding: 20, borderRadius: 12 } }, h('h2', null, t('addTitle')), body, h('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 } }, footer)))
     }
 
     function SimpleDialog({ title, description, children, footer, onClose, t }) {
-      if (P.Modal) return h(P.Modal, { open: true, onClose, title, description, closeLabel: t('close'), footer }, children)
+      if (P.Modal) return h(P.Modal, { open: true, onClose, title, description, closeLabel: t('close'), footer, className: 'dshdev-modal dshdev-modal-sm' }, children)
       return h('div', { role: 'dialog' }, h('h2', null, title), h('p', null, description), children, footer)
     }
 
@@ -1215,6 +1311,16 @@ window.__ModuleLoader__.load({
     const inject = ['slots', 'locale', 'layout']
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'dsh-devices: dictionaries')
+      // Language packs (the desktop app may run in Portuguese).
+      for (const tag of ['pt-BR', 'pt']) {
+        ctx.effect(() => {
+          try {
+            return ctx.locale.register(NS, tag, ptBR)
+          } catch {
+            return () => {}
+          }
+        }, `dsh-devices: ${tag} dictionary`)
+      }
       const t = ctx.locale.bind(NS)
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID, locale: NS, inject: () => ({ ctx, t }) }, DevicesPage))
       ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: CHAT_PANEL_ID, locale: NS, inject: () => ({ t }) }, RemoteChatPanel))
