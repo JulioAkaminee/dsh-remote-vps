@@ -4,14 +4,53 @@
 
 import crypto from 'node:crypto'
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 // ssh2 is vendored (lib/vendor) so the plugin has no dependencies: installs work offline
 // and need no package build scripts in any package manager.
-import ssh2 from './vendor/node_modules/ssh2/lib/index.js'
+//
+// Hosts disagree on how a CommonJS file reaches an ES module: plain Node hands
+// module.exports over as the default export, while a bundling host can expose
+// the namespace itself or only `default`. Reading Client from the first shape
+// that has it keeps the transport working on both; the require fallback covers
+// a host that rewrites the import altogether.
+import * as ssh2Module from './vendor/node_modules/ssh2/lib/index.js'
 
-const { Client, utils } = ssh2
+function pickSsh2(candidate) {
+  // The namespace can carry only some of the names (Node's CommonJS lexer sees
+  // `Client` but not the object spread behind `utils`), so prefer whichever
+  // shape has both, and settle for a Client when neither does.
+  const shapes = [candidate, candidate && candidate.default].filter(Boolean)
+  return shapes.find((s) => typeof s.Client === 'function' && s.utils) || shapes.find((s) => typeof s.Client === 'function') || null
+}
+
+let ssh2 = pickSsh2(ssh2Module)
+if (!ssh2) {
+  try {
+    ssh2 = pickSsh2(createRequire(import.meta.url)('./vendor/node_modules/ssh2/lib/index.js'))
+  } catch {}
+}
+
+const Client = (ssh2 && ssh2.Client) || null
+const utils = (ssh2 && ssh2.utils) || null
+
+/** What loaded, for the error a person reads when it did not. */
+function ssh2Shape() {
+  const keys = Object.keys(ssh2Module || {}).join(', ') || 'none'
+  return `module keys: ${keys}; default: ${ssh2Module && ssh2Module.default ? 'yes' : 'no'}`
+}
+
+function requireSsh2(what) {
+  if (typeof Client === 'function' && utils) return
+  throw new Error(`ssh transport unavailable: ssh2 did not load (${what}; ${ssh2Shape()}). Reinstall the plugin.`)
+}
+
+/** For tests and the doctor: is the SSH client really there in this host? */
+export function sshTransport() {
+  return { client: typeof Client === 'function', utils: !!utils, shape: ssh2Shape() }
+}
 
 const SSH_DIR = () => path.join(os.homedir(), '.ssh')
 
@@ -220,6 +259,7 @@ function loadKeys(resolved, passphrase) {
     for (const f of ['id_ed25519', 'id_ecdsa', 'id_rsa']) files.push(path.join(SSH_DIR(), f))
   }
   const keys = []
+  requireSsh2('reading private keys')
   const seen = new Set()
   for (const file of files) {
     if (seen.has(file)) continue
@@ -271,6 +311,7 @@ export class SshConnection {
   }
 
   async connect() {
+    requireSsh2('connecting')
     let sock
     if (this.resolved.proxyJump) {
       const jumpResolved = resolveSshTarget(this.resolved.proxyJump)
