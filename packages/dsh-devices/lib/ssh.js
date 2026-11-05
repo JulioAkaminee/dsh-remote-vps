@@ -4,22 +4,14 @@
 
 import crypto from 'node:crypto'
 import fs from 'node:fs'
-import { createRequire } from 'node:module'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-// ssh2 is vendored (lib/vendor) so the plugin has no dependencies: installs work offline
-// and need no package build scripts in any package manager.
-//
-// Hosts disagree on how a CommonJS file reaches an ES module: plain Node hands
-// module.exports over as the default export; another host exposes the namespace
-// itself, a `default` that is not the exports object, or the exports object
-// under a literal `module.exports` key (seen on macOS). `utils` can also be
-// missing from the namespace while `Client` is there, because it is built from
-// an object spread the host's parser cannot see. So: look at every shape, take
-// the first with both, otherwise take one with a Client, and let the require
-// path fill in whatever is still missing.
-import * as ssh2Module from './vendor/node_modules/ssh2/lib/index.js'
+// ssh2 is vendored as one plain ES module (lib/vendor/ssh2.mjs), built from
+// vendor-src/ by scripts/vendor-ssh2.mjs. CommonJS was the problem: the plugin
+// host on macOS rewrites CJS imports and the exports get lost ("Client is not a
+// constructor"). A static ES module has nothing to rewrite.
+import * as ssh2Module from './vendor/ssh2.mjs'
 
 /** Every plausible exports object behind the module, outermost first. */
 export function ssh2Shapes(mod) {
@@ -45,16 +37,9 @@ export function pickSsh2(mod) {
   )
 }
 
-let ssh2 = pickSsh2(ssh2Module)
-if (!ssh2 || !ssh2.utils) {
-  try {
-    const required = pickSsh2(createRequire(import.meta.url)('./vendor/node_modules/ssh2/lib/index.js'))
-    if (required && (!ssh2 || required.utils)) ssh2 = required
-  } catch {}
-}
-
-const Client = (ssh2 && typeof ssh2.Client === 'function' && ssh2.Client) || null
-const utils = (ssh2 && ssh2.utils) || null
+const ssh2 = pickSsh2(ssh2Module) || ssh2Module
+const Client = typeof ssh2.Client === 'function' ? ssh2.Client : null
+const utils = ssh2.utils || null
 
 /** What loaded, for the error a person reads when it did not. */
 function ssh2Shape() {
