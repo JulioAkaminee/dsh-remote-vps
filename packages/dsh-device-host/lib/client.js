@@ -160,37 +160,40 @@ window.__ModuleLoader__.load({
       }, 'open files')
     }
 
-    /** "Remote · <device>" in the embedded session header (official header slot). */
+    /**
+     * "<device>" next to the session mode label ("Standard mode") in the
+     * embedded session header, drawn like that label.
+     */
+    const BADGE_CSS = `.dsh-device-badge{border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-fill-tsp-secondary);max-width:180px;height:22px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-overflow:ellipsis;align-items:center;gap:4px;padding:0 6px 0 4px;font-size:12px;line-height:22px;display:inline-flex;overflow:hidden;flex:none}.dsh-device-badge svg{opacity:.7;flex:none}@container (width<=540px){.dsh-device-badge{display:none}}`
     function mountHeaderBadge(ctx, deviceName) {
       if (!React || !ctx.slots) return () => {}
       const h = React.createElement
+      const style = document.createElement('style')
+      style.textContent = BADGE_CSS
+      document.head.appendChild(style)
       function RemoteBadge() {
         return h(
           'span',
-          {
-            title: deviceName,
-            style: {
-              display: 'inline-flex', alignItems: 'center', gap: '6px', height: '24px', padding: '0 10px', borderRadius: '999px',
-              fontSize: '12px', lineHeight: '24px', whiteSpace: 'nowrap', color: 'rgb(65,118,230)',
-              background: 'color-mix(in srgb, rgb(65,118,230) 10%, transparent)', border: '1px solid color-mix(in srgb, rgb(65,118,230) 28%, transparent)',
-            },
-          },
+          { className: 'dsh-device-badge', title: deviceName, 'data-dsh-device-badge': '1' },
           h(
             'svg',
-            { width: 13, height: 13, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-            h('rect', { x: 1.5, y: 6.5, width: 10, height: 7.5, rx: 1.6, stroke: 'currentColor' }),
-            h('path', { d: 'M4 10.25h.01M6.5 10.25h3', stroke: 'currentColor', strokeWidth: 1.2, strokeLinecap: 'round' }),
-            h('path', { d: 'M10.2 3.6a3.3 3.3 0 0 1 3.3 3.3M10.2 1.6a5.3 5.3 0 0 1 5.3 5.3', stroke: 'currentColor', strokeLinecap: 'round' }),
+            { width: 13, height: 13, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+            h('rect', { x: 1.75, y: 6.75, width: 9.5, height: 7, rx: 1.75 }),
+            h('path', { d: 'M4.25 10.25h.01M6.75 10.25h2.5' }),
+            h('path', { d: 'M10.4 3.9a3 3 0 0 1 2.7 2.7M10.4 1.75a5.1 5.1 0 0 1 4.85 4.85' }),
           ),
           deviceName,
         )
       }
+      let off = () => {}
       try {
-        return ctx.slots.inject('conversation.session.header.utilities', () =>
-          ctx.slots.register({ name: 'conversation.session.header.utilities', id: 'dsh-device-remote-badge', order: -100 }, RemoteBadge),
+        off = ctx.slots.inject('conversation.session.header.actions', () =>
+          ctx.slots.register({ name: 'conversation.session.header.actions', id: 'dsh-device-remote-badge', order: -100 }, RemoteBadge),
         )
-      } catch {
-        return () => {}
+      } catch {}
+      return () => {
+        off()
+        style.remove()
       }
     }
 
@@ -417,7 +420,7 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
         }, 1000)
         post({ type: 'ready' })
         ctx.effect(() => mountDevicePill(ctx, deviceName || 'Device'), 'dsh-device-host: device pill')
-        if (deviceName) mountHeaderBadge(ctx, deviceName)
+        if (deviceName) ctx.effect(() => mountHeaderBadge(ctx, deviceName), 'dsh-device-host: header badge')
         mountOpenInEditor(ctx)
         ctx.effect(() => mountLinkRewrite(), 'dsh-device-host: dev-server links')
         ctx.effect(() => () => {

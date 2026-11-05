@@ -43,7 +43,8 @@ try {
   // 1. sidebar "Files" on the remote workspace opens DSH's Files tab with the device's tree
   const row = page.locator('[data-dsh-devices=sidebar] [role=treeitem][aria-expanded]').filter({ hasText: 'project-on-vps' }).first()
   await row.hover()
-  await row.locator('[data-dshdev-action=files]').click()
+  await row.locator('[data-dshdev-action=more]').click()
+  await page.getByRole('menuitem', { name: 'Files' }).click()
   let frame
   for (let i = 0; i < 80 && !frame; i++) {
     frame = frameOf()
@@ -96,7 +97,8 @@ try {
   // 5. the desktop sidebar's editor action does the same
   const n3 = opened().length
   await row.hover()
-  await row.locator('[data-dshdev-action=editor]').click()
+  await row.locator('[data-dshdev-action=more]').click()
+  await page.getByRole('menuitem', { name: /^Open in / }).click()
   const side = await waitOpened(n3, page)
   check('sidebar “Open in editor” on the remote workspace', !!side && side.startsWith('vscode://vscode-remote/ssh-remote+vps-teste/'), side ?? 'nothing')
   await shot(page, 'fe-03-done')

@@ -445,3 +445,94 @@ test('manager: attention events and port lists from the live feed', async () => 
   s.watchToken = null
   await m.dispose()
 })
+
+test('browser UI smoke render: every surface renders without recursion or throwing, with or without DSH primitives', async () => {
+  const vm = await import('node:vm')
+  const file = 'packages/dsh-devices/lib/client.js'
+  const makeEl = () => ({ style: {}, dataset: {}, setAttribute() {}, removeAttribute() {}, appendChild() {}, addEventListener() {}, removeEventListener() {}, querySelector: () => null, querySelectorAll: () => [], classList: { add() {}, remove() {}, contains: () => false }, getBoundingClientRect: () => ({ left: 0, top: 0, right: 10, bottom: 10, width: 10, height: 10 }), closest: () => null, contains: () => false })
+  const run = (withPrimitives) => {
+    const loaded = []
+    const ls = new Map()
+    const sandbox = {
+      window: { __ModuleLoader__: { load: (m) => loaded.push(m) }, location: { search: '', pathname: '/', hash: '' }, addEventListener() {}, removeEventListener() {}, history: { replaceState() {} }, innerWidth: 1200, innerHeight: 800 },
+      document: { getElementById: () => null, createElement: makeEl, head: makeEl(), body: makeEl(), documentElement: makeEl(), querySelector: () => null, querySelectorAll: () => [], addEventListener() {}, removeEventListener() {}, styleSheets: [], visibilityState: 'visible', hasFocus: () => true },
+      localStorage: { getItem: (k) => ls.get(k) ?? null, setItem: (k, v) => ls.set(k, v) },
+      navigator: { platform: 'MacIntel', userAgent: '', clipboard: { writeText: async () => {} } },
+      requestAnimationFrame: (f) => setTimeout(f, 0),
+      MutationObserver: class { observe() {} disconnect() {} },
+      ResizeObserver: class { observe() {} disconnect() {} },
+      fetch: async () => ({ ok: true, json: async () => ({}) }),
+      URLSearchParams, URL, setTimeout, clearTimeout, setInterval, clearInterval, console,
+    }
+    sandbox.window.document = sandbox.document
+    vm.runInNewContext(fs.readFileSync(path.join(root, file), 'utf8'), sandbox, { filename: file })
+    const Fragment = Symbol('Fragment')
+    const react = {
+      Fragment,
+      createElement: (type, props, ...children) => ({ type, props: { ...(props || {}), children: children.length ? children : props && props.children } }),
+      useState: (v) => [typeof v === 'function' ? v() : v, () => {}],
+      useEffect() {},
+      useLayoutEffect() {},
+      useRef: (v) => ({ current: v ?? null }),
+      useCallback: (f) => f,
+      useSyncExternalStore: (sub, get) => get(),
+    }
+    // Primitive stubs render what they are given (anchor, content, children), so their props are walked too.
+    const pass = (props) => [props.anchor, props.content, props.footer, props.children, props.icon]
+    const P = withPrimitives
+      ? new Proxy({}, { get: (_, name) => (name === 'relativeTime' ? () => ({ unit: 'minutes', n: 5 }) : name === 'ICON_REGULAR_STROKE' ? 1.2 : name === 'writeClipboard' ? async () => {} : (props) => pass(props || {})) })
+      : {}
+    const requireStub = (id) => (id === 'react' ? react : id === 'react-dom/client' ? { createRoot: () => ({ render() {}, unmount() {} }) } : id === '@deepseek-ai/dsh-client-ui-primitives' ? P : {})
+    const mod = loaded[0].factory(requireStub)
+    let renders = 0
+    const render = (node, depth = 0) => {
+      if (depth > 60) throw new Error('render recursion: depth > 60')
+      if (node == null || typeof node !== 'object') return
+      if (Array.isArray(node)) return node.forEach((n) => render(n, depth))
+      if (typeof node.type === 'function') {
+        renders += 1
+        return render(node.type(node.props || {}), depth + 1)
+      }
+      const props = node.props || {}
+      render(props.children, depth + 1)
+      for (const key of ['anchor', 'content', 'footer', 'icon', 'tags', 'end', 'title', 'description', 'extra', 'label']) if (props[key] && typeof props[key] === 'object') render(props[key], depth + 1)
+      if (Array.isArray(props.items)) for (const it of props.items) if (it && typeof it === 'object') render([it.icon, it.label], depth + 1)
+    }
+    const { store, setStore, components: c, dialogs: d } = mod.__test
+    const device = {
+      id: 'd1', name: 'VPS', status: 'online', transport: { kind: 'ssh', target: 'vps' }, features: ['watch', 'session-actions', 'search', 'account', 'sync', 'ports', 'pending'],
+      sessions: [
+        { sessionId: 's1', title: 'Fix login', workspaceId: 'w1', workspaceTitle: 'app', cwd: '/srv/app', updatedAt: Date.now(), pending: { kind: 'approval', toolName: 'write' } },
+        { sessionId: 's2', title: 'Pinned', workspaceId: 'w1', workspaceTitle: 'app', updatedAt: Date.now(), pinned: true, pinRank: 0 },
+        { sessionId: 's3', title: 'Running', workspaceId: 'w1', workspaceTitle: 'app', updatedAt: Date.now(), running: true },
+      ],
+      archived: [{ sessionId: 's9', title: 'Old', workspaceTitle: 'app', updatedAt: Date.now() }],
+      workspaces: [{ id: 'w1', title: 'app', path: '/srv/app' }],
+      ports: [{ port: 5173, label: 'vite', localPort: 5173, fromAgent: true }, { port: 8080, label: 'api', localPort: null }],
+      portMap: { 5173: 5173 }, portsKnown: true, pendingCount: 1, outdated: true, canUpdate: true, versions: { dsh: '0.2.1', plugin: '0.1.9' },
+      model: { configured: false, ready: false, account: { available: true, signedIn: false } }, autoForwardPorts: true,
+    }
+    setStore({ data: { devices: [device], saved: [{ id: 'm1', name: 'Saved', target: 'root@1.2.3.4', fingerprint: 'SHA256:x' }], notifications: [], version: 1 }, loaded: true, localKey: true, localAccount: true, nativeSearch: '', unread: { 'd1:s3': true }, picker: { rect: { left: 0, top: 0, right: 10, bottom: 10, width: 10, height: 10 }, current: null } })
+    const t = (k) => k
+    const ctx = { layout: { selectPanel() {} } }
+    const cls = { native: false }
+    render(react.createElement(c.RemoteSidebar, { ctx, t }))
+    render(react.createElement(c.RemoteSessionRow, { ctx, t, cls: {}, device, s: device.sessions[0], selected: true, online: true }))
+    render(react.createElement(c.RemoteSearchResults, { ctx, t, cls: {}, st: { ...store, nativeSearch: 'fix' }, query: 'fix' }))
+    render(react.createElement(c.DevicesPage, { ctx, t }))
+    render(react.createElement(c.DevicesSettings, { t }))
+    render(react.createElement(c.ModelKeyPanel, { device, t, variant: 'banner' }))
+    render(react.createElement(c.ModelKeyPanel, { device, t, variant: 'card' }))
+    render(react.createElement(c.ModelKeyPanel, { device: { ...device, model: undefined }, t, variant: 'card' }))
+    render(react.createElement(c.RemoteChatPanel, { t }))
+    render(react.createElement(c.DevicePicker, { t }))
+    render(react.createElement(c.AddDialog, { t, onClose() {}, onDone() {} }))
+    for (const [name, D] of Object.entries(d)) render(react.createElement(D, { t, dialog: { kind: name, deviceId: 'd1', sessionId: 's1', title: 'x' }, onClose() {} }))
+    setStore({ toast: { seq: 1, text: 'hello', actions: [{ label: 'Open', onClick() {} }] } })
+    render(react.createElement(c.Overlays, { t }))
+    void cls
+    return renders
+  }
+  assert.ok(run(true) > 20, 'renders with DSH primitives')
+  assert.ok(run(false) > 20, 'renders with the plain stand-ins')
+})

@@ -30,16 +30,16 @@ Dois pacotes:
 Gere os pacotes (na VPS ou em qualquer máquina com Node ≥ 22.19):
 
 ```sh
-npm run build        # → dist/dsh-devices-0.1.8.tgz, dist/dsh-device-host-0.1.8.tgz, dist/install-*.sh
+npm run build        # → dist/dsh-devices-0.1.9.tgz, dist/dsh-device-host-0.1.9.tgz, dist/install-*.sh
 ```
 
 ### 1. No Mac: instalar o `dsh-devices`
 
 **Pelo próprio app (mais simples):**
 
-1. Baixe **`dsh-devices-0.1.8.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
+1. Baixe **`dsh-devices-0.1.9.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
 2. No DeepSeek Harness: **Plug-ins → Adicionar plug-in**. No campo, cole o **caminho completo** do
-   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.8.tgz`
+   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.9.tgz`
    (no Finder: clique com o botão direito no arquivo, segure **Option** → *Copiar "…" como Nome de Caminho*).
 3. **Instalar**. Pronto: aparece **Devices** na barra lateral.
 
@@ -59,17 +59,17 @@ sh ~/dsh-remote-vps/deploy/install-desktop.sh
 Para atualizar depois: `cd ~/dsh-remote-vps && git pull && sh deploy/install-desktop.sh`.
 Os pacotes prontos também estão nas *Releases* do repositório.
 
-Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.8.tgz` e `install-desktop.sh` para o Mac e rode:
+Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.9.tgz` e `install-desktop.sh` para o Mac e rode:
 
 ```sh
-sh install-desktop.sh ./dsh-devices-0.1.8.tgz            # detecta o profile do app
-sh install-desktop.sh ./dsh-devices-0.1.8.tgz --profile NOME
+sh install-desktop.sh ./dsh-devices-0.1.9.tgz            # detecta o profile do app
+sh install-desktop.sh ./dsh-devices-0.1.9.tgz --profile NOME
 ```
 
 Ou, direto do Mac, puxando da VPS por SSH:
 
 ```sh
-ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.8.tgz' > /tmp/dsh-devices.tgz
+ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.9.tgz' > /tmp/dsh-devices.tgz
 ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/install-desktop.sh' | sh -s /tmp/dsh-devices.tgz
 ```
 
@@ -95,7 +95,7 @@ mostra um código `XXXX-XXXX` (5 min, uso único) e um link `dsh-device://…`. 
 *Add device* → Pairing code → cole o link. Exige que o Mac alcance a VPS por HTTPS
 (Tailscale, Cloudflare Tunnel ou proxy reverso apontando para `127.0.0.1:3180`).
 
-Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.8.tgz`.
+Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.9.tgz`.
 
 ### 3. Modelos na VPS: conta ou chave
 
@@ -116,6 +116,12 @@ O mesmo fica no card do device em **Devices** e em **⋯ → Modelos e conta…*
 antigo mostram **Atualizar device**.
 
 ## Uso
+
+Tudo o que o plugin mostra usa os componentes e os estilos do próprio DSH — as mesmas linhas,
+menus, cartões de detalhe, avisos (toasts), diálogos, seletores e interruptores do app, e as
+mesmas palavras (em pt-BR quando o app está em português). Um chat remoto se comporta como um
+local: ponto laranja e *Aprovação* quando espera você, ponto de concluído até ser aberto,
+alfinete quando fixado, ⋯/arquivar/fixar ao passar o mouse, renomear com duplo clique.
 
 - **Chats juntos:** os workspaces da VPS aparecem abaixo dos locais, com o ícone de remoto e o
   nome do device. Clique num chat remoto: ele abre na área principal desta janela. Voltar para
@@ -150,10 +156,11 @@ antigo mostram **Atualizar device**.
   **Plug-ins** e **Tarefas de automação** do device (as páginas do próprio DSH da VPS, inline),
   **Portas e previews**, **Sincronizar com este computador…**, **Modelos e conta…**, chats
   arquivados e configurações do device.
-- **Buscar, renomear, fixar, arquivar:** **⋯** (ou botão direito) num chat remoto → Renomear…,
-  Fixar/Desafixar, Abrir no editor, Arquivar. Fixados ficam no topo do grupo; arquivados saem da
-  lista e voltam por **⋯ → Chats arquivados**. **Buscar chats…** procura nos títulos e no
-  conteúdo das mensagens de todos os devices.
+- **Buscar, renomear, fixar, arquivar:** como num chat local — **⋯** (ou botão direito) num chat
+  remoto → Fixar, Renomear, Arquivos, Abrir no editor, Arquivar; ou os botões de arquivar e fixar
+  ao passar o mouse; duplo clique no título renomeia. Arquivar mostra o *Desfazer* do DSH; os
+  arquivados voltam por **⋯ → Chats arquivados**. A **busca da barra lateral do DSH** também
+  encontra os chats remotos (títulos e conteúdo das mensagens), no mesmo formato de resultado.
 - **Previews de portas:** um servidor de desenvolvimento que o agente sobe na VPS (ex.:
   `localhost:5173`) é encaminhado para o **localhost deste computador** — na mesma porta quando
   ela está livre — e aparece um aviso com **Abrir no navegador**. Links `localhost:<porta>` dentro
@@ -209,7 +216,7 @@ dsh-device service install|start|stop|restart|status|logs        serviço system
 ## Desenvolvimento e testes
 
 ```sh
-npm test                  # testes unitários (protocolo, store, auth, túnel, gateway, ssh config)
+npm test                  # unitários (protocolo, store, auth, túnel, gateway, ssh, sync, portas, render da UI)
 sh test/devenv.sh start   # "VPS" (3181) + "Mac" (3281) + modelos simulados (4598/4599)
 node test/e2e-ui.mjs              # chats juntos, inline, troca instantânea (Chromium headless)
 node test/e2e-models-picker.mjs   # chave do modelo no device + seletor de device (HOST_KEY= no host)
@@ -238,8 +245,9 @@ docs/                       ARQUITETURA.md
 ## Limitações conhecidas
 
 - A conversa remota é renderizada pela UI do próprio DSH da VPS embutida na janela (por isso
-  arquivos, terminal e aprovações funcionam completos). A busca nativa da barra lateral do Mac
-  não procura nos chats remotos: use **⋯ → Buscar chats…** do device.
+  arquivos, terminal e aprovações funcionam completos). As linhas remotas usam as classes de
+  estilo da barra lateral do DSH, descobertas em tempo de execução; se uma versão futura do DSH
+  mudá-las, o plugin cai num estilo próprio equivalente.
 - Servidores que o agente sobe com `nohup … &` são encerrados pelo próprio DSH quando o comando
   termina; servidores longos rodam como *job* do DSH (o agente faz isso sozinho) e esses são
   encaminhados automaticamente, assim como qualquer servidor rodando dentro de um workspace.

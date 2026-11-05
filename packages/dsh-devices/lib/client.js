@@ -190,7 +190,7 @@ window.__ModuleLoader__.load({
       editorHostHint: 'An alias from ~/.ssh/config, or user@host, that this computer’s editor uses to reach the device.',
       editorHostNeeded: '{device} was paired with a code; tell this computer’s editor how to reach it over SSH.', editorOpening: 'Opening in {editor}…',
       thisMac: 'This computer', chooseDevice: 'Where should this session run?', addDeviceMenu: 'Add device…',
-      modelMissing: '{device} has no DeepSeek API key yet, so its chats have no models.',
+      modelMissing: '{device} has no DeepSeek access yet (API key or account), so its chats have no models.',
       modelOk: 'DeepSeek API key configured', modelSource: 'source: {source}',
       useMacKey: 'Use this computer’s key', pasteKey: 'Paste key', changeKey: 'Change key', removeKey: 'Remove key',
       saveKey: 'Save key', keyPlaceholder: 'sk-…', keySaved: 'Key saved on {device}.', deviceSettings: 'Device settings',
@@ -216,7 +216,7 @@ window.__ModuleLoader__.load({
       editorHostHint: 'Um alias do ~/.ssh/config, ou usuário@host, que o editor deste computador usa para chegar ao device.',
       editorHostNeeded: '{device} foi pareado por código; diga como o editor deste computador chega nele por SSH.', editorOpening: 'Abrindo no {editor}…',
       thisMac: 'Este computador', chooseDevice: 'Onde esta sessão vai rodar?', addDeviceMenu: 'Adicionar device…',
-      modelMissing: '{device} ainda não tem chave da API do DeepSeek, então os chats dele ficam sem modelos.',
+      modelMissing: '{device} ainda não tem acesso ao DeepSeek (chave da API ou conta), então os chats dele ficam sem modelos.',
       modelOk: 'Chave da API do DeepSeek configurada', modelSource: 'origem: {source}',
       useMacKey: 'Usar a chave deste computador', pasteKey: 'Colar chave', changeKey: 'Trocar chave', removeKey: 'Remover chave',
       saveKey: 'Salvar chave', keyPlaceholder: 'sk-…', keySaved: 'Chave salva em {device}.', deviceSettings: 'Configurações do device',
@@ -272,7 +272,10 @@ window.__ModuleLoader__.load({
       useMacAccount: 'Use this computer’s account', signOutDevice: 'Sign out on the device', accountShared: 'Signed in on {device} with this computer’s account.',
       accountNote: 'The device uses this computer’s sign-in. Signing out on the device keeps this computer signed in; signing out on this computer also stops the device.',
       modelReadyAccount: 'Using your DeepSeek account', addApiKey: 'Add an API key', hostOutdatedFeature: 'Update {device} to use this.',
-      deviceSection: 'Device',
+      deviceSection: 'Device', waitingCount: '{n} waiting for you', archived: 'Archived', undo: 'Undo', failed: 'failed',
+      updating: 'Updating the device host on {device}…', updated: '{device} is up to date.',
+      apiKeyName: 'DeepSeek API key', accountName: 'DeepSeek account', configured: 'Configured', notConfigured: 'Not set',
+      signedIn: 'Signed in', notSignedIn: 'Not signed in', noModels: 'No models', setUpModels: 'Set up models', yourDevices: 'Your devices',
     })
     Object.assign(ptBR, {
       moreActions: 'Mais ações', sessionActions: 'Ações da sessão', renameSession: 'Renomear…', renameTitle: 'Renomear sessão', sessionName: 'Nome da sessão',
@@ -304,7 +307,10 @@ window.__ModuleLoader__.load({
       useMacAccount: 'Usar a conta deste computador', signOutDevice: 'Sair no device', accountShared: 'Conectado em {device} com a conta deste computador.',
       accountNote: 'O device usa o login deste computador. Sair no device mantém este computador conectado; sair neste computador também desconecta o device.',
       modelReadyAccount: 'Usando a sua conta DeepSeek', addApiKey: 'Adicionar chave da API', hostOutdatedFeature: 'Atualize {device} para usar isto.',
-      deviceSection: 'Device',
+      deviceSection: 'Device', waitingCount: '{n} esperando por você', archived: 'Arquivada', undo: 'Desfazer', failed: 'falhou',
+      updating: 'Atualizando o device host de {device}…', updated: '{device} está atualizado.',
+      apiKeyName: 'Chave da API DeepSeek', accountName: 'Conta DeepSeek', configured: 'Configurada', notConfigured: 'Não configurada',
+      signedIn: 'Conectada', notSignedIn: 'Não conectada', noModels: 'Sem modelos', setUpModels: 'Configurar modelos', yourDevices: 'Seus devices',
     })
     Object.assign(zh, {
       moreActions: '更多操作', sessionActions: '会话操作', renameSession: '重命名…', renameTitle: '重命名会话', sessionName: '会话名称',
@@ -331,7 +337,9 @@ window.__ModuleLoader__.load({
       accountTitle: '模型与账号 — {device}', accountSignedIn: '{device} 已登录 DeepSeek 账号', accountSignedOut: '{device} 没有登录 DeepSeek 账号',
       useMacAccount: '使用本机的账号', signOutDevice: '在设备上退出', accountShared: '已用本机账号登录 {device}。',
       accountNote: '设备使用本机的登录。在设备上退出不影响本机；在本机退出会同时让设备失效。',
-      modelReadyAccount: '正在使用你的 DeepSeek 账号', addApiKey: '添加 API Key', hostOutdatedFeature: '请更新 {device} 后使用。', deviceSection: '设备',
+      modelReadyAccount: '正在使用你的 DeepSeek 账号', addApiKey: '添加 API Key', hostOutdatedFeature: '请更新 {device} 后使用。', deviceSection: '设备', waitingCount: '{n} 个等待你处理', archived: '已归档', undo: '撤销', failed: '失败',
+      updating: '正在更新 {device} 的设备主机…', updated: '{device} 已是最新。', apiKeyName: 'DeepSeek API Key', accountName: 'DeepSeek 账号', configured: '已配置', notConfigured: '未设置', signedIn: '已登录', notSignedIn: '未登录',
+      noModels: '没有模型', setUpModels: '设置模型', yourDevices: '你的设备',
     })
 
     function fill(text, vars) {
@@ -393,12 +401,14 @@ window.__ModuleLoader__.load({
       askEditorHost: null,
       toast: null,
       localAccount: null,
-      /** open context menu: { kind: 'device'|'session', deviceId, sessionId?, x, y } */
-      menu: null,
-      /** open dialog: { kind: 'rename'|'sync'|'ports'|'search'|'archived'|'account'|'confirm-archive', deviceId?, sessionId?, title? } */
+      /** open dialog: { kind: 'rename'|'sync'|'ports'|'archived'|'account'|'confirm-archive', deviceId?, sessionId?, title? } */
       dialog: null,
-      /** in-app notices (attention, forwarded ports): [{ id, title, body, actions }] */
-      notes: [],
+      /** device picker anchored to a pill: { rect, current } */
+      picker: null,
+      /** remote turns that finished since their chat was last open ("deviceId:sessionId" → true), like DSH's completion dot */
+      unread: readUnread(),
+      /** query typed in DSH's own sidebar search */
+      nativeSearch: '',
       expanded: {},
       localUntil: 0,
       version: 0,
@@ -451,6 +461,24 @@ window.__ModuleLoader__.load({
       try {
         frames.syncPorts()
       } catch {}
+      // Forget read marks of devices and sessions that are gone (only once a device's list is known).
+      const devices = store.data.devices || []
+      let pruned = null
+      for (const key of Object.keys(store.unread)) {
+        const [deviceId, sessionId] = key.split(':')
+        const d = devices.find((x) => x.id === deviceId)
+        const gone = !d || (d.sessionsAt && Array.isArray(d.sessions) && !d.sessions.some((s) => s.sessionId === sessionId))
+        if (gone) {
+          pruned = pruned || { ...store.unread }
+          delete pruned[key]
+        }
+      }
+      if (pruned) {
+        try {
+          localStorage.setItem('dsh-devices.unread', JSON.stringify(pruned))
+        } catch {}
+        store.unread = pruned
+      }
       for (const d of store.data.devices || []) {
         if (!d.portsKnown) continue
         // The first port list of a device (app start) is recorded silently.
@@ -524,12 +552,24 @@ window.__ModuleLoader__.load({
       const list = store.editors || []
       return list.find((e) => e.id === store.settings.editor) || list.find((e) => e.installed) || list[0] || { id: 'vscode', label: 'VS Code' }
     }
-    function showToast(text) {
-      setStore({ toast: { text, at: Date.now() } })
-      setTimeout(() => {
-        if (store.toast && Date.now() - store.toast.at >= 3500) setStore({ toast: null })
-      }, 3600)
-      frames.renderToast(text)
+    let toastSeq = 0
+    const toastQueue = []
+    /**
+     * DSH's own toast (bottom centre, one at a time): `{ icon, tone, actions: [{ label, onClick }], holdMs, kind }`.
+     * A showing "needs you" notice is not replaced by a lesser toast: that one waits its turn.
+     */
+    function showToast(text, options = {}) {
+      toastSeq += 1
+      const next = { seq: toastSeq, text, ...options }
+      if (store.toast && store.toast.kind === 'attention' && next.kind !== 'attention') {
+        toastQueue.push(next)
+        return
+      }
+      setStore({ toast: next })
+    }
+    function toastDone(seq) {
+      if (!store.toast || store.toast.seq !== seq) return
+      setStore({ toast: toastQueue.shift() || null })
     }
     async function openInEditor(deviceId, { path: target, sessionId } = {}) {
       const device = (store.data.devices || []).find((d) => d.id === deviceId)
@@ -556,6 +596,7 @@ window.__ModuleLoader__.load({
       for (const n of list) {
         if (seenNotes.has(n.id)) continue
         seenNotes.add(n.id)
+        if (n.kind !== 'attention' && !/abort|cancel|interrupt/i.test(n.reason || '') && !chatVisible(n.deviceId, n.sessionId)) setUnread(`${n.deviceId}:${n.sessionId}`, true)
         maybeNotify(n)
       }
     }
@@ -565,14 +606,16 @@ window.__ModuleLoader__.load({
       const open = () => device && openRemote(appCtx, device, n.sessionId)
       if (n.kind === 'attention') {
         if (store.settings.notifyAttention === false) return
-        const title = n.title || appT('untitled')
-        const what = n.pendingKind === 'approval' ? fill(appT('needsApproval'), { tool: n.toolName || '' }) : appT('needsAnswer')
-        const body = `${fill(appT('notifyNeedsYou'), { device: n.deviceName })} — ${what}`
+        const title = n.title || nt('session.untitled', null, appT('untitled'))
+        // DSH's own words for the state ("Waiting for approval"), then where.
+        const what = n.pendingKind === 'approval' ? nt('status.waitingApproval', null, 'Waiting for approval') : nt('status.waitingAnswer', null, 'Waiting for answer')
         // Looking at this very chat already: nothing to say.
         if (focused && store.activePanel === CHAT_PANEL_ID && store.selection && store.selection.deviceId === n.deviceId && store.embedded[n.deviceId] === n.sessionId) return
-        // Always an in-app notice (still there when you come back); a system notification when away.
-        pushNote({ id: n.id, kind: 'attention', title, body, actions: [{ label: appT('open'), run: open }] })
-        if (!focused) sendNotification({ key: n.id, title, body, onClick: open })
+        pushNote({ id: n.id, kind: 'attention', title, body: `${what} · ${n.deviceName}`, actions: [{ label: appT('open'), run: open }] })
+        if (!focused) {
+          const detail = n.pendingKind === 'approval' ? fill(appT('needsApproval'), { tool: n.toolName || '' }) : appT('needsAnswer')
+          sendNotification({ key: n.id, title, body: `${fill(appT('notifyNeedsYou'), { device: n.deviceName })} — ${detail}`, onClick: open })
+        }
         return
       }
       const mode = store.settings.notify
@@ -584,16 +627,17 @@ window.__ModuleLoader__.load({
       sendNotification({ key: n.id, title, body, onClick: open })
     }
 
-    /** In-app notice (bottom right), for things that need a click: attention, new forwarded ports. */
+    /** A notice with an action (attention, a forwarded port), as a DSH toast that stays a little longer. */
+    const shownNotes = new Set()
     function pushNote(note) {
-      if ((store.notes || []).some((x) => x.id === note.id)) return
-      const next = [...(store.notes || []), { ...note, at: Date.now() }].slice(-4)
-      setStore({ notes: next })
-      setTimeout(() => dismissNote(note.id), note.kind === 'attention' ? 20_000 : 9000)
-    }
-    function dismissNote(id) {
-      if (!(store.notes || []).some((x) => x.id === id)) return
-      setStore({ notes: store.notes.filter((x) => x.id !== id) })
+      if (shownNotes.has(note.id)) return
+      shownNotes.add(note.id)
+      showToast(note.body ? `${note.title} — ${note.body}` : note.title, {
+        kind: note.kind || 'info',
+        icon: note.kind === 'attention' ? Icon('IconWarningOutlineRegular') : Icon('IconGlobeOutlineRegular'),
+        actions: (note.actions || []).map((a) => ({ label: a.label, onClick: () => (setStore({ toast: null }), a.run()) })),
+        holdMs: note.kind === 'attention' ? 10_000 : 6000,
+      })
     }
     async function openForwarded(localPort) {
       try {
@@ -652,6 +696,35 @@ window.__ModuleLoader__.load({
       } catch {}
       setStore({ settings: next })
     }
+    function readUnread() {
+      try {
+        return JSON.parse(localStorage.getItem('dsh-devices.unread') || '{}')
+      } catch {
+        return {}
+      }
+    }
+    function setUnread(key, on) {
+      if (!!store.unread[key] === !!on) return
+      const next = { ...store.unread }
+      if (on) next[key] = true
+      else delete next[key]
+      try {
+        localStorage.setItem('dsh-devices.unread', JSON.stringify(next))
+      } catch {}
+      setStore({ unread: next })
+    }
+    /** The window came back: the remote chat on screen is read. */
+    function clearVisibleUnread() {
+      if (document.visibilityState !== 'visible' || store.activePanel !== CHAT_PANEL_ID || !store.selection) return
+      const { deviceId } = store.selection
+      const sessionId = store.selection.sessionId || store.embedded[deviceId]
+      if (sessionId) setUnread(`${deviceId}:${sessionId}`, false)
+    }
+    /** Whether this remote chat is on screen right now. */
+    function chatVisible(deviceId, sessionId) {
+      return store.activePanel === CHAT_PANEL_ID && !!store.selection && store.selection.deviceId === deviceId && (store.selection.sessionId === sessionId || store.embedded[deviceId] === sessionId) && document.visibilityState === 'visible'
+    }
+
     function readCollapsed() {
       try {
         return JSON.parse(localStorage.getItem('dsh-devices.collapsed') || '{}')
@@ -691,9 +764,11 @@ window.__ModuleLoader__.load({
         host.id = 'dsh-devices-frames'
         host.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;display:none;z-index:4;overflow:hidden;background:var(--dsw-alias-bg-base,#fff)'
         const status = document.createElement('div')
-        status.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font:13px/20px system-ui,-apple-system,sans-serif;color:var(--dsw-alias-label-tertiary,#888);text-align:center;padding:24px'
+        status.className = 'dshdev-chat-status'
+        status.style.display = 'none'
         host.appendChild(status)
         this.status = status
+        this.statusRoot = ReactDOMClient.createRoot(status)
         document.body.appendChild(host)
         this.host = host
         window.addEventListener('message', (event) => this.onMessage(event))
@@ -751,13 +826,14 @@ window.__ModuleLoader__.load({
           }
           if (msg.type === 'pick-device' && msg.rect) {
             const r = f.iframe.getBoundingClientRect()
-            openDeviceMenu({ x: r.left + msg.rect.left, y: r.top + msg.rect.bottom + 6, current: deviceId })
+            openDevicePicker({ rect: { left: r.left + msg.rect.left, top: r.top + msg.rect.top, right: r.left + msg.rect.right, bottom: r.top + msg.rect.bottom }, current: deviceId })
           }
           if (msg.type === 'session') {
             store.embedded = { ...store.embedded, [deviceId]: msg.sessionId || null }
             // (a device panel stays selected: the device reports its current session on boot too)
             if (store.selection && store.selection.deviceId === deviceId && msg.sessionId) store.selection = { ...store.selection, sessionId: msg.sessionId }
             emit()
+            if (msg.sessionId && chatVisible(deviceId, msg.sessionId)) setUnread(`${deviceId}:${msg.sessionId}`, false)
           }
         }
       },
@@ -862,20 +938,6 @@ window.__ModuleLoader__.load({
       broadcastConfig() {
         for (const id of this.byDevice.keys()) this.sendConfig(id)
       },
-      renderToast(text) {
-        if (!this.host) return
-        if (!this.toastEl) {
-          this.toastEl = document.createElement('div')
-          this.toastEl.style.cssText = 'position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:3;padding:8px 14px;border-radius:10px;font:13px/18px system-ui,-apple-system,sans-serif;color:#fff;background:rgba(17,17,17,.88);box-shadow:0 6px 20px rgba(0,0,0,.2);pointer-events:none;transition:opacity .2s;opacity:0'
-          this.host.appendChild(this.toastEl)
-        }
-        this.toastEl.textContent = text
-        this.toastEl.style.opacity = '1'
-        clearTimeout(this.toastTimer)
-        this.toastTimer = setTimeout(() => {
-          if (this.toastEl) this.toastEl.style.opacity = '0'
-        }, 3200)
-      },
       reload(deviceId) {
         const f = this.byDevice.get(deviceId)
         if (!f) return
@@ -919,36 +981,35 @@ window.__ModuleLoader__.load({
         const f = this.active && this.byDevice.get(this.active)
         const device = this.active && (store.data.devices || []).find((d) => d.id === this.active)
         const name = device ? device.name : 'device'
-        this.status.textContent = ''
         if (!f || f.loaded) {
           this.status.style.display = 'none'
+          this.statusRoot.render(null)
           return
         }
         this.status.style.display = 'flex'
-        const text = document.createElement('div')
-        text.textContent = f.failed ? fill(appT('loadFailed'), { device: name }) : fill(appT('loadingDevice'), { device: name })
-        this.status.appendChild(text)
-        if (f.failed) {
-          const row = document.createElement('div')
-          row.style.cssText = 'display:flex;gap:8px'
-          const mk = (label, onClick, primary) => {
-            const b = document.createElement('button')
-            b.type = 'button'
-            b.textContent = label
-            b.style.cssText = `font:inherit;padding:6px 12px;border-radius:8px;cursor:pointer;border:1px solid ${primary ? 'transparent' : 'rgba(0,0,0,.18)'};background:${primary ? '#111' : 'transparent'};color:${primary ? '#fff' : 'inherit'}`
-            b.addEventListener('click', onClick)
-            row.appendChild(b)
-          }
-          mk(appT('retry'), () => {
-            entries.delete(this.active)
-            const id = this.active
-            this.drop(id)
-            const d = (store.data.devices || []).find((x) => x.id === id)
-            this.show(id, d, null).catch(() => {})
-          }, true)
-          if (device) mk(appT('openWindow'), () => openInWindow(device).catch(() => {}), false)
-          this.status.appendChild(row)
+        const id = this.active
+        const retry = () => {
+          entries.delete(id)
+          this.drop(id)
+          const d = (store.data.devices || []).find((x) => x.id === id)
+          this.show(id, d, null).catch(() => {})
         }
+        const text = f.failed ? fill(appT('loadFailed'), { device: name }) : fill(appT('loadingDevice'), { device: name })
+        this.statusRoot.render(
+          h(
+            'div',
+            { className: 'dshdev-frame-status' },
+            f.failed || !P.TextShimmer ? h('div', null, text) : h(P.TextShimmer, null, text),
+            f.failed
+              ? h(
+                  'div',
+                  { className: 'dshdev-frame-status-actions' },
+                  h(ModalButton, { variant: 'primary', onClick: retry }, appT('retry')),
+                  device ? h(ModalButton, { variant: 'outline', onClick: () => openInWindow(device).catch(() => {}) }, appT('openWindow')) : null,
+                )
+              : null,
+          ),
+        )
       },
       drop(deviceId) {
         const f = this.byDevice.get(deviceId)
@@ -990,6 +1051,7 @@ window.__ModuleLoader__.load({
     }
 
     function openRemote(ctx, device, sessionId) {
+      if (sessionId) setUnread(`${device.id}:${sessionId}`, false)
       setStore({ selection: { deviceId: device.id, sessionId: sessionId || null } })
       try {
         ctx.layout.selectPanel(CHAT_PANEL_ID)
@@ -1007,172 +1069,203 @@ window.__ModuleLoader__.load({
 
     // ── styles ──────────────────────────────────────────────────────────────
     const CSS = `
-.dshdev-page{height:100%;overflow:auto;padding:calc(var(--dsh-frame-top-clearance,0px) + 28px) 32px 40px;box-sizing:border-box;color:var(--dsw-alias-label-primary)}
-.dshdev-inner{max-width:880px;margin:0 auto}
-.dshdev-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
-.dshdev-head h1{font-size:20px;line-height:28px;font-weight:600;margin:0}
-.dshdev-sub{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;margin-top:4px;max-width:560px}
-.dshdev-actions{display:flex;gap:8px;flex-shrink:0}
-.dshdev-empty{border:1px dashed var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,12px);padding:28px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px;text-align:center}
-.dshdev-card{border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,12px);margin-bottom:12px;background:var(--dsw-alias-bg-base)}
-.dshdev-row{display:flex;align-items:center;gap:12px;padding:14px 16px}
-.dshdev-main{flex:1;min-width:0}
-.dshdev-name{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;line-height:20px}
-.dshdev-meta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dshdev-err{color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px;margin-top:2px}
-.dshdev-tag{font-size:11px;line-height:16px;padding:0 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l3);color:var(--dsw-alias-label-secondary);font-weight:500}
-.dshdev-tag.warn{border-color:var(--dsw-alias-state-warn-label,#d97706);color:var(--dsw-alias-state-warn-label,#d97706)}
-.dshdev-sessions{border-top:1px solid var(--dsw-alias-border-l1);padding:6px 8px 8px}
-.dshdev-sessions-title{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--dsw-alias-label-caption,var(--dsw-alias-label-tertiary));padding:6px 8px}
-.dshdev-session{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 8px;color:inherit;font:inherit;cursor:pointer}
-.dshdev-session:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshdev-session:focus-visible{outline:2px solid var(--dsw-focus-ring-color);outline-offset:1px}
-.dshdev-s-title{flex:1;min-width:0;font-size:13px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dshdev-s-meta{font-size:12px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
-.dshdev-none{font-size:12px;color:var(--dsw-alias-label-tertiary);padding:4px 8px 8px}
-.dshdev-menu{position:relative}
-.dshdev-pop{position:absolute;right:0;top:calc(100% + 4px);z-index:20;min-width:190px;padding:4px;border-radius:10px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base)));box-shadow:var(--dsw-elevation-prominent,0 8px 24px rgba(0,0,0,.18))}
-.dshdev-pop button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:6px;padding:7px 10px;color:inherit;font:inherit;font-size:13px;cursor:pointer}
-.dshdev-pop button:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshdev-pop button.danger{color:var(--dsw-alias-state-error-primary)}
-.dshdev-modal{width:min(540px,calc(100vw - 48px))!important;max-width:none!important}
-.dshdev-modal.dshdev-modal-sm{width:min(440px,calc(100vw - 48px))!important}
-.dshdev-form{display:flex;flex-direction:column;gap:16px;width:100%;min-width:0;box-sizing:border-box}
-.dshdev-form *{box-sizing:border-box}
-.dshdev-field{min-width:0}
-.dshdev-disclosure{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:2px 0;font:inherit;font-size:13px;color:var(--dsw-alias-label-secondary);cursor:pointer}
-.dshdev-disclosure:hover{color:var(--dsw-alias-label-primary)}
-.dshdev-chev{display:inline-block;width:10px;font-size:11px}
-.dshdev-span2{grid-column:1 / -1}
-.dshdev-steps{margin:0;padding:10px 12px 10px 30px;border-radius:10px;background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.04));font-size:13px;line-height:22px;color:var(--dsw-alias-label-secondary)}
-.dshdev-steps code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;padding:1px 6px;border-radius:6px;background:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));white-space:nowrap}
-.dshdev-tag.ok{border-color:var(--dsw-alias-state-business-primary,#16a34a);color:var(--dsw-alias-state-business-primary,#16a34a)}
-.dshdev-saved-text{display:flex;flex-direction:column;min-width:0;flex:1;line-height:18px}
-.dshdev-saved-text .dshdev-s-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dshdev-field label{display:block;font-size:12px;font-weight:500;margin-bottom:6px;color:var(--dsw-alias-label-secondary)}
-.dshdev-hint{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);margin-top:6px;overflow-wrap:anywhere}
-.dshdev-grid{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px}
-.dshdev-tabs{display:flex;gap:4px;padding:3px;border-radius:10px;background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05));align-self:stretch}
-.dshdev-tabs button{flex:1}
-.dshdev-tabs button{background:none;border:0;border-radius:7px;padding:5px 12px;font:inherit;font-size:13px;color:var(--dsw-alias-label-secondary);cursor:pointer}
-.dshdev-tabs button[aria-selected=true]{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.dshdev-log{max-height:220px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:17px;background:var(--dsw-alias-interactive-bg-hover);border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-word}
-.dshdev-fp{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);word-break:break-all}
-.dshdev-ok{color:var(--dsw-alias-state-business-primary);font-size:13px}
-.dshdev-text{font-size:13px;line-height:20px;color:var(--dsw-alias-label-secondary)}
-.dshdev-input{width:100%;box-sizing:border-box;height:36px;border-radius:10px;border:1px solid var(--dsw-alias-border-l3,rgba(0,0,0,.18));background:var(--dsw-alias-bg-base,transparent);color:inherit;font:inherit;font-size:13px;padding:0 12px;transition:border-color .12s,box-shadow .12s}
-.dshdev-input::placeholder{color:var(--dsw-alias-label-tertiary,#9aa0a6)}
-.dshdev-input:focus{outline:none;border-color:var(--dsw-focus-ring-color,#4176e6);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-focus-ring-color,#4176e6) 22%,transparent)}
+/* Every value below mirrors a DSH stylesheet (Plugins page, Settings rows,
+   Models cards, sidebar rows) so plugin surfaces look like the app's own. */
 .dshdev-remote-root{display:block}
+[class*="_list"]:has([data-dshdev-search] [data-dshdev-result]) [class*="_searchStatus"]{display:none}
 [class*="_list"]:has(> .dshdev-remote-root [data-dshdev-device]) > [class*="_emptyState"]{display:none}
 .dshdev-remote-root .dshdev-devname{color:var(--dsw-alias-label-tertiary);font-size:12px;margin-left:6px;white-space:nowrap}
 .dshdev-remote-root .dshdev-dim{opacity:.55}
-.dshdev-remote-root .dshdev-remote-mark{display:inline-flex;color:var(--dsw-alias-label-tertiary)}
-.dshdev-remote-root .dshdev-remote-folder{display:inline-flex;color:rgb(65,118,230)}
-/* fallback row styles when the sidebar's own classes cannot be discovered */
+.dshdev-remote-mark{display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-caption,var(--dsw-alias-label-tertiary))}
+.dshdev-group-status{display:inline-flex;align-items:center;margin-left:4px;flex:none}
+[class*="_projectRow"]:hover > .dshdev-group-status{display:none}
+.dshdev-fb-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dsw-alias-label-tertiary)}
+.dshdev-fb-dot.warning{background:var(--dsw-alias-state-warn-label,#d97706)}.dshdev-fb-dot.done{background:var(--dsw-alias-state-success-primary,#16a34a)}.dshdev-fb-dot.ongoing{background:var(--dsw-focus-ring-color,#4176e6)}
+.dshdev-fb-menu-root{display:inline-flex}
+.dshdev-fb-menu{position:fixed;z-index:80;min-width:220px;padding:4px;border-radius:var(--dsw-radius-lg,12px);border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#fff));box-shadow:0 12px 32px rgba(0,0,0,.18);color:var(--dsw-alias-label-primary)}
+.dshdev-fb-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:var(--dsw-radius-sm,6px);padding:6px 10px;font:inherit;font-size:13px;color:inherit;cursor:pointer}
+.dshdev-fb-item:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.dshdev-fb-item:disabled{opacity:.5}.dshdev-fb-item.danger{color:var(--dsw-alias-state-error-primary)}
+.dshdev-fb-item-icon{display:inline-flex;width:16px;color:var(--dsw-alias-label-secondary)}
+.dshdev-fb-sep{height:.5px;margin:4px 6px;background:var(--dsw-alias-border-l2)}
+.dshdev-fb-label{font-size:12px;color:var(--dsw-alias-label-tertiary);padding:6px 10px 2px}
+.dshdev-fb-switch{position:relative;width:36px;height:20px;border-radius:10px;border:0;background:var(--dsw-alias-border-l3);cursor:pointer;padding:0}
+.dshdev-fb-switch.on{background:var(--dsw-alias-button-primary-fill,#111)}
+.dshdev-fb-switch span{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:8px;background:#fff;transition:left .15s}.dshdev-fb-switch.on span{left:18px}
+.dshdev-fb-segmented{display:flex;gap:4px;padding:3px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-module-platform)}
+.dshdev-fb-segmented button{flex:1;background:none;border:0;border-radius:var(--dsw-radius-sm);padding:5px 12px;font:inherit;font-size:13px;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.dshdev-fb-segmented button[aria-selected=true]{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}
+.dshdev-fb-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;gap:10px;align-items:center;padding:8px 14px;border-radius:10px;font-size:13px;line-height:18px;color:#fff;background:rgba(17,17,17,.9)}
+.dshdev-fb-toast button{background:none;border:0;color:#8ab4ff;font:inherit;cursor:pointer;padding:0}
+.dshdev-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* fallback rows when the sidebar's own classes cannot be found */
 .dshdev-fb-group{padding:0 0 4px}
-.dshdev-fb-project,.dshdev-fb-session{display:flex;align-items:center;height:32px;padding:0 8px;border-radius:12px;font-size:14px;cursor:pointer;color:var(--dsw-alias-label-primary);gap:6px;user-select:none}
-.dshdev-fb-project:hover,.dshdev-fb-session:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshdev-fb-session.dshdev-fb-selected{background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-fb-project,.dshdev-fb-session{display:flex;align-items:center;height:32px;padding:0 8px;border-radius:var(--dsw-radius-lg,12px);font-size:14px;cursor:pointer;color:var(--dsw-alias-label-primary);gap:6px;user-select:none;position:relative}
+.dshdev-fb-project:hover,.dshdev-fb-session:hover,.dshdev-fb-selected{background:var(--dsw-alias-interactive-bg-hover)}
 .dshdev-fb-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 6px 0 4px}
 .dshdev-fb-time{font-size:10px;color:var(--dsw-alias-label-tertiary)}
-.dshdev-fb-slot{display:inline-flex;width:20px;justify-content:center;color:var(--dsw-alias-label-tertiary)}
-.dshdev-fb-actions{display:none;margin-left:auto}
-.dshdev-fb-project:hover .dshdev-fb-actions{display:inline-flex}
-.dshdev-fb-iconbtn{background:none;border:0;padding:2px;border-radius:6px;color:inherit;cursor:pointer;display:inline-flex}
-.dshdev-saved{display:flex;flex-direction:column;gap:6px}
-.dshdev-saved-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));border-radius:10px;padding:8px 12px;color:inherit;font:inherit;font-size:13px;cursor:pointer;transition:background .12s,border-color .12s}
-.dshdev-saved-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshdev-saved-item.on{border-color:var(--dsw-focus-ring-color,#4176e6);background:var(--dsw-alias-interactive-bg-hover);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-focus-ring-color,#4176e6) 18%,transparent)}
-.dshdev-saved-item:disabled{opacity:.6;cursor:default}
-.dshdev-saved-name{font-weight:600;white-space:nowrap}
-.dshdev-saved-item .dshdev-s-meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.dshdev-menu-caption{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--dsw-alias-label-tertiary);padding:8px 10px 4px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:4px}
-.dshdev-menu-suffix{color:var(--dsw-alias-label-tertiary);margin-left:6px;font-size:12px}
-.dshdev-menu-item{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:6px 10px;font:inherit;color:inherit;cursor:pointer}
-.dshdev-chat-wrap{display:flex;flex-direction:column;width:100%;height:100%}
-.dshdev-chat-banner{padding:calc(var(--dsh-frame-top-clearance,0px) + 12px) 16px 12px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));background:var(--dsw-alias-bg-base,#fff)}
-.dshdev-chat-panel{position:relative;width:100%;flex:1;min-height:0}
-.dshdev-model{border-radius:10px;padding:10px 12px;font-size:13px;line-height:20px}
-.dshdev-model.ok{display:flex;align-items:center;gap:8px;background:transparent;padding:4px 0}
-.dshdev-model.warn{background:color-mix(in srgb,var(--dsw-alias-state-warn-label,#d97706) 9%,transparent);border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-label,#d97706) 35%,transparent);display:flex;flex-direction:column;gap:8px}
-.dshdev-model.banner{max-width:880px;margin:0 auto}
-.dshdev-model-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.dshdev-model-stack{display:flex;flex-direction:column;gap:2px}
-.dshdev-model-stack .dshdev-linkbtn{align-self:flex-start;margin-left:16px}
-.dshdev-context{display:flex;align-items:center;gap:6px;padding:calc(var(--dsh-frame-top-clearance,0px) + 6px) 16px 6px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);border-bottom:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));background:var(--dsw-alias-bg-base,#fff)}
-.dshdev-context-device{font-weight:600;color:var(--dsw-alias-label-primary)}
-.dshdev-context-sep{color:var(--dsw-alias-label-tertiary)}
-.dshdev-model-dot{width:8px;height:8px;border-radius:4px;background:var(--dsw-alias-state-warn-label,#d97706);flex-shrink:0}
-.dshdev-model-dot.ok{background:var(--dsw-alias-state-business-primary,#16a34a)}
-.dshdev-model-text{flex:1;min-width:0;color:var(--dsw-alias-label-primary)}
-.dshdev-model.ok .dshdev-model-text{color:var(--dsw-alias-label-secondary);font-size:12px;flex:0 1 auto}
-.dshdev-model-actions{display:flex;gap:4px;margin-left:auto}
-.dshdev-key-input{flex:1;min-width:180px;max-width:320px}
-.dshdev-dm{position:fixed;z-index:60;min-width:260px;max-width:320px;padding:6px;border-radius:12px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#fff)));box-shadow:var(--dsw-elevation-prominent,0 12px 32px rgba(0,0,0,.18));backdrop-filter:var(--dsw-menu-backdrop-filter,none);color:var(--dsw-alias-label-primary)}
-.dshdev-dm-title{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--dsw-alias-label-tertiary);padding:6px 10px 4px}
-.dshdev-dm-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 10px;font:inherit;font-size:13px;color:inherit;cursor:pointer}
-.dshdev-dm-item:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05))}
-.dshdev-dm-item:disabled{opacity:.5;cursor:default}
-.dshdev-dm-icon{display:inline-flex;width:16px;justify-content:center;color:var(--dsw-alias-label-secondary)}
-.dshdev-dm-label{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.dshdev-dm-meta{font-size:12px;color:var(--dsw-alias-label-tertiary)}
-.dshdev-dm-check{color:var(--dsw-focus-ring-color,#4176e6);font-size:13px}
-.dshdev-dm-sep{height:1px;margin:4px 6px;background:var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
-.dshdev-pill{margin-right:6px}
-.dshdev-more{display:block;background:none;border:0;padding:6px 8px 6px 36px;font:inherit;font-size:12px;color:var(--dsw-alias-label-tertiary,#8a8f98);cursor:pointer;text-align:left}
+.dshdev-fb-slot,.dshdev-fb-folder,.dshdev-fb-chevron{display:inline-flex;width:20px;justify-content:center;color:var(--dsw-alias-label-tertiary)}
+.dshdev-fb-arrow{transition:transform .15s}.dshdev-fb-arrow-open{transform:rotate(90deg)}
+.dshdev-fb-actions{display:none;margin-left:auto;gap:2px}
+.dshdev-fb-project:hover .dshdev-fb-actions,.dshdev-fb-session:hover .dshdev-fb-actions,.dshdev-fb-menuopen .dshdev-fb-actions{display:inline-flex}
+.dshdev-fb-session:hover .dshdev-fb-time{display:none}
+.dshdev-fb-iconbtn{background:none;border:0;padding:4px;border-radius:var(--dsw-radius-sm,6px);color:inherit;cursor:pointer;display:inline-flex}
+.dshdev-fb-iconbtn:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-fb-pin{display:inline-flex;color:var(--dsw-alias-label-tertiary)}
+.dshdev-hover{display:flex;flex-direction:column;gap:4px;font-size:12px;line-height:18px}
+.dshdev-hover-title{font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}
+.dshdev-hover-sub{color:var(--dsw-alias-label-tertiary)}
+.dshdev-hover-status{display:flex;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary)}
+.dshdev-more{display:block;background:none;border:0;padding:6px 8px 6px 36px;font:inherit;font-size:12px;color:var(--dsw-alias-label-tertiary);cursor:pointer;text-align:left}
 .dshdev-more:hover{color:var(--dsw-alias-label-secondary)}
-.dshdev-settings{display:flex;flex-direction:column;gap:2px;color:var(--dsw-alias-label-primary)}
-.dshdev-set-head{padding-bottom:12px}
-.dshdev-set-h1{font-size:16px;font-weight:600;line-height:24px}
-.dshdev-set-row{display:flex;align-items:center;gap:16px;padding:14px 0;border-top:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
-.dshdev-set-text{flex:1;min-width:0}
-.dshdev-set-title{font-size:14px;line-height:20px}
-.dshdev-set-hint{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);margin-top:2px}
-.dshdev-set-control{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.dshdev-set-foot{padding-top:14px;border-top:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
-.dshdev-linkbtn{background:none;border:0;padding:0;margin-top:6px;font:inherit;font-size:12px;color:var(--dsw-focus-ring-color,#4176e6);cursor:pointer}
-.dshdev-linkbtn:hover{text-decoration:underline}
-.dshdev-select{height:32px;border-radius:8px;border:1px solid var(--dsw-alias-border-l3,rgba(0,0,0,.18));background:var(--dsw-alias-bg-base,#fff);color:inherit;font:inherit;font-size:13px;padding:0 8px;max-width:260px}
-.dshdev-switch{position:relative;width:36px;height:20px;border-radius:10px;border:0;background:var(--dsw-alias-border-l3,rgba(0,0,0,.25));cursor:pointer;padding:0;transition:background .15s}
-.dshdev-switch.on{background:var(--dsw-focus-ring-color,#4176e6)}
-.dshdev-switch-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
-.dshdev-switch.on .dshdev-switch-knob{left:18px}
-.dshdev-chat-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:13px;padding:24px;text-align:center}
-.dshdev-remote-root [data-dshdev-session] .dshdev-row-actions{display:none!important;margin-left:auto;align-items:center}
-.dshdev-remote-root [data-dshdev-session]:hover .dshdev-row-actions,.dshdev-remote-root [data-dshdev-session][data-menu-open] .dshdev-row-actions{display:inline-flex!important}
-.dshdev-remote-root [data-dshdev-session]:hover [data-dshdev-time],.dshdev-remote-root [data-dshdev-session][data-menu-open] [data-dshdev-time]{display:none!important}
-.dshdev-attn{display:inline-flex;color:var(--dsw-alias-state-warn-label,#d97706)}
-.dshdev-attn-text{font-size:11px;color:var(--dsw-alias-state-warn-label,#d97706);white-space:nowrap}
-.dshdev-attn-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:6px;border-radius:8px;font-size:10.5px;font-weight:600;line-height:16px;color:#fff;background:var(--dsw-alias-state-warn-label,#d97706)}
-.dshdev-pin{display:inline-flex;color:var(--dsw-alias-label-tertiary)}
-.dshdev-dm-item.danger{color:var(--dsw-alias-state-error-primary,#dc2626)}
-.dshdev-notes{position:fixed;right:16px;bottom:16px;z-index:70;display:flex;flex-direction:column;gap:8px;max-width:360px;pointer-events:none}
-.dshdev-note{pointer-events:auto;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base,#fff)));box-shadow:var(--dsw-elevation-prominent,0 12px 32px rgba(0,0,0,.18));color:var(--dsw-alias-label-primary);font-size:13px;line-height:18px}
-.dshdev-note.attention{border-color:color-mix(in srgb,var(--dsw-alias-state-warn-label,#d97706) 45%,transparent)}
-.dshdev-note-main{flex:1;min-width:0}
-.dshdev-note-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dshdev-note-body{color:var(--dsw-alias-label-secondary);font-size:12px;margin-top:2px}
-.dshdev-note-actions{display:flex;gap:6px;margin-top:8px}
-.dshdev-note-x{background:none;border:0;padding:0 2px;font-size:16px;line-height:16px;color:var(--dsw-alias-label-tertiary);cursor:pointer}
-.dshdev-global-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;padding:8px 14px;border-radius:10px;font-size:13px;line-height:18px;color:#fff;background:rgba(17,17,17,.88);box-shadow:0 6px 20px rgba(0,0,0,.2);pointer-events:none}
-.dshdev-list{display:flex;flex-direction:column;gap:2px;max-height:min(52vh,460px);overflow:auto;margin:0 -4px;padding:0 4px}
-.dshdev-list-caption{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--dsw-alias-label-tertiary);padding:10px 4px 4px}
-.dshdev-list-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;min-width:0}
-button.dshdev-list-row{width:100%;text-align:left;background:none;border:0;font:inherit;color:inherit;cursor:pointer}
-button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05));outline:none}
-.dshdev-list-main{flex:1;min-width:0}
-.dshdev-list-title{font-size:13px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dshdev-list-sub{font-size:12px;line-height:17px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dshdev-list-sub mark{background:color-mix(in srgb,var(--dsw-focus-ring-color,#4176e6) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
-.dshdev-list-side{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.dshdev-check{width:15px;height:15px;margin:0;accent-color:var(--dsw-focus-ring-color,#4176e6);flex-shrink:0}
-.dshdev-warn{font-size:11.5px;color:var(--dsw-alias-state-warn-label,#d97706)}
-.dshdev-port{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;font-weight:600;min-width:52px}
-.dshdev-switch-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dsw-alias-label-secondary)}
-.dshdev-report-ok{color:var(--dsw-alias-state-business-primary,#16a34a)}
-.dshdev-report-fail{color:var(--dsw-alias-state-error-primary,#dc2626)}
-.dshdev-modal.dshdev-modal-lg{width:min(640px,calc(100vw - 48px))!important}
+.dshdev-menu-labelled{display:inline-flex;align-items:baseline;gap:6px;min-width:0}
+.dshdev-pill{margin-right:6px}
+.dshdev-menu-suffix{color:var(--dsw-alias-label-tertiary);font-size:12px}
+.dshdev-menu-caption{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--dsw-alias-label-tertiary);padding:8px 10px 4px;border-top:.5px solid var(--dsw-alias-border-l2);margin-top:4px}
+.dshdev-menu-item{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:6px 10px;font:inherit;color:inherit;cursor:pointer}
+
+/* modal content */
+.dshdev-modal{width:min(540px,calc(100vw - 48px))!important;max-width:none!important}
+.dshdev-modal.dshdev-modal-sm{width:min(440px,calc(100vw - 48px))!important}
+.dshdev-modal.dshdev-modal-lg{width:min(660px,calc(100vw - 48px))!important}
+.dshdev-modal-body{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dshdev-form{display:flex;flex-direction:column;gap:16px;width:100%;min-width:0;box-sizing:border-box}
+.dshdev-form *{box-sizing:border-box}
+.dshdev-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.dshdev-field-label{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500;line-height:18px}
+.dshdev-field-input{width:100%;box-sizing:border-box;height:36px;border-radius:var(--dsw-radius-md,10px);border:.5px solid var(--dsw-alias-border-l3);background:var(--dsw-alias-bg-module-platform,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:14px;line-height:22px;padding:0 12px;outline:none}
+.dshdev-field-input:focus{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary))}
+.dshdev-field-input::placeholder{color:var(--dsw-alias-label-tertiary)}
+.dshdev-grid{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px}
+.dshdev-span2{grid-column:1 / -1}
+.dshdev-hint-text{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:18px;overflow-wrap:anywhere}
+.dshdev-empty-text{color:var(--dsw-alias-label-tertiary);margin:0;font-size:13px;line-height:20px}
+.dshdev-error-text{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px;line-height:18px;overflow-wrap:anywhere}
+.dshdev-success-text{color:var(--dsw-alias-state-success-primary,var(--dsw-alias-state-business-primary));margin:0;font-size:12px;line-height:18px}
+.dshdev-link-button{align-self:flex-start;box-sizing:border-box;border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-label-tertiary);font:inherit;cursor:pointer;background:0 0;border:none;align-items:center;padding:0 10px;margin-left:-10px;font-size:12px;line-height:18px;display:inline-flex}
+.dshdev-link-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}
+.dshdev-inline-link{background:none;border:0;padding:0;margin-top:6px;font:inherit;font-size:12px;line-height:18px;color:var(--dsw-alias-link,var(--dsw-focus-ring-color));cursor:pointer}
+.dshdev-inline-link:hover{text-decoration:underline}
+.dshdev-footer-switch{display:inline-flex;align-items:center;gap:10px;margin-right:auto;font-size:13px;line-height:20px;color:var(--dsw-alias-label-secondary)}
+.dshdev-disclosure{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:2px 0;font:inherit;font-size:13px;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.dshdev-disclosure:hover{color:var(--dsw-alias-label-primary)}
+.dshdev-disclosure-chevron{transition:transform .15s}.dshdev-disclosure-chevron.open{transform:rotate(90deg)}
+.dshdev-steps{margin:0;padding:12px 14px 12px 32px;border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-module-platform);font-size:13px;line-height:22px;color:var(--dsw-alias-label-secondary)}
+.dshdev-steps code,.dshdev-fp{font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:12px}
+.dshdev-steps code{padding:1px 6px;border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-fill-tsp-secondary);white-space:nowrap}
+.dshdev-fp{padding:8px 10px;border-radius:var(--dsw-radius-md);border:.5px solid var(--dsw-alias-border-l3);word-break:break-all;margin-top:6px}
+.dshdev-log{max-height:220px;overflow:auto;font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:11.5px;line-height:17px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-lg);padding:10px 12px;white-space:pre-wrap;word-break:break-word;color:var(--dsw-alias-label-secondary)}
+.dshdev-options{display:flex;flex-direction:column;gap:6px}
+.dshdev-option{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-lg);padding:8px 12px;color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.dshdev-option:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-option.on{border-color:transparent;box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-option:disabled{opacity:.6;cursor:default}
+.dshdev-option-icon{display:inline-flex;color:var(--dsw-alias-label-secondary)}
+.dshdev-option-text{display:flex;flex-direction:column;min-width:0;flex:1;line-height:18px}
+.dshdev-option-title{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dshdev-option-meta{color:var(--dsw-alias-label-tertiary);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dshdev-archived-list{display:flex;flex-direction:column}
+.dshdev-archived-row{position:relative}
+.dshdev-archived-row .dshdev-archived-actions{display:inline-flex}
+
+/* Plugins-page cards (pages and dialogs) */
+.dshdev-cards{flex-direction:column;gap:2px;margin:0;padding:0;list-style:none;display:flex}
+.dshdev-card2{border-radius:var(--dsw-radius-xl);min-width:0;margin:0 -8px;list-style:none;position:relative}
+.dshdev-card2-link:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-card2-head{align-items:center;gap:14px;padding:8px;display:flex}
+.dshdev-card2-icon{border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-lg);width:48px;height:48px;color:var(--dsw-alias-label-secondary);flex:none;justify-content:center;align-items:center;display:inline-flex;box-sizing:border-box}
+.dshdev-modal-body .dshdev-card2-icon{width:36px;height:36px;border-radius:var(--dsw-radius-md)}
+.dshdev-card2-main{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}
+.dshdev-card2-titlerow{flex-wrap:wrap;align-items:center;gap:8px;min-width:0;display:flex}
+.dshdev-card2-title,.dshdev-card2-open{text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:500;line-height:20px;overflow:hidden}
+.dshdev-card2-open{max-width:100%;color:inherit;font:inherit;font-weight:500;text-align:left;cursor:pointer;background:0 0;border:0;padding:0}
+.dshdev-card2-open:after{content:"";border-radius:var(--dsw-radius-xl);position:absolute;inset:0}
+.dshdev-card2-open:focus-visible{outline:none}
+.dshdev-card2-open:focus-visible:after{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
+.dshdev-card2-desc{color:var(--dsw-alias-label-tertiary);-webkit-line-clamp:1;-webkit-box-orient:vertical;font-size:13px;line-height:18px;display:-webkit-box;overflow:hidden}
+.dshdev-card2-error{color:var(--dsw-alias-state-error-primary)}
+.dshdev-card2-end{z-index:1;flex:none;align-items:center;gap:8px;display:inline-flex;position:relative}
+.dshdev-status-tag{height:18px;padding:0 7px;font-size:10px;line-height:1}
+.dshdev-icon-button{border-radius:var(--dsw-radius-sm);width:28px;height:28px;color:var(--dsw-alias-label-caption);cursor:pointer;background:0 0;border:0;justify-content:center;align-items:center;display:inline-flex;flex:none}
+.dshdev-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}
+.dshdev-icon-button:disabled{opacity:.5;cursor:default}
+.dshdev-icon-button:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}
+.dshdev-device-glyph{display:inline-flex;color:var(--dsw-alias-label-secondary)}
+.dshdev-device-glyph.online{color:var(--dsw-alias-label-primary)}
+.dshdev-port-number{font-family:var(--ds-font-family-code,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:13px}
+.dshdev-skeleton{display:block;background:var(--dsw-alias-bg-skeleton,var(--dsw-alias-fill-tsp-secondary));border-radius:var(--dsw-radius-xs);animation:2s cubic-bezier(.36,0,.64,1) infinite dshdev-skeleton}
+.dshdev-card2-icon.dshdev-skeleton{border-color:transparent;border-radius:var(--dsw-radius-lg)}
+.dshdev-skeleton-title{width:min(144px,60%);height:12px;margin:4px 0}
+.dshdev-skeleton-desc{width:min(280px,85%);height:12px;margin:3px 0}
+@keyframes dshdev-skeleton{0%{opacity:1}40%{opacity:.6}80%,to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dshdev-skeleton{animation:none}}
+.dshdev-groups{display:flex;flex-direction:column;gap:16px}
+.dshdev-group2{flex-direction:column;gap:8px;display:flex}
+.dshdev-group2-head{align-items:center;gap:8px;display:flex}
+.dshdev-group2-title{flex:1;margin:0;font-size:14px;font-weight:500;line-height:22px;color:var(--dsw-alias-label-primary)}
+.dshdev-modal-body .dshdev-group2-title{font-size:12px;font-weight:500;line-height:18px;color:var(--dsw-alias-label-secondary)}
+
+/* Devices page = Plugins page */
+.dshdev-page2{box-sizing:border-box;height:100%;color:var(--dsw-alias-label-primary);flex-direction:column;align-items:center;gap:32px;padding:0 clamp(24px,4vw,48px) 48px;display:flex;overflow:auto}
+.dshdev-page2>*{width:100%;max-width:960px}
+.dshdev-page2-head{box-sizing:border-box;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:16px;padding-top:calc(28px + var(--dsh-frame-top-clearance,0px));display:flex}
+.dshdev-page2-heading{min-width:0;max-width:100%}
+.dshdev-page2-title{margin:0;font-size:20px;font-weight:500;line-height:28px}
+.dshdev-page2-intro{color:var(--dsw-alias-label-secondary);margin:4px 0 0;font-size:13px;line-height:20px;max-width:620px}
+.dshdev-page2-toolbar{white-space:nowrap;flex:none;justify-content:flex-end;align-items:center;gap:16px;display:flex}
+.dshdev-page2-add{border-radius:var(--dsw-radius-md);height:32px;padding:0 12px;font-size:13px;line-height:20px}
+
+/* Settings rows and selector, as in General settings */
+.dshdev-section{max-width:720px;color:var(--dsw-alias-label-primary);flex-direction:column;display:flex}
+.dshdev-srow{border-bottom:.5px solid var(--dsw-alias-border-l2);justify-content:space-between;align-items:center;gap:24px;padding:16px 0;display:flex}
+.dshdev-srow-text{min-width:0;flex:1}
+.dshdev-srow-title{font-size:14px;line-height:20px}
+.dshdev-srow-desc{color:var(--dsw-alias-label-secondary);margin-top:4px;font-size:12px;line-height:18px}
+.dshdev-srow-control{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.dshdev-selector{border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-module-platform);height:36px;font:inherit;color:var(--dsw-alias-label-primary);cursor:pointer;border:none;align-items:center;gap:12px;padding:0 14px;font-size:14px;line-height:22px;display:inline-flex;max-width:280px}
+.dshdev-selector:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-selector-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dshdev-selector-chevron{flex:none}
+
+/* credentials, as the provider cards of Models settings */
+.dshdev-cred{display:flex;flex-direction:column;gap:10px}
+.dshdev-cred-list{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}
+.dshdev-cred-card{border:.5px solid var(--dsw-alias-settings-card-stroke,var(--dsw-alias-border-l2));background:var(--dsw-alias-settings-card-fill,transparent);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:12px;padding:12px 14px;display:flex}
+.dshdev-cred-head{align-items:center;gap:10px;display:flex;flex-wrap:wrap}
+.dshdev-cred-identity{align-items:center;gap:6px;min-width:0;display:inline-flex}
+.dshdev-cred-name{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px}
+.dshdev-cred-tag{border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-xs);color:var(--dsw-alias-label-secondary);flex:none;padding:1px 6px;font-size:11px;line-height:16px}
+.dshdev-cred-dot{box-sizing:border-box;border-radius:50%;flex:none;width:8px;height:8px;display:inline-block;background:var(--dsw-alias-state-error-primary)}
+.dshdev-cred-dot.ok{background:var(--dsw-alias-state-success-primary)}
+.dshdev-cred-status{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px}
+.dshdev-cred-status.ok{color:var(--dsw-alias-state-success-primary)}
+.dshdev-cred-actions{align-items:center;gap:4px;margin-left:auto;display:inline-flex;flex-wrap:wrap}
+.dshdev-small-button{box-sizing:border-box;border-radius:var(--dsw-radius-sm);height:28px;font:inherit;cursor:pointer;border:.5px solid var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary);background:0 0;justify-content:center;align-items:center;padding:0 10px;font-size:12px;line-height:18px;display:inline-flex;white-space:nowrap}
+.dshdev-small-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-solid,var(--dsw-alias-interactive-bg-hover))}
+.dshdev-small-button.primary{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground);border-color:transparent}
+.dshdev-small-button.primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}
+.dshdev-small-button.danger{border-color:transparent;color:var(--dsw-alias-state-error-primary)}
+.dshdev-small-button.danger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger,var(--dsw-alias-interactive-bg-hover))}
+.dshdev-small-button:disabled{opacity:.4;cursor:default}
+.dshdev-key-editor{display:flex;align-items:center;gap:8px}
+.dshdev-key-editor .dshdev-field-input{flex:1;min-width:160px}
+
+/* callout above a remote chat (no models yet), in the style of DSH's composer notices */
+.dshdev-callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-module-platform);font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary)}
+.dshdev-callout-dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:6px;background:var(--dsw-alias-state-warn-label,#d97706)}
+.dshdev-callout-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.dshdev-callout-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:none}
+
+/* the embedded remote chat */
+.dshdev-chat-wrap{display:flex;flex-direction:column;width:100%;height:100%}
+.dshdev-chat-banner{padding:calc(var(--dsh-frame-top-clearance,0px) + 10px) 16px 10px;background:var(--dsw-alias-bg-base)}
+.dshdev-chat-banner .dshdev-callout{max-width:880px;margin:0 auto}
+.dshdev-chat-panel{position:relative;width:100%;flex:1;min-height:0}
+.dshdev-chat-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;padding:24px;text-align:center}
+.dshdev-context{display:flex;align-items:center;gap:8px;padding:calc(var(--dsh-frame-top-clearance,0px) + 8px) 16px 8px;background:var(--dsw-alias-bg-base);font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary)}
+.dshdev-context-label{border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-fill-tsp-secondary);height:22px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;align-items:center;gap:4px;padding:0 6px 0 4px;font-size:12px;line-height:22px;display:inline-flex}
+.dshdev-context-panel{font-weight:500}
+.dshdev-frame-status{display:flex;flex-direction:column;align-items:center;gap:12px}
+.dshdev-frame-status-actions{display:flex;gap:8px}
 `
     /**
      * Install (or refresh) this version's styles. A plugin update swaps the
@@ -1200,32 +1293,18 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       )
     }
 
-    /** The "remote" mark: a small server with a signal arc. */
-    function RemoteIcon({ size = 16 }) {
+    /** The "remote" mark: a small server with a signal arc, drawn with DSH's icon stroke. */
+    function RemoteIcon({ size = 16, className }) {
+      const sw = (Number(P.ICON_REGULAR_STROKE) || 1.2) * (16 / Math.max(12, size))
       return h(
         'svg',
-        { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-        h('rect', { x: 1.5, y: 6.5, width: 10, height: 7.5, rx: 1.6, fill: 'currentColor', opacity: 0.16 }),
-        h('rect', { x: 1.5, y: 6.5, width: 10, height: 7.5, rx: 1.6, stroke: 'currentColor', strokeWidth: 1 }),
-        h('path', { d: 'M4 10.25h.01M6.5 10.25h3', stroke: 'currentColor', strokeWidth: 1.2, strokeLinecap: 'round' }),
-        h('path', { d: 'M10.2 3.6a3.3 3.3 0 0 1 3.3 3.3M10.2 1.6a5.3 5.3 0 0 1 5.3 5.3', stroke: 'currentColor', strokeWidth: 1, strokeLinecap: 'round' }),
+        { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true, className },
+        h('rect', { x: 1.75, y: 6.75, width: 9.5, height: 7, rx: 1.75 }),
+        h('path', { d: 'M4.25 10.25h.01M6.75 10.25h2.5' }),
+        h('path', { d: 'M10.4 3.9a3 3 0 0 1 2.7 2.7M10.4 1.75a5.1 5.1 0 0 1 4.85 4.85' }),
       )
     }
 
-    function FolderIcon() {
-      return h(
-        'svg',
-        { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-        h('path', { d: 'M2 4.6c0-.6.5-1.1 1.1-1.1h3l1.4 1.5h5.4c.6 0 1.1.5 1.1 1.1v5.8c0 .6-.5 1.1-1.1 1.1H3.1c-.6 0-1.1-.5-1.1-1.1z', stroke: 'currentColor', strokeLinejoin: 'round' }),
-      )
-    }
-    function EditorGlyph() {
-      return h(
-        'svg',
-        { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-        h('path', { d: 'M11.5 1.8 6 7.2 3.2 5 1.8 5.8v4.4l1.4.8L6 8.8l5.5 5.4 2.7-1.3V3.1z', stroke: 'currentColor', strokeWidth: 1.1, strokeLinejoin: 'round' }),
-      )
-    }
     /** Show a device workspace's file tree (DSH's own Files tab) inline. */
     function openRemoteFiles(ctx, device, group) {
       const latest = group.sessions && group.sessions[0]
@@ -1238,82 +1317,109 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       frames.show(device.id, device, command).catch((e) => setStore({ error: e.message }))
     }
 
-    function svg(children, size = 16) {
-      return h('svg', { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.15, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }, ...children)
+    // ── DSH primitives, with plain stand-ins if a future build lacks one ────
+    function Icon(name, props) {
+      const C = P[name]
+      return C ? h(C, props || {}) : null
     }
-    function MoreIcon() {
-      return P.IconEllipsisOutlineRegular ? h(P.IconEllipsisOutlineRegular, { size: 16 }) : svg([h('path', { key: 1, d: 'M3.5 8h.01M8 8h.01M12.5 8h.01', strokeWidth: 2 })])
+    function Dot({ state }) {
+      return P.StateDot ? h(P.StateDot, { state }) : h('span', { className: `dshdev-fb-dot ${state}`, 'aria-hidden': true })
     }
-    function AttentionIcon({ size = 14 }) {
+    function MenuItem({ icon, onSelect, disabled, danger, children }) {
+      if (P.MenuItemButton) return h(P.MenuItemButton, { icon, onSelect, disabled, danger }, children)
+      return h('button', { type: 'button', role: 'menuitem', className: cx('dshdev-fb-item', danger && 'danger'), disabled, onClick: onSelect }, icon ? h('span', { className: 'dshdev-fb-item-icon' }, icon) : null, h('span', null, children))
+    }
+    function NativeMenu(props) {
+      return P.Menu ? h(P.Menu, props) : h(FallbackMenu, props)
+    }
+    function FallbackMenu({ open, anchor, items, children, onSelect, onClose, getAnchorRect, align }) {
+      const ref = useRef(null)
+      const [rect, setRect] = useState(null)
+      useLayoutEffect(() => {
+        if (open) setRect((getAnchorRect ? getAnchorRect() : ref.current && ref.current.getBoundingClientRect()) || null)
+      }, [open])
+      useEffect(() => {
+        if (!open) return undefined
+        const down = (e) => {
+          if (!(e.target.closest && e.target.closest('[data-dshdev-fb-menu]'))) onClose && onClose()
+        }
+        const key = (e) => e.key === 'Escape' && onClose && onClose()
+        document.addEventListener('pointerdown', down, true)
+        document.addEventListener('keydown', key, true)
+        return () => {
+          document.removeEventListener('pointerdown', down, true)
+          document.removeEventListener('keydown', key, true)
+        }
+      }, [open])
+      const left = rect ? Math.max(8, Math.min(align === 'end' ? rect.right - 240 : rect.left, window.innerWidth - 248)) : 0
       return h(
-        'svg',
-        { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-        h('circle', { cx: 8, cy: 8, r: 6.6, fill: 'currentColor', opacity: 0.18 }),
-        h('circle', { cx: 8, cy: 8, r: 6.6, stroke: 'currentColor', strokeWidth: 1.2 }),
-        h('path', { d: 'M8 4.6v4.1', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
-        h('circle', { cx: 8, cy: 11.1, r: 0.95, fill: 'currentColor' }),
+        'span',
+        { ref, className: 'dshdev-fb-menu-root', 'data-dshdev-fb-menu': '1' },
+        anchor || null,
+        open && rect
+          ? h(
+              'div',
+              { role: 'menu', className: 'dshdev-fb-menu', style: { left, top: rect.bottom + 4 } },
+              items
+                ? items.map((it) =>
+                    it.type === 'separator'
+                      ? h('div', { key: it.id, className: 'dshdev-fb-sep', role: 'separator' })
+                      : it.type === 'label'
+                        ? h('div', { key: it.id, className: 'dshdev-fb-label' }, it.text)
+                        : h(MenuItem, { key: it.id, icon: it.icon, disabled: it.disabled, danger: it.danger, onSelect: () => onSelect && onSelect(it.id) }, it.label),
+                  )
+                : children,
+            )
+          : null,
       )
     }
-    function PinIcon() {
-      return svg([h('path', { key: 1, d: 'M9.8 2.2 13.8 6.2l-1.6.5-2.6 2.6-.4 3-1.4.1L3.6 8.2l.1-1.4 3-.4 2.6-2.6zM5.6 10.4 2.4 13.6' })], 13)
+    function NativeSwitch({ checked, onChange, label, disabled }) {
+      if (P.Switch) return h(P.Switch, { checked: !!checked, onChange, label, disabled })
+      return h('button', { type: 'button', role: 'switch', 'aria-checked': !!checked, 'aria-label': label, disabled, className: cx('dshdev-fb-switch', checked && 'on'), onClick: () => onChange(!checked) }, h('span', null))
     }
-    function SearchIcon() {
-      return svg([h('circle', { key: 1, cx: 7, cy: 7, r: 4.3 }), h('path', { key: 2, d: 'm10.2 10.2 3.4 3.4' })])
+    function Segmented({ value, options, onChange, label, disabled }) {
+      if (P.SegmentedControl) return h(P.SegmentedControl, { value, options, onChange, label, disabled })
+      return h(
+        'div',
+        { className: 'dshdev-fb-segmented', role: 'tablist', 'aria-label': label },
+        options.map((o) => h('button', { key: o.value, type: 'button', role: 'tab', 'aria-selected': value === o.value, disabled, onClick: () => onChange(o.value) }, o.label)),
+      )
     }
-    function PuzzleIcon() {
-      return svg([h('path', { key: 1, d: 'M6.2 2.5h3.6v1.4a1.2 1.2 0 1 0 2.4 0V2.5h1.3v4h-1.4a1.2 1.2 0 1 0 0 2.4h1.4v4.6H9.4v-1.4a1.2 1.2 0 1 0-2.4 0v1.4H2.5V9.2h1.4a1.2 1.2 0 1 0 0-2.4H2.5V2.5z' })])
-    }
-    function ClockIcon() {
-      return svg([h('circle', { key: 1, cx: 8, cy: 8, r: 5.8 }), h('path', { key: 2, d: 'M8 4.8V8l2.2 1.4' })])
-    }
-    function PortIcon() {
-      return svg([h('rect', { key: 1, x: 2, y: 3, width: 12, height: 8.5, rx: 1.4 }), h('path', { key: 2, d: 'M5.5 14h5M8 11.5V14M5.4 6.2 7 7.4 5.4 8.6M8.4 8.6h2.2' })])
-    }
-    function SyncIcon() {
-      return svg([h('path', { key: 1, d: 'M13 6.2A5 5 0 0 0 3.9 4.6M3 9.8a5 5 0 0 0 9.1 1.6' }), h('path', { key: 2, d: 'M3.6 2.4v2.4H6M12.4 13.6v-2.4H10' })])
-    }
-    function KeyIcon() {
-      return svg([h('circle', { key: 1, cx: 5.5, cy: 10.5, r: 2.6 }), h('path', { key: 2, d: 'm7.4 8.6 5.4-5.4M11 5l1.6 1.6M9.4 6.6 10.6 7.8' })])
-    }
-    function ArchiveIcon() {
-      return svg([h('rect', { key: 1, x: 2, y: 3, width: 12, height: 3, rx: 0.8 }), h('path', { key: 2, d: 'M3 6v6.2c0 .5.4.8.8.8h8.4c.4 0 .8-.3.8-.8V6M6.5 8.6h3' })])
-    }
-    function GearIcon() {
-      return svg([
-        h('circle', { key: 1, cx: 8, cy: 8, r: 2.1 }),
-        h('path', { key: 2, d: 'M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7 3.6 3.6' }),
-      ])
-    }
-    function pendingText(pending, t) {
-      if (!pending) return ''
-      return pending.kind === 'approval' ? fill(t('needsApproval'), { tool: pending.toolName || '' }) : t('needsAnswer')
+    function FallbackToast({ text, actions, holdMs = 3000, onDone }) {
+      useEffect(() => {
+        const timer = setTimeout(onDone, holdMs + 1000)
+        return () => clearTimeout(timer)
+      }, [])
+      return h('div', { className: 'dshdev-fb-toast', role: 'alert' }, text, (actions || []).map((a) => h('button', { key: a.label, type: 'button', onClick: a.onClick }, a.label)))
     }
 
-    function PlusIcon() {
-      return P.IconPlusOutlineRegular ? h(P.IconPlusOutlineRegular, { size: 16 }) : h('span', null, '+')
-    }
+    // ── native look: DSH's own row classes, words and statuses ──────────────
+    const cx = (...parts) => parts.filter(Boolean).join(' ')
 
-    // ── native sidebar class discovery ──────────────────────────────────────
-    /** Find the CSS-module prefixes the sidebar uses for rows ("XyZ_sessionRow"). */
-    function discoverClasses() {
+    /**
+     * CSS-module prefixes of the sidebar rows ("YDXeBa_" in "YDXeBa_sessionRow")
+     * and of the list ("bhn1Oq_" in "bhn1Oq_sessionOverflowButton"), read from the
+     * live sidebar or its stylesheets: remote rows are then styled by DSH itself.
+     */
+    let prefixCache = null
+    function discoverPrefixes() {
+      if (prefixCache && (prefixCache.found.row && prefixCache.found.list ? true : Date.now() - prefixCache.at < 2000)) return prefixCache.found
+      const found = scanPrefixes()
+      prefixCache = { at: Date.now(), found }
+      return found
+    }
+    function scanPrefixes() {
       const found = { row: null, list: null }
-      const scan = (text) => {
-        if (!found.row) {
-          const m = text.match(/\.([A-Za-z0-9-]+_)sessionRow\b/)
-          if (m && text.includes(`.${m[1]}projectRow`)) found.row = m[1]
-        }
-        if (!found.list) {
-          const m = text.match(/\.([A-Za-z0-9-]+_)groupSection\b/)
-          if (m) found.list = m[1]
-        }
-      }
       const live = document.querySelector('[class*="regionArea"] [class*="_sessionRow"], [class*="regionArea"] [class*="_projectRow"]')
       if (live) {
         const c = [...live.classList].find((x) => /_(sessionRow|projectRow)$/.test(x))
         if (c) found.row = c.replace(/(sessionRow|projectRow)$/, '')
       }
-      const group = document.querySelector('[class*="regionArea"] [class*="_groupSection"]')
-      if (group) found.list = [...group.classList].find((x) => x.endsWith('_groupSection')).replace(/groupSection$/, '')
+      const listEl = document.querySelector('[class*="regionArea"] [class*="_sessionOverflowButton"], [class*="regionArea"] [class*="_searchInput"], [class*="regionArea"] [class*="_groupSection"]')
+      if (listEl) {
+        const c = [...listEl.classList].find((x) => /_(sessionOverflowButton|searchInput|groupSection)$/.test(x))
+        if (c) found.list = c.replace(/(sessionOverflowButton|searchInput|groupSection)$/, '')
+      }
       if (!found.row || !found.list) {
         for (const sheet of document.styleSheets) {
           let rules
@@ -1323,7 +1429,15 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
             continue
           }
           for (const rule of rules) {
-            scan(rule.cssText || '')
+            const text = rule.cssText || ''
+            if (!found.row) {
+              const m = text.match(/\.([A-Za-z0-9-]+_)sessionRow\b/)
+              if (m && text.includes(`.${m[1]}projectRow`)) found.row = m[1]
+            }
+            if (!found.list) {
+              const m = text.match(/\.([A-Za-z0-9-]+_)sessionOverflowButton\b/) || text.match(/\.([A-Za-z0-9-]+_)groupSection\b/)
+              if (m) found.list = m[1]
+            }
             if (found.row && found.list) break
           }
           if (found.row && found.list) break
@@ -1332,29 +1446,93 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       return found
     }
 
+    const FALLBACK_CLASSES = {
+      native: false, group: 'dshdev-fb-group', project: 'dshdev-fb-project', session: 'dshdev-fb-session', selected: 'dshdev-fb-selected',
+      menuOpen: 'dshdev-fb-menuopen', slot: 'dshdev-fb-slot', folder: 'dshdev-fb-folder', folderActive: '', chevron: 'dshdev-fb-chevron', arrow: 'dshdev-fb-arrow',
+      arrowOpen: 'dshdev-fb-arrow-open', projectText: 'dshdev-fb-title', title: 'dshdev-fb-title', time: 'dshdev-fb-time', pinIndicator: 'dshdev-fb-pin',
+      actions: 'dshdev-fb-actions', iconButton: 'dshdev-fb-iconbtn', hidden: 'dshdev-visually-hidden', hoverContent: 'dshdev-hover', hoverTitle: 'dshdev-hover-title',
+      hoverTime: 'dshdev-hover-sub', hoverStatus: 'dshdev-hover-status', hoverPath: 'dshdev-hover-sub', searchRow: 'dshdev-fb-session', searchHeading: 'dshdev-fb-heading',
+      searchTitle: 'dshdev-fb-title', searchMeta: 'dshdev-fb-time', searchWorkspace: '', searchSnippet: 'dshdev-hover-sub', overflow: 'dshdev-more',
+    }
+
     function rowClasses() {
-      const { row, list } = discoverClasses()
-      if (!row) {
-        return {
-          group: 'dshdev-fb-group', project: 'dshdev-fb-project', session: 'dshdev-fb-session', selected: 'dshdev-fb-selected',
-          slot: 'dshdev-fb-slot', folder: 'dshdev-fb-slot', chevron: null, projectText: 'dshdev-fb-title', title: 'dshdev-fb-title',
-          time: 'dshdev-fb-time', actions: 'dshdev-fb-actions', iconButton: 'dshdev-fb-iconbtn',
-        }
-      }
+      const { row, list } = discoverPrefixes()
+      if (!row) return FALLBACK_CLASSES
+      const r = (n) => `${row}${n}`
       return {
-        group: list ? `${list}groupSection` : 'dshdev-fb-group',
-        project: `${row}projectRow`,
-        session: `${row}sessionRow`,
-        selected: `${row}selected`,
-        slot: `${row}slot`,
-        folder: `${row}slot ${row}folder`,
-        chevron: `${row}slot ${row}chevron`,
-        projectText: `${row}projectText`,
-        title: `${row}title`,
-        time: `${row}time`,
-        actions: `${row}rowActions`,
-        iconButton: `${row}iconButton`,
+        native: true,
+        group: list ? `${list}groupSection` : FALLBACK_CLASSES.group,
+        project: r('projectRow'),
+        session: r('sessionRow'),
+        selected: r('selected'),
+        menuOpen: r('menuOpen'),
+        slot: r('slot'),
+        folder: r('folder'),
+        folderActive: r('folderActive'),
+        chevron: r('chevron'),
+        arrow: r('arrow'),
+        arrowOpen: r('arrowOpen'),
+        projectText: r('projectText'),
+        title: r('title'),
+        time: r('time'),
+        pinIndicator: r('pinIndicator'),
+        actions: r('rowActions'),
+        iconButton: r('iconButton'),
+        hidden: r('visuallyHidden'),
+        hoverContent: r('hoverContent'),
+        hoverTitle: r('hoverTitle'),
+        hoverTime: r('hoverTime'),
+        hoverStatus: r('hoverStatus'),
+        hoverPath: r('hoverPath'),
+        searchRow: r('searchResultRow'),
+        searchHeading: r('searchResultHeading'),
+        searchTitle: r('searchResultTitle'),
+        searchMeta: r('searchResultMeta'),
+        searchWorkspace: r('searchResultWorkspace'),
+        searchSnippet: r('searchResultSnippet'),
+        overflow: list ? `${list}sessionOverflowButton` : FALLBACK_CLASSES.overflow,
       }
+    }
+
+    /** DSH's own sidebar words (namespace "workspace"), our copy as the fallback. */
+    let nativeT = null
+    function nt(key, vars, fallback) {
+      try {
+        if (nativeT) {
+          const v = nativeT(key, vars)
+          if (typeof v === 'string' && v && v !== key && !v.includes(`workspace.${key}`)) return v
+        }
+      } catch {}
+      return fallback !== undefined ? fill(fallback, vars) : key
+    }
+    const UNIT_FALLBACK = { minutes: '{n}min', hours: '{n}h', days: '{n}d', months: '{n}mo', years: '{n}y' }
+    /** Compact relative time, as the sidebar shows it ("now", "5min"). */
+    function timeLabel(ts) {
+      if (!ts) return ''
+      const when = typeof ts === 'number' ? ts : Date.parse(ts)
+      try {
+        const { unit, n } = P.relativeTime(when, Date.now())
+        return unit === 'now' ? nt('time.now', null, 'now') : nt(`time.${unit}`, { n }, UNIT_FALLBACK[unit] || '{n}')
+      } catch {
+        return shortAgo(ts, appT)
+      }
+    }
+    function hoverTimeLabel(ts) {
+      if (!ts) return ''
+      const label = timeLabel(ts)
+      try {
+        if (P.relativeTime(typeof ts === 'number' ? ts : Date.parse(ts), Date.now()).unit === 'now') return label
+      } catch {}
+      return nt('time.ago', { t: label }, '{t} ago')
+    }
+
+    /** The sidebar status of a remote session, worded and coloured like a local one. */
+    function remoteStatus(s, deviceId) {
+      if (s.pending && s.pending.kind === 'approval') return { state: 'warning', label: nt('status.waitingApproval', null, 'Waiting for approval'), trailing: nt('status.compact.approval', null, 'Approval') }
+      if (s.pending) return { state: 'warning', label: nt('status.waitingAnswer', null, 'Waiting for answer'), trailing: nt('status.compact.answer', null, 'Answer') }
+      if (s.running) return { state: 'ongoing', label: nt('status.running', null, 'Running') }
+      if (store.unread[`${deviceId}:${s.sessionId}`]) return { state: 'done', label: nt('status.completed', null, 'Completed') }
+      return { state: 'idle', label: nt('status.idle', null, 'Idle') }
     }
 
     // ── sidebar: remote groups below the local workspaces ───────────────────
@@ -1363,8 +1541,9 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       for (const s of device.sessions || []) {
         const key = s.workspaceId || s.cwd || '_'
         if (!groups.has(key)) {
+          const ws = (device.workspaces || []).find((w) => w.id === s.workspaceId)
           const title = s.workspaceTitle || (s.cwd ? s.cwd.split('/').filter(Boolean).pop() : null) || device.name
-          groups.set(key, { key, workspaceId: s.workspaceId || null, title, sessions: [] })
+          groups.set(key, { key, workspaceId: s.workspaceId || null, title, path: ws ? ws.path : null, sessions: [] })
         }
         groups.get(key).sessions.push(s)
       }
@@ -1372,6 +1551,331 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       // Pinned sessions first (in pin order); the rest keep the device's recency order.
       for (const g of list) g.sessions.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.pinned && b.pinned ? (a.pinRank ?? 0) - (b.pinRank ?? 0) : 0))
       return list
+    }
+
+    function StatusDots({ cls, status }) {
+      return h(React.Fragment, null, h(Dot, { state: status.state }), h('span', { className: cls.hidden }, status.label))
+    }
+
+    function RemoteMark({ size = 14 }) {
+      return h('span', { className: 'dshdev-remote-mark' }, h(RemoteIcon, { size }))
+    }
+
+    function RemoteSessionHover({ cls, device, s, status, t }) {
+      return h(
+        'div',
+        { className: cls.hoverContent },
+        h('div', { className: cls.hoverTitle }, s.title || nt('session.untitled', null, t('untitled'))),
+        h('div', { className: cls.hoverTime }, hoverTimeLabel(s.updatedAt)),
+        h('div', { className: cls.hoverStatus }, h(RemoteMark, { size: 12 }), h('span', null, [device.name, s.workspaceTitle].filter(Boolean).join(' · '))),
+        status.state !== 'idle' ? h('div', { className: cls.hoverStatus }, h(Dot, { state: status.state }), h('span', null, status.label)) : null,
+      )
+    }
+
+    function TipButton({ label, cls, onClick, children, action }) {
+      const button = h('button', { type: 'button', className: cls.iconButton, 'aria-label': label, 'data-dshdev-action': action, onClick }, children)
+      return P.Tooltip ? h(P.Tooltip, { label, side: 'bottom', align: 'end', delayMs: 500, portal: true }, button) : button
+    }
+
+    function RemoteSessionRow({ ctx, t, cls, device, s, selected, online }) {
+      const [menuOpen, setMenuOpen] = useState(false)
+      const status = remoteStatus(s, device.id)
+      const title = s.title || nt('session.untitled', null, t('untitled'))
+      const supported = hasFeature(device, 'session-actions')
+      const pinLabel = s.pinned ? nt('menu.unpinSession', null, t('unpin')) : nt('menu.pinSession', null, t('pin'))
+      const pinIcon = (size) => Icon(s.pinned ? 'IconPinFillRegular' : 'IconPinOutlineRegular', size ? { size } : {})
+      const act = (fn) => () => {
+        setMenuOpen(false)
+        fn()
+      }
+      const items = [
+        h(MenuItem, { key: 'pin', icon: pinIcon(), disabled: !supported, onSelect: act(() => sessionAction(device, s.sessionId, s.pinned ? 'unpin' : 'pin')) }, pinLabel),
+        h(MenuItem, { key: 'rename', icon: Icon('IconEditOutlineRegular'), disabled: !supported, onSelect: act(() => setStore({ dialog: { kind: 'rename', deviceId: device.id, sessionId: s.sessionId, title: s.title || '' } })) }, nt('rename', null, t('rename'))),
+        h(MenuItem, { key: 'files', icon: Icon('IconFolderOpenOutlineRegular'), disabled: !online, onSelect: act(() => openRemoteFiles(ctx, device, { sessions: [s], workspaceId: s.workspaceId })) }, t('openFiles')),
+        h(MenuItem, { key: 'editor', icon: Icon('IconCodeOutlineRegular'), onSelect: act(() => openInEditor(device.id, { sessionId: s.sessionId })) }, fill(t('openInEditor'), { editor: currentEditor().label })),
+        h(MenuItem, { key: 'archive', icon: Icon('IconArchiveOutlineRegular'), disabled: !supported, onSelect: act(() => sessionAction(device, s.sessionId, 'archive')) }, nt('menu.archiveSession', null, t('archive'))),
+      ]
+      const row = h(
+        'div',
+        {
+          className: cx(cls.session, selected && cls.selected, menuOpen && cls.menuOpen, !online && 'dshdev-dim'),
+          role: 'treeitem',
+          'aria-selected': !!selected,
+          'data-dshdev-session': s.sessionId,
+          'data-dshdev-pending': s.pending ? s.pending.kind : undefined,
+          'data-dshdev-pinned': s.pinned ? '1' : undefined,
+          'data-dshdev-state': status.state,
+          onClick: () => openRemote(ctx, device, s.sessionId),
+          onContextMenu: (e) => {
+            e.preventDefault()
+            setMenuOpen(true)
+          },
+          onMouseEnter: () => prefetchDevice(device),
+        },
+        h('span', { className: cls.slot }, status.state !== 'idle' ? h(StatusDots, { cls, status }) : h(RemoteMark, null)),
+        h(
+          'span',
+          {
+            className: cls.title,
+            onDoubleClick: supported
+              ? (e) => {
+                  e.stopPropagation()
+                  setStore({ dialog: { kind: 'rename', deviceId: device.id, sessionId: s.sessionId, title: s.title || '' } })
+                }
+              : undefined,
+          },
+          title,
+        ),
+        h('span', { className: cls.time, 'data-dshdev-time': '1', 'aria-hidden': status.trailing ? true : undefined }, status.trailing || (s.running ? '' : timeLabel(s.updatedAt))),
+        s.pinned ? h('span', { className: cls.pinIndicator, role: 'img', 'aria-label': nt('row.pinned', null, t('pinned')), title: nt('row.pinned', null, t('pinned')) }, Icon('IconPinFillRegular', { size: 14 })) : null,
+        h(
+          'span',
+          { className: cls.actions, onClick: (e) => e.stopPropagation() },
+          h(NativeMenu, {
+            open: menuOpen,
+            onClose: () => setMenuOpen(false),
+            portal: true,
+            closeOnPointerLeave: true,
+            anchor: h(
+              'button',
+              { type: 'button', className: cls.iconButton, 'aria-label': `${t('sessionActions')} — ${title}`, 'aria-haspopup': 'menu', 'data-dshdev-action': 'session-more', onClick: () => setMenuOpen((v) => !v) },
+              Icon('IconEllipsisOutlineRegular'),
+            ),
+            children: items,
+          }),
+          supported ? h(TipButton, { cls, label: nt('actions.archive', null, t('archive')), action: 'archive', onClick: () => sessionAction(device, s.sessionId, 'archive') }, Icon('IconArchiveOutlineRegular', { size: 14 })) : null,
+          supported ? h(TipButton, { cls, label: s.pinned ? nt('actions.unpin', null, t('unpin')) : nt('actions.pin', null, t('pin')), action: 'pin', onClick: () => sessionAction(device, s.sessionId, s.pinned ? 'unpin' : 'pin') }, pinIcon(14)) : null,
+        ),
+      )
+      if (!P.HoverCard) return row
+      return h(P.HoverCard, {
+        anchor: row,
+        content: h(RemoteSessionHover, { cls, device, s, status, t }),
+        openDelayMs: 800,
+        grouped: true,
+        disabled: menuOpen,
+        copyText: s.title || undefined,
+        copyLabel: nt('copy', null, 'Copy'),
+        copiedLabel: nt('hover.copied', null, 'Copied'),
+      })
+    }
+
+    function deviceMenuItems(device, t, group) {
+      const online = device.status === 'online'
+      const archived = (device.archived || []).length
+      const ports = (device.ports || []).length
+      const old = (f) => (hasFeature(device, f) ? '' : ` (${t('outdated')})`)
+      return [
+        { id: 'new', icon: Icon('IconNewChatOutlineRegular'), label: fill(t('newRemote'), { device: device.name }), disabled: !online },
+        ...(group && !group.deviceOnly
+          ? [
+              { id: 'files', icon: Icon('IconFolderOpenOutlineRegular'), label: t('openFiles'), disabled: !online },
+              { id: 'editor', icon: Icon('IconCodeOutlineRegular'), label: fill(t('openInEditor'), { editor: currentEditor().label }) },
+            ]
+          : []),
+        { id: 'search', icon: Icon('IconSearchOutlineRegular'), label: t('searchMenu') },
+        { type: 'separator', id: 'sep-1' },
+        { id: 'plugins', icon: Icon('IconCordisPluginOutlineRegular'), label: t('pluginsMenu'), disabled: !online },
+        { id: 'automations', icon: Icon('IconAlarmClockOutlineRegular'), label: t('automationsMenu'), disabled: !online },
+        { id: 'ports', icon: Icon('IconGlobeOutlineRegular'), label: `${t('portsMenu')}${ports ? ` (${ports})` : old('ports')}`, disabled: !online },
+        { id: 'sync', icon: Icon('IconRefreshOutlineRegular'), label: `${t('syncMenu')}${old('sync')}`, disabled: !online },
+        { id: 'account', icon: Icon('IconUserOutlineRegular'), label: t('accountMenu'), disabled: !online },
+        ...(archived ? [{ id: 'archived', icon: Icon('IconArchiveOutlineRegular'), label: fill(t('archivedMenu'), { n: archived }) }] : []),
+        { type: 'separator', id: 'sep-2' },
+        { id: 'settings', icon: Icon('IconSettingsOutlineRegular'), label: t('deviceSettings'), disabled: !online },
+        { id: 'manage', icon: h(DevicesIcon, { size: 16 }), label: t('manageDevices') },
+      ]
+    }
+
+    function runDeviceAction(id, device, group) {
+      const ctx = appCtx
+      if (id === 'new') newRemote(ctx, device, group ? group.workspaceId : null)
+      if (id === 'search') focusNativeSearch()
+      if (id === 'files') openRemoteFiles(ctx, device, group || { sessions: device.sessions || [], workspaceId: null })
+      if (id === 'editor') {
+        const first = group && group.sessions[0]
+        openInEditor(device.id, { path: group && group.path ? group.path : first && first.cwd, sessionId: first && first.sessionId })
+      }
+      if (id === 'plugins') openDevicePanel(device, 'plugins')
+      if (id === 'automations') openDevicePanel(device, 'schedules')
+      if (id === 'ports' || id === 'sync' || id === 'account' || id === 'archived') setStore({ dialog: { kind: id, deviceId: device.id } })
+      if (id === 'settings') openDeviceSettings(device)
+      if (id === 'manage') {
+        try {
+          ctx.layout.selectPanel(PANEL_ID)
+        } catch {}
+      }
+    }
+
+    function RemoteGroupHover({ cls, device, g, t }) {
+      const waiting = g.sessions.filter((s) => s.pending).length
+      const online = device.status === 'online'
+      return h(
+        'div',
+        { className: cls.hoverContent },
+        h('div', { className: cls.hoverTitle }, g.deviceOnly ? device.name : g.title),
+        g.path ? h('div', { className: cls.hoverPath || cls.hoverTime }, g.path.replace(/^\/(root|home\/[^/]+)(?=\/|$)/, '~')) : null,
+        h(
+          'div',
+          { className: cls.hoverStatus },
+          h(Dot, { state: online ? 'done' : device.status === 'connecting' ? 'ongoing' : 'idle' }),
+          h('span', null, [device.name, t(`status_${device.status}`), device.versions && device.versions.dsh ? `dsh ${device.versions.dsh}` : null].filter(Boolean).join(' · ')),
+        ),
+        waiting ? h('div', { className: cls.hoverStatus }, h(Dot, { state: 'warning' }), h('span', null, fill(t('waitingCount'), { n: waiting }))) : null,
+      )
+    }
+
+    function RemoteGroup({ ctx, t, cls, device, g, st, chatActive, perGroup }) {
+      const [menuOpen, setMenuOpen] = useState(false)
+      const ckey = `${device.id}:${g.key}`
+      const collapsed = !!st.collapsed[ckey]
+      const online = device.status === 'online'
+      const waiting = g.sessions.filter((s) => s.pending).length
+      const active = chatActive && st.selection && st.selection.deviceId === device.id && g.sessions.some((s) => s.sessionId === (st.selection.sessionId || st.embedded[device.id]))
+      const label = g.deviceOnly ? device.name : g.title
+      const header = h(
+        'div',
+        {
+          className: cx(cls.project, menuOpen && cls.menuOpen, !online && 'dshdev-dim'),
+          role: 'treeitem',
+          'aria-expanded': !collapsed,
+          'data-dshdev-group': ckey,
+          onClick: () => toggleCollapsed(ckey),
+          onContextMenu: (e) => {
+            e.preventDefault()
+            setMenuOpen(true)
+          },
+          onMouseEnter: () => prefetchDevice(device),
+        },
+        h('span', { className: cx(cls.slot, cls.folder, active && cls.folderActive) }, h(RemoteIcon, { size: 16 })),
+        h('span', { className: cx(cls.slot, cls.chevron) }, Icon('IconTriangleRightFillRegular', { className: cx(cls.arrow, !collapsed && cls.arrowOpen) })),
+        h(
+          'span',
+          { className: cls.projectText },
+          h(
+            'span',
+            { className: cls.title },
+            label,
+            g.deviceOnly ? null : h('span', { className: 'dshdev-devname' }, device.name),
+            online ? null : h('span', { className: 'dshdev-devname' }, t(`status_${device.status}`).toLowerCase()),
+          ),
+        ),
+        waiting && collapsed ? h('span', { className: 'dshdev-group-status', title: fill(t('waitingCount'), { n: waiting }), 'data-dshdev-waiting': waiting }, h(Dot, { state: 'warning' })) : null,
+        h(
+          'span',
+          { className: cls.actions, onClick: (e) => e.stopPropagation() },
+          h(NativeMenu, {
+            open: menuOpen,
+            onClose: () => setMenuOpen(false),
+            items: deviceMenuItems(device, t, g),
+            onSelect: (id) => {
+              setMenuOpen(false)
+              runDeviceAction(id, device, g)
+            },
+            portal: true,
+            closeOnPointerLeave: true,
+            anchor: h(
+              'button',
+              { type: 'button', className: cls.iconButton, 'aria-label': `${t('moreActions')} — ${device.name}`, 'aria-haspopup': 'menu', 'data-dshdev-action': 'more', onClick: () => setMenuOpen((v) => !v) },
+              Icon('IconEllipsisOutlineRegular'),
+            ),
+          }),
+          h(TipButton, { cls, label: fill(t('newRemote'), { device: device.name }), action: 'new', onClick: () => online && newRemote(ctx, device, g.workspaceId) }, Icon('IconNewChatOutlineRegular')),
+        ),
+      )
+      const rows = collapsed ? [] : perGroup && !st.expanded[ckey] ? g.sessions.slice(0, perGroup) : g.sessions
+      return h(
+        'div',
+        { className: cls.group, 'data-dshdev-device': device.id },
+        P.HoverCard ? h(P.HoverCard, { anchor: header, content: h(RemoteGroupHover, { cls, device, g, t }), openDelayMs: 800, grouped: true, disabled: menuOpen, copyText: g.path || undefined, copyLabel: nt('copy', null, 'Copy'), copiedLabel: nt('hover.copied', null, 'Copied') }) : header,
+        rows.map((s) => {
+          const selected = chatActive && st.selection && st.selection.deviceId === device.id && (st.selection.sessionId === s.sessionId || (!st.selection.sessionId && st.embedded[device.id] === s.sessionId))
+          return h(RemoteSessionRow, { key: s.sessionId, ctx, t, cls, device, s, selected, online })
+        }),
+        !collapsed && perGroup && g.sessions.length > perGroup
+          ? h(
+              'button',
+              { type: 'button', className: cls.overflow, 'aria-expanded': !!st.expanded[ckey], 'data-dshdev-more': ckey, onClick: () => setStore({ expanded: { ...st.expanded, [ckey]: !st.expanded[ckey] } }) },
+              st.expanded[ckey] ? nt('sessions.collapse', null, t('showLess')) : nt('sessions.expand', { n: g.sessions.length - perGroup, count: g.sessions.length - perGroup }, fill(t('showMore'), { n: g.sessions.length - perGroup })),
+            )
+          : null,
+      )
+    }
+
+    /** While DSH's own sidebar search has a query, remote chats answer it with DSH's result rows. */
+    function RemoteSearchResults({ ctx, t, cls, st, query }) {
+      const [remote, setRemote] = useState({ q: '', results: [] })
+      const q = query.trim()
+      useEffect(() => {
+        if (q.length < 2) {
+          setRemote({ q, results: [] })
+          return
+        }
+        let live = true
+        const timer = setTimeout(async () => {
+          try {
+            const r = await api(`/devices/search?q=${encodeURIComponent(q)}`)
+            if (live) setRemote({ q, results: r.results || [] })
+          } catch {
+            if (live) setRemote({ q, results: [] })
+          }
+        }, 300)
+        return () => {
+          live = false
+          clearTimeout(timer)
+        }
+      }, [q])
+      const needle = q.toLowerCase()
+      const hits = []
+      const seen = new Set()
+      for (const d of st.data.devices || []) {
+        for (const s of d.sessions || []) {
+          if (!(s.title || '').toLowerCase().includes(needle)) continue
+          seen.add(`${d.id}:${s.sessionId}`)
+          hits.push({ device: d, s, snippet: null })
+        }
+      }
+      for (const r of remote.q === q ? remote.results : []) {
+        const d = (st.data.devices || []).find((x) => x.id === r.deviceId)
+        if (!d) continue
+        for (const it of r.items || []) {
+          const k = `${d.id}:${it.sessionId}`
+          if (seen.has(k)) continue
+          seen.add(k)
+          const s = (d.sessions || []).find((x) => x.sessionId === it.sessionId) || { sessionId: it.sessionId, title: it.title }
+          hits.push({ device: d, s, snippet: it.snippet })
+        }
+      }
+      if (hits.length === 0) return null
+      const chatActive = st.activePanel === CHAT_PANEL_ID
+      return h(
+        'div',
+        { role: 'group', 'aria-label': t('remote'), 'data-dshdev-search': q },
+        hits.slice(0, 40).map(({ device, s, snippet }) => {
+          const status = remoteStatus(s, device.id)
+          const selected = chatActive && st.selection && st.selection.deviceId === device.id && st.selection.sessionId === s.sessionId
+          return h(
+            'div',
+            {
+              key: `${device.id}:${s.sessionId}`,
+              className: cx(cls.searchRow, selected && cls.selected),
+              role: 'treeitem',
+              'aria-selected': !!selected,
+              'data-dshdev-session': s.sessionId,
+              'data-dshdev-result': s.sessionId,
+              onClick: () => openRemote(ctx, device, s.sessionId),
+            },
+            h(
+              'span',
+              { className: cls.searchHeading },
+              h('span', { className: cls.slot }, status.state !== 'idle' ? h(StatusDots, { cls, status }) : h(RemoteMark, null)),
+              h('span', { className: cls.searchTitle }, s.title || nt('session.untitled', null, t('untitled'))),
+            ),
+            snippet ? h('span', { className: cls.searchSnippet }, snippet) : null,
+            h('span', { className: cls.searchMeta }, h('span', { className: cls.searchWorkspace }, [s.workspaceTitle, device.name].filter(Boolean).join(' · '))),
+          )
+        }),
+      )
     }
 
     function RemoteSidebar({ ctx, t }) {
@@ -1383,198 +1887,14 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       }, [st.data.devices.length])
       const devices = st.data.devices || []
       if (devices.length === 0 || !st.settings.showInSidebar) return null
+      if (st.nativeSearch && st.nativeSearch.trim()) return h(RemoteSearchResults, { ctx, t, cls, st, query: st.nativeSearch })
       const chatActive = st.activePanel === CHAT_PANEL_ID
       const perGroup = Number(st.settings.sessionsPerGroup) || 0
-      const hover = (device) => () => prefetchDevice(device)
       const out = []
       for (const device of devices) {
-        const online = device.status === 'online'
         const groups = groupSessions(device)
-        if (groups.length === 0) groups.push({ key: '_device', workspaceId: null, title: device.name, sessions: [], deviceOnly: true })
-        for (const g of groups) {
-          const ckey = `${device.id}:${g.key}`
-          const collapsed = !!st.collapsed[ckey]
-          const waiting = g.sessions.filter((s) => s.pending).length
-          const label = fill(t('remoteOn'), { device: device.name })
-          out.push(
-            h(
-              'div',
-              { key: ckey, className: cls.group, 'data-dshdev-device': device.id },
-              h(
-                'div',
-                {
-                  className: `${cls.project}${online ? '' : ' dshdev-dim'}`,
-                  role: 'treeitem',
-                  'aria-expanded': !collapsed,
-                  title: `${g.title} — ${label}${online ? '' : ` (${t('offlineShort')})`}`,
-                  onClick: () => toggleCollapsed(ckey),
-                  onMouseEnter: hover(device),
-                },
-                h('span', { className: cls.folder }, h('span', { className: 'dshdev-remote-folder' }, h(RemoteIcon, { size: 16 }))),
-                cls.chevron ? h('span', { className: cls.chevron }, P.IconChevronRightOutlineRegular ? h(P.IconChevronRightOutlineRegular, { size: 14 }) : '›') : null,
-                h(
-                  'span',
-                  { className: cls.projectText },
-                  h(
-                    'span',
-                    { className: cls.title },
-                    g.deviceOnly ? device.name : g.title,
-                    g.deviceOnly ? null : h('span', { className: 'dshdev-devname' }, device.name),
-                    online ? null : h('span', { className: 'dshdev-devname' }, t('offlineShort')),
-                    waiting ? h('span', { className: 'dshdev-attn-badge', title: t('needsYou'), 'data-dshdev-waiting': waiting }, String(waiting)) : null,
-                  ),
-                ),
-                h(
-                  'span',
-                  { className: cls.actions },
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: cls.iconButton,
-                      'aria-label': `${t('openFiles')} — ${g.title}`,
-                      title: `${t('openFiles')} — ${g.title}`,
-                      'data-dshdev-action': 'files',
-                      disabled: !online,
-                      onClick: (e) => {
-                        e.stopPropagation()
-                        openRemoteFiles(ctx, device, g)
-                      },
-                    },
-                    h(FolderIcon),
-                  ),
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: cls.iconButton,
-                      'aria-label': fill(t('openInEditor'), { editor: currentEditor().label }),
-                      title: fill(t('editorTitle'), { editor: currentEditor().label }),
-                      'data-dshdev-action': 'editor',
-                      disabled: !online,
-                      onClick: (e) => {
-                        e.stopPropagation()
-                        const ws = (device.workspaces || []).find((w) => w.id === g.workspaceId)
-                        openInEditor(device.id, { path: ws ? ws.path : g.sessions[0] && g.sessions[0].cwd, sessionId: g.sessions[0] && g.sessions[0].sessionId })
-                      },
-                    },
-                    h(EditorGlyph),
-                  ),
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: cls.iconButton,
-                      'aria-label': fill(t('newRemote'), { device: device.name }),
-                      title: fill(t('newRemote'), { device: device.name }),
-                      disabled: !online,
-                      onClick: (e) => {
-                        e.stopPropagation()
-                        newRemote(ctx, device, g.workspaceId)
-                      },
-                    },
-                    h(PlusIcon),
-                  ),
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: cls.iconButton,
-                      'aria-label': `${t('moreActions')} — ${device.name}`,
-                      title: `${t('moreActions')} — ${device.name}`,
-                      'aria-haspopup': 'menu',
-                      'data-dshdev-action': 'more',
-                      onClick: (e) => {
-                        e.stopPropagation()
-                        const r = e.currentTarget.getBoundingClientRect()
-                        setStore({ menu: { kind: 'device', deviceId: device.id, x: r.left, y: r.bottom + 4 } })
-                      },
-                    },
-                    h(MoreIcon),
-                  ),
-                ),
-              ),
-              collapsed
-                ? null
-                : (perGroup && !st.expanded[ckey] ? g.sessions.slice(0, perGroup) : g.sessions).map((s) => {
-                    const selected =
-                      chatActive &&
-                      st.selection &&
-                      st.selection.deviceId === device.id &&
-                      (st.selection.sessionId === s.sessionId || (!st.selection.sessionId && st.embedded[device.id] === s.sessionId))
-                    const menuOpen = st.menu && st.menu.kind === 'session' && st.menu.sessionId === s.sessionId
-                    const openMenu = (x, y) => setStore({ menu: { kind: 'session', deviceId: device.id, sessionId: s.sessionId, x, y } })
-                    return h(
-                      'div',
-                      {
-                        key: s.sessionId,
-                        className: `${cls.session}${selected ? ` ${cls.selected}` : ''}${online ? '' : ' dshdev-dim'}`,
-                        role: 'treeitem',
-                        'aria-selected': !!selected,
-                        'data-dshdev-session': s.sessionId,
-                        'data-dshdev-pending': s.pending ? s.pending.kind : undefined,
-                        'data-dshdev-pinned': s.pinned ? '1' : undefined,
-                        'data-menu-open': menuOpen ? '1' : undefined,
-                        title: s.pending ? `${t('needsYou')} — ${pendingText(s.pending, t)} — ${s.title || t('untitled')}` : `${s.title || t('untitled')} — ${label}`,
-                        onClick: () => openRemote(ctx, device, s.sessionId),
-                        onContextMenu: (e) => {
-                          e.preventDefault()
-                          openMenu(e.clientX, e.clientY)
-                        },
-                        onMouseEnter: hover(device),
-                      },
-                      h(
-                        'span',
-                        { className: cls.slot },
-                        s.pending
-                          ? h('span', { className: 'dshdev-attn', 'aria-label': t('needsYou') }, h(AttentionIcon, { size: 15 }))
-                          : s.running
-                            ? h(P.StateDot || 'span', { state: 'ongoing' })
-                            : h('span', { className: 'dshdev-remote-mark' }, h(RemoteIcon, { size: 14 })),
-                      ),
-                      h('span', { className: cls.title }, s.title || t('untitled')),
-                      h(
-                        'span',
-                        { className: cls.time, 'data-dshdev-time': '1' },
-                        s.pending ? h('span', { className: 'dshdev-attn-text' }, t('needsYou')) : s.pinned ? h('span', { className: 'dshdev-pin', title: t('pinned') }, h(PinIcon)) : s.running ? '' : shortAgo(s.updatedAt, t),
-                      ),
-                      h(
-                        'span',
-                        { className: 'dshdev-row-actions' },
-                        h(
-                          'button',
-                          {
-                            type: 'button',
-                            className: cls.iconButton,
-                            'aria-label': t('sessionActions'),
-                            title: t('sessionActions'),
-                            'aria-haspopup': 'menu',
-                            'data-dshdev-action': 'session-more',
-                            onClick: (e) => {
-                              e.stopPropagation()
-                              const r = e.currentTarget.getBoundingClientRect()
-                              openMenu(r.left, r.bottom + 4)
-                            },
-                          },
-                          h(MoreIcon),
-                        ),
-                      ),
-                    )
-                  }),
-              !collapsed && perGroup && g.sessions.length > perGroup
-                ? h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'dshdev-more',
-                      onClick: () => setStore({ expanded: { ...st.expanded, [ckey]: !st.expanded[ckey] } }),
-                    },
-                    st.expanded[ckey] ? t('showLess') : fill(t('showMore'), { n: g.sessions.length - perGroup }),
-                  )
-                : null,
-            ),
-          )
-        }
+        if (groups.length === 0) groups.push({ key: '_device', workspaceId: null, title: device.name, path: null, sessions: [], deviceOnly: true })
+        for (const g of groups) out.push(h(RemoteGroup, { key: `${device.id}:${g.key}`, ctx, t, cls, device, g, st, chatActive, perGroup }))
       }
       return h('div', { className: 'dshdev-remote-root', role: 'group', 'aria-label': t('remote') }, out)
     }
@@ -1584,6 +1904,52 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       if (!store.settings.preload || !device || device.status !== 'online' || frames.byDevice.has(device.id)) return
       clearTimeout(prefetchTimer)
       prefetchTimer = setTimeout(() => frames.preload(device.id, device).catch(() => {}), 150)
+    }
+
+    /** Open DSH's own sidebar search (remote chats answer it too). */
+    function focusNativeSearch() {
+      const input = document.querySelector('[class*="regionArea"] input[class*="_searchInput"]')
+      if (input) {
+        input.focus()
+        return
+      }
+      const button = document.querySelector('[class*="regionArea"] [class*="_searchButton"]') || document.querySelector('[class*="_searchButton"]')
+      if (button) button.click()
+      setTimeout(() => document.querySelector('input[class*="_searchInput"]')?.focus(), 80)
+    }
+
+    /** Follow the query typed in DSH's sidebar search box (only while its results are showing). */
+    function watchNativeSearch() {
+      let timer = null
+      const current = () => {
+        const input = document.querySelector('[class*="regionArea"] input[class*="_searchInput"]') || document.querySelector('input[class*="_searchInput"]')
+        if (!input || input.offsetParent === null) return ''
+        // DSH swaps its tree for a results tree while searching.
+        const list = input.closest('[class*="_list"]') || document
+        return list.querySelector('[class*="_searchTree"], [class*="_searchStatus"]') ? input.value : ''
+      }
+      let queued = false
+      const read = () => {
+        if (queued) return
+        queued = true
+        requestAnimationFrame(() => {
+          queued = false
+          const value = current()
+          if (value !== store.nativeSearch) setStore({ nativeSearch: value })
+        })
+      }
+      const onInput = (e) => {
+        if (e.target && e.target.matches && e.target.matches('input[class*="_searchInput"]')) read()
+      }
+      document.addEventListener('input', onInput, true)
+      // Opening, clearing or closing the search swaps DSH's result tree in and out.
+      const observer = new MutationObserver(read)
+      observer.observe(document.body, { childList: true, subtree: true })
+      return () => {
+        clearTimeout(timer)
+        document.removeEventListener('input', onInput, true)
+        observer.disconnect()
+      }
     }
 
     /** Mount RemoteSidebar in its own React root right below the local session tree. */
@@ -1625,8 +1991,6 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
 
     // ── "where should this session run?" device menu ────────────────────────
     let appCtx = null
-    let menuRoot = null
-    let menuEl = null
     function startLocalSession() {
       store.localUntil = Date.now() + 5000
       try {
@@ -1639,67 +2003,10 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         } catch {}
       }
     }
-    function closeDeviceMenu() {
-      if (menuRoot) menuRoot.render(null)
-    }
-    function DeviceMenu({ x, y, current, t, onClose }) {
-      const st = useStore()
-      const ref = useRef(null)
-      useEffect(() => {
-        const down = (e) => {
-          if (ref.current && !ref.current.contains(e.target)) onClose()
-        }
-        const key = (e) => e.key === 'Escape' && onClose()
-        document.addEventListener('pointerdown', down, true)
-        document.addEventListener('keydown', key, true)
-        return () => {
-          document.removeEventListener('pointerdown', down, true)
-          document.removeEventListener('keydown', key, true)
-        }
-      }, [])
-      const left = Math.max(8, Math.min(x, window.innerWidth - 300))
-      const item = (key, icon, label, meta, onPick, opts = {}) =>
-        h(
-          'button',
-          { key, type: 'button', role: 'menuitemradio', 'aria-checked': !!opts.checked, disabled: !!opts.disabled, className: `dshdev-dm-item${opts.checked ? ' on' : ''}`, onClick: () => (onClose(), onPick()) },
-          h('span', { className: 'dshdev-dm-icon' }, icon),
-          h('span', { className: 'dshdev-dm-label' }, label, meta ? h('span', { className: 'dshdev-dm-meta' }, meta) : null),
-          opts.checked ? h('span', { className: 'dshdev-dm-check' }, '✓') : null,
-        )
-      const devices = st.data.devices || []
-      return h(
-        'div',
-        { ref, className: 'dshdev-dm', role: 'menu', 'aria-label': t('chooseDevice'), style: { left, top: y } },
-        h('div', { className: 'dshdev-dm-title' }, t('chooseDevice')),
-        item('local', h(LaptopIcon), t('thisMac'), null, () => startLocalSession(), { checked: !current }),
-        devices.map((d) =>
-          item(
-            d.id,
-            h('span', { style: { color: 'rgb(65,118,230)', display: 'inline-flex' } }, h(RemoteIcon, { size: 16 })),
-            d.name,
-            d.status === 'online' ? (d.model && !(d.model.ready ?? d.model.configured) ? t('modelLabel') + ' ⚠' : null) : t(`status_${d.status}`),
-            () => newRemote(appCtx, d, null),
-            { checked: current === d.id, disabled: d.status !== 'online' },
-          ),
-        ),
-        h('div', { className: 'dshdev-dm-sep' }),
-        item('add', h(PlusIcon), t('addDeviceMenu'), null, () => {
-          setStore({ openAdd: true })
-          try {
-            appCtx.layout.selectPanel(PANEL_ID)
-          } catch {}
-        }),
-      )
-    }
-    function openDeviceMenu({ x, y, current = null }) {
-      if (!menuEl) {
-        menuEl = document.createElement('div')
-        menuEl.setAttribute('data-dsh-devices', 'device-menu')
-        document.body.appendChild(menuEl)
-        menuRoot = ReactDOMClient.createRoot(menuEl)
-      }
-      ensureStyles()
-      menuRoot.render(h(DeviceMenu, { x, y, current, t: appT, onClose: closeDeviceMenu }))
+    /** Open the device picker anchored to `rect` (a pill on the new-session page, or one inside a device UI). */
+    function openDevicePicker({ rect, current = null }) {
+      const r = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.right - rect.left, height: rect.bottom - rect.top, x: rect.left, y: rect.top }
+      setStore({ picker: { rect: r, current } })
     }
     let appT = (k) => k
 
@@ -1737,8 +2044,7 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
           pill.addEventListener('click', (e) => {
             e.preventDefault()
             e.stopPropagation()
-            const r = pill.getBoundingClientRect()
-            openDeviceMenu({ x: r.left, y: r.bottom + 6, current: null })
+            openDevicePicker({ rect: pill.getBoundingClientRect(), current: null })
           })
           chooser.parentElement.insertBefore(pill, chooser)
           // A fresh local new-session page: honour the default device, unless the user just chose this computer.
@@ -1768,7 +2074,25 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       }
     }
 
-    // ── DeepSeek API key on a device ────────────────────────────────────────
+    // ── DeepSeek access on a device: API key and account ───────────────────
+    function SmallButton({ children, onClick, disabled, primary, danger, testid }) {
+      return h('button', { type: 'button', className: cx('dshdev-small-button', primary && 'primary', danger && 'danger'), onClick, disabled, 'data-testid': testid }, children)
+    }
+    /** A credential line like the provider cards of DSH's Models settings. */
+    function CredentialRow({ ok, name, tag, status, actions, testid }) {
+      return h(
+        'li',
+        { className: 'dshdev-cred-card', 'data-testid': testid },
+        h(
+          'div',
+          { className: 'dshdev-cred-head' },
+          h('span', { className: 'dshdev-cred-identity' }, h('span', { className: cx('dshdev-cred-dot', ok ? 'ok' : 'missing') }), h('span', { className: 'dshdev-cred-name' }, name), tag ? h('span', { className: 'dshdev-cred-tag' }, tag) : null),
+          status ? h('span', { className: cx('dshdev-cred-status', ok && 'ok') }, status) : null,
+          h('span', { className: 'dshdev-cred-actions' }, actions),
+        ),
+      )
+    }
+
     function ModelKeyPanel({ device, t, variant = 'card', onSaved, onUpdate }) {
       const st = useStore()
       const [editing, setEditing] = useState(false)
@@ -1782,146 +2106,114 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         if (variant === 'banner') return null
         return h(
           'div',
-          { className: 'dshdev-model warn card' },
-          h('div', { className: 'dshdev-model-row' }, h('span', { className: 'dshdev-model-dot' }), h('span', { className: 'dshdev-model-text' }, fill(t('needsUpdate'), { remote: (device.versions && device.versions.plugin) || '?' }))),
-          h(
-            'div',
-            { className: 'dshdev-model-row' },
-            device.canUpdate ? h(Btn, { variant: 'primary', onClick: () => onUpdate && onUpdate(device) }, t('updateNow')) : null,
-            h(Btn, { variant: 'ghost', onClick: () => openDeviceSettings(device) }, t('deviceSettings')),
-          ),
-          device.canUpdate ? h('div', { className: 'dshdev-hint' }, t('updateWarn')) : null,
+          { className: 'dshdev-callout' },
+          h('span', { className: 'dshdev-callout-dot' }),
+          h('div', { className: 'dshdev-callout-main' }, h('div', { className: 'dshdev-callout-text' }, fill(t('needsUpdate'), { remote: (device.versions && device.versions.plugin) || '?' })), device.canUpdate ? h('div', { className: 'dshdev-hint-text' }, t('updateWarn')) : null),
+          h('div', { className: 'dshdev-callout-actions' }, device.canUpdate ? h(SmallButton, { primary: true, onClick: () => onUpdate && onUpdate(device) }, t('updateNow')) : null),
         )
       }
-      const save = async (payload) => {
+      const run = async (fn, success) => {
         setBusy(true)
         setError(null)
         setOk(null)
         try {
-          await post('/devices/model-key', { id: device.id, ...payload })
-          setOk(fill(t('keySaved'), { device: device.name }))
-          setEditing(false)
-          setValue('')
+          await fn()
+          if (success) setOk(success)
           await refreshDevices()
           if (onSaved) onSaved()
+          return true
         } catch (e) {
-          setError(e.message)
+          setError(friendlyError(e, device))
+          return false
         } finally {
           setBusy(false)
         }
       }
-      const remove = async () => {
-        setBusy(true)
-        try {
-          await post('/devices/model-key/clear', { id: device.id })
-          await refreshDevices()
-        } catch (e) {
-          setError(e.message)
-        } finally {
-          setBusy(false)
-        }
-      }
+      const saveKey = (payload) =>
+        run(() => post('/devices/model-key', { id: device.id, ...payload }), fill(t('keySaved'), { device: device.name })).then((done) => {
+          if (done) {
+            setEditing(false)
+            setValue('')
+          }
+        })
+      const saveTyped = () => value.trim() && saveKey({ apiKey: value.trim() })
+      const removeKey = () => run(() => post('/devices/model-key/clear', { id: device.id }))
+      const shareAccount = () => run(() => post('/devices/account', { id: device.id }), fill(t('accountShared'), { device: device.name }))
+      const signOut = () => run(() => post('/devices/account/clear', { id: device.id }))
       const account = model.account || null
       const accountOk = !!(account && account.signedIn)
       const canAccount = hasFeature(device, 'account') && !!account && account.available !== false
       const ready = model.ready ?? model.configured
-      const shareAccount = async () => {
-        setBusy(true)
-        setError(null)
-        setOk(null)
-        try {
-          await post('/devices/account', { id: device.id })
-          setOk(fill(t('accountShared'), { device: device.name }))
-          await refreshDevices()
-          if (onSaved) onSaved()
-        } catch (e) {
-          setError(friendlyError(e, device))
-        } finally {
-          setBusy(false)
-        }
-      }
-      const signOut = async () => {
-        setBusy(true)
-        setError(null)
-        try {
-          await post('/devices/account/clear', { id: device.id })
-          await refreshDevices()
-        } catch (e) {
-          setError(friendlyError(e, device))
-        } finally {
-          setBusy(false)
-        }
-      }
-      const settings = () => openDeviceSettings(device)
-      if (ready && !editing) {
-        if (variant === 'banner') return null
-        return h(
-          'div',
-          { className: 'dshdev-model-stack', 'data-testid': `model-ok-${device.id}` },
-          model.configured
-            ? h(
-                'div',
-                { className: 'dshdev-model ok' },
-                h('span', { className: 'dshdev-model-dot ok' }),
-                h('span', { className: 'dshdev-model-text' }, t('modelOk')),
-                h('span', { className: 'dshdev-model-actions' }, h(Btn, { variant: 'ghost', onClick: () => setEditing(true) }, t('changeKey')), h(Btn, { variant: 'ghost', onClick: remove, disabled: busy }, t('removeKey')), h(Btn, { variant: 'ghost', onClick: settings }, t('deviceSettings'))),
-              )
-            : null,
-          accountOk
-            ? h(
-                'div',
-                { className: 'dshdev-model ok', 'data-testid': `account-ok-${device.id}` },
-                h('span', { className: 'dshdev-model-dot ok' }),
-                h('span', { className: 'dshdev-model-text' }, model.configured ? fill(t('accountSignedIn'), { device: device.name }) : t('modelReadyAccount')),
-                h(
-                  'span',
-                  { className: 'dshdev-model-actions' },
-                  h(Btn, { variant: 'ghost', onClick: signOut, disabled: busy }, t('signOutDevice')),
-                  model.configured ? null : h(Btn, { variant: 'ghost', onClick: () => setEditing(true) }, t('addApiKey')),
-                  model.configured ? null : h(Btn, { variant: 'ghost', onClick: settings }, t('deviceSettings')),
-                ),
-              )
-            : canAccount && st.localAccount
-              ? h('button', { type: 'button', className: 'dshdev-linkbtn', disabled: busy, onClick: shareAccount }, t('useMacAccount'))
-              : null,
-          error ? h('div', { className: 'dshdev-err' }, error) : null,
-          ok ? h('div', { className: 'dshdev-ok' }, ok) : null,
-        )
-      }
       const offerAccount = canAccount && st.localAccount && !accountOk
       const offerKey = st.localKey && !model.configured
+      const editor = editing
+        ? h(
+            'div',
+            { className: 'dshdev-key-editor' },
+            h(NativeField, { value, onChange: setValue, onEnter: saveTyped, label: t('pasteKey'), placeholder: t('keyPlaceholder'), type: 'password', autoFocus: true, disabled: busy }),
+            h(SmallButton, { primary: true, disabled: busy || !value.trim(), onClick: saveTyped }, t('saveKey')),
+            h(SmallButton, { onClick: () => setEditing(false) }, nt('cancel', null, t('cancel'))),
+          )
+        : null
+      const feedback = h(React.Fragment, null, error ? h('p', { className: 'dshdev-error-text', role: 'alert' }, error) : null, ok ? h('p', { className: 'dshdev-success-text', role: 'status' }, ok) : null)
+      if (variant === 'banner') {
+        if (ready && !editing) return null
+        return h(
+          'div',
+          { className: 'dshdev-callout', role: 'alert', 'data-testid': `model-key-${device.id}` },
+          h('span', { className: 'dshdev-callout-dot' }),
+          h('div', { className: 'dshdev-callout-main' }, h('div', { className: 'dshdev-callout-text' }, fill(t('modelMissing'), { device: device.name })), editor, feedback),
+          editing
+            ? null
+            : h(
+                'div',
+                { className: 'dshdev-callout-actions' },
+                offerAccount ? h(SmallButton, { primary: true, disabled: busy, onClick: shareAccount, testid: 'use-mac-account' }, t('useMacAccount')) : null,
+                offerKey ? h(SmallButton, { primary: !offerAccount, disabled: busy, onClick: () => saveKey({ fromDesktop: true }) }, t('useMacKey')) : null,
+                h(SmallButton, { onClick: () => setEditing(true) }, t('pasteKey')),
+                h(SmallButton, { onClick: () => openDeviceSettings(device) }, t('deviceSettings')),
+              ),
+        )
+      }
       return h(
         'div',
-        { className: `dshdev-model warn ${variant}`, role: variant === 'banner' ? 'alert' : undefined, 'data-testid': `model-key-${device.id}` },
+        { className: 'dshdev-cred', 'data-testid': ready ? `model-ok-${device.id}` : `model-key-${device.id}` },
         h(
-          'div',
-          { className: 'dshdev-model-row' },
-          h('span', { className: 'dshdev-model-dot' }),
-          h('span', { className: 'dshdev-model-text' }, model.configured ? t('changeKey') : fill(t('modelMissing'), { device: device.name })),
-        ),
-        h(
-          'div',
-          { className: 'dshdev-model-row' },
-          offerAccount ? h(Btn, { variant: 'primary', disabled: busy, onClick: shareAccount, 'data-testid': 'use-mac-account' }, t('useMacAccount')) : null,
-          offerKey ? h(Btn, { variant: offerAccount ? 'outline' : 'primary', disabled: busy, onClick: () => save({ fromDesktop: true }) }, t('useMacKey')) : null,
-          h('input', {
-            className: 'dshdev-input dshdev-key-input',
-            type: 'password',
-            value,
-            placeholder: t('keyPlaceholder'),
-            'aria-label': t('pasteKey'),
-            autoComplete: 'off',
-            spellCheck: false,
-            onChange: (e) => setValue(e.target.value),
-            onKeyDown: (e) => e.key === 'Enter' && value.trim() && save({ apiKey: value.trim() }),
+          'ul',
+          { className: 'dshdev-cred-list' },
+          h(CredentialRow, {
+            ok: model.configured,
+            name: t('apiKeyName'),
+            tag: model.configured && model.source ? model.source : null,
+            status: model.configured ? t('configured') : t('notConfigured'),
+            testid: 'cred-key',
+            actions: h(
+              React.Fragment,
+              null,
+              offerKey ? h(SmallButton, { primary: !offerAccount, disabled: busy, onClick: () => saveKey({ fromDesktop: true }) }, t('useMacKey')) : null,
+              h(SmallButton, { disabled: busy, onClick: () => setEditing(true) }, model.configured ? t('changeKey') : t('pasteKey')),
+              model.configured ? h(SmallButton, { danger: true, disabled: busy, onClick: removeKey }, t('removeKey')) : null,
+            ),
           }),
-          h(Btn, { variant: offerAccount || offerKey ? 'outline' : 'primary', disabled: busy || !value.trim(), onClick: () => save({ apiKey: value.trim() }) }, t('saveKey')),
-          h(Btn, { variant: 'ghost', onClick: settings }, t('deviceSettings')),
-          editing ? h(Btn, { variant: 'ghost', onClick: () => setEditing(false) }, t('cancel')) : null,
+          canAccount
+            ? h(CredentialRow, {
+                ok: accountOk,
+                name: t('accountName'),
+                status: accountOk ? t('signedIn') : t('notSignedIn'),
+                testid: accountOk ? `account-ok-${device.id}` : 'cred-account',
+                actions: h(
+                  React.Fragment,
+                  null,
+                  offerAccount ? h(SmallButton, { primary: true, disabled: busy, onClick: shareAccount, testid: 'use-mac-account' }, t('useMacAccount')) : null,
+                  accountOk ? h(SmallButton, { disabled: busy, onClick: signOut }, t('signOutDevice')) : null,
+                ),
+              })
+            : null,
         ),
-        h('div', { className: 'dshdev-hint' }, offerAccount ? `${t('keyHint')} ${t('accountNote')}` : t('keyHint')),
-        error ? h('div', { className: 'dshdev-err' }, error) : null,
-        ok ? h('div', { className: 'dshdev-ok' }, ok) : null,
+        editor,
+        h('p', { className: 'dshdev-hint-text' }, canAccount ? `${t('keyHint')} ${t('accountNote')}` : t('keyHint')),
+        feedback,
+        h('button', { type: 'button', className: 'dshdev-link-button', onClick: () => openDeviceSettings(device) }, t('deviceSettings')),
       )
     }
 
@@ -2017,12 +2309,13 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       })
       const device = st.selection && (st.data.devices || []).find((d) => d.id === st.selection.deviceId)
       let status = null
-      if (!device) status = st.loaded ? null : '…'
+      if (!device) status = st.loaded ? null : ''
       else if (device.status === 'offline' || device.status === 'error' || device.status === 'revoked') status = fill(t('deviceOffline'), { device: device.name })
       else if (!frames.byDevice.has(device.id)) status = fill(t('connecting'), { device: device.name })
       const banner = device && device.status === 'online' && device.model && !(device.model.ready ?? device.model.configured)
       const panel = device && st.selection && st.selection.panel
       const panelLabel = panel === 'plugins' ? t('pluginsMenu') : panel === 'schedules' ? t('automationsMenu') : panel
+      const connecting = device && device.status !== 'offline' && device.status !== 'error' && device.status !== 'revoked'
       return h(
         'div',
         { className: 'dshdev-chat-wrap', 'data-testid': 'dsh-devices-chat', style: { display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 0 } },
@@ -2030,41 +2323,56 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
           ? h(
               'div',
               { className: 'dshdev-context', 'data-testid': 'dsh-devices-panel-context' },
-              h('span', { className: 'dshdev-remote-folder' }, h(RemoteIcon, { size: 14 })),
-              h('span', { className: 'dshdev-context-device' }, device.name),
-              h('span', { className: 'dshdev-context-sep' }, '·'),
-              h('span', null, panelLabel),
+              h('span', { className: 'dshdev-context-label' }, h(RemoteIcon, { size: 14 }), h('span', null, device.name)),
+              h('span', { className: 'dshdev-context-panel' }, panelLabel),
             )
           : null,
         banner ? h('div', { className: 'dshdev-chat-banner' }, h(ModelKeyPanel, { device, t, variant: 'banner', onSaved: () => frames.reload(device.id) })) : null,
         h(EditorHostDialog, { t }),
-        h('div', { className: 'dshdev-chat-panel', ref, style: { position: 'relative', width: '100%', flex: '1 1 auto', minHeight: 0 } }, status ? h('div', { className: 'dshdev-chat-status' }, status) : null),
+        h(
+          'div',
+          { className: 'dshdev-chat-panel', ref, style: { position: 'relative', width: '100%', flex: '1 1 auto', minHeight: 0 } },
+          status ? h('div', { className: 'dshdev-chat-status' }, connecting && P.TextShimmer ? h(P.TextShimmer, null, status) : status) : null,
+        ),
       )
     }
 
-    // ── Settings → Devices ──────────────────────────────────────────────────
-    function SettingRow({ title, hint, children, extra }) {
+    // ── Settings → Devices, built like DSH's own sections ───────────────────
+    function SettingsRow({ title, description, children, extra, testid }) {
       return h(
         'div',
-        { className: 'dshdev-set-row' },
-        h('div', { className: 'dshdev-set-text' }, h('div', { className: 'dshdev-set-title' }, title), hint ? h('div', { className: 'dshdev-set-hint' }, hint) : null, extra || null),
-        h('div', { className: 'dshdev-set-control' }, children),
+        { className: 'dshdev-srow', 'data-testid': testid },
+        h('div', { className: 'dshdev-srow-text' }, h('div', { className: 'dshdev-srow-title' }, title), description ? h('div', { className: 'dshdev-srow-desc' }, description) : null, extra || null),
+        h('div', { className: 'dshdev-srow-control' }, children),
       )
     }
-    function Toggle({ checked, onChange, label }) {
-      return h(
-        'button',
-        { type: 'button', role: 'switch', 'aria-checked': !!checked, 'aria-label': label, className: `dshdev-switch${checked ? ' on' : ''}`, onClick: () => onChange(!checked) },
-        h('span', { className: 'dshdev-switch-knob' }),
-      )
+    /** DSH's settings selector: a pill that opens its menu. */
+    function SettingsSelect({ value, options, onChange, label }) {
+      const [open, setOpen] = useState(false)
+      const active = options.find(([v]) => String(v) === String(value))
+      return h(NativeMenu, {
+        open,
+        onClose: () => setOpen(false),
+        items: options.map(([v, text]) => ({ id: String(v), label: text })),
+        selectedId: String(value),
+        onSelect: (id) => {
+          setOpen(false)
+          onChange(id)
+        },
+        align: 'end',
+        portal: true,
+        anchor: h(
+          'button',
+          { type: 'button', className: 'dshdev-selector', 'aria-haspopup': 'menu', 'aria-expanded': open, 'aria-label': label, onClick: () => setOpen((v) => !v) },
+          h('span', { className: 'dshdev-selector-label' }, active ? active[1] : String(value)),
+          Icon('IconChevronDownOutlineRegular', { className: 'dshdev-selector-chevron' }),
+        ),
+      })
     }
-    function Select({ value, onChange, options, label }) {
-      return h(
-        'select',
-        { className: 'dshdev-select', value: String(value), 'aria-label': label, onChange: (e) => onChange(e.target.value) },
-        options.map(([v, text]) => h('option', { key: v, value: String(v) }, text)),
-      )
+    function SettingsSwitch({ checked, onChange, label }) {
+      return h(NativeSwitch, { checked, onChange, label })
     }
+
     function DevicesSettings({ t, close }) {
       ensureStyles()
       const st = useStore()
@@ -2075,19 +2383,18 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       const devices = st.data.devices || []
       return h(
         'div',
-        { className: 'dshdev-settings', 'data-testid': 'dsh-devices-settings' },
-        h('div', { className: 'dshdev-set-head' }, h('div', { className: 'dshdev-set-h1' }, t('settingsTitle')), h('div', { className: 'dshdev-set-hint' }, t('settingsSub'))),
+        { className: 'dshdev-section', 'data-testid': 'dsh-devices-settings' },
         h(
-          SettingRow,
+          SettingsRow,
           {
             title: t('setNotify'),
-            hint: t('setNotifyHint'),
+            description: t('setNotifyHint'),
             extra:
               cfg.notify !== 'never'
-                ? h('button', { type: 'button', className: 'dshdev-linkbtn', onClick: () => sendNotification({ key: `test-${Date.now()}`, title: t('settingsTitle'), body: t('notifyTestBody') }) }, t('notifyTest'))
+                ? h('button', { type: 'button', className: 'dshdev-inline-link', onClick: () => sendNotification({ key: `test-${Date.now()}`, title: t('settingsTitle'), body: t('notifyTestBody') }) }, t('notifyTest'))
                 : null,
           },
-          h(Select, {
+          h(SettingsSelect, {
             label: t('setNotify'),
             value: cfg.notify,
             onChange: async (v) => {
@@ -2101,18 +2408,18 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
             options: [['background', t('notifyBackground')], ['always', t('notifyAlways')], ['never', t('notifyNever')]],
           }),
         ),
-        h(SettingRow, { title: t('setNotifyAttention'), hint: t('setNotifyAttentionHint') }, h(Toggle, { label: t('setNotifyAttention'), checked: cfg.notifyAttention !== false, onChange: (v) => setSetting('notifyAttention', v) })),
-        h(SettingRow, { title: t('setSidebar'), hint: t('setSidebarHint') }, h(Toggle, { label: t('setSidebar'), checked: cfg.showInSidebar, onChange: (v) => setSetting('showInSidebar', v) })),
+        h(SettingsRow, { title: t('setNotifyAttention'), description: t('setNotifyAttentionHint') }, h(SettingsSwitch, { label: t('setNotifyAttention'), checked: cfg.notifyAttention !== false, onChange: (v) => setSetting('notifyAttention', v) })),
+        h(SettingsRow, { title: t('setSidebar'), description: t('setSidebarHint') }, h(SettingsSwitch, { label: t('setSidebar'), checked: cfg.showInSidebar, onChange: (v) => setSetting('showInSidebar', v) })),
         h(
-          SettingRow,
-          { title: t('setPerGroup'), hint: t('setPerGroupHint') },
-          h(Select, { label: t('setPerGroup'), value: cfg.sessionsPerGroup, onChange: (v) => setSetting('sessionsPerGroup', Number(v)), options: [[3, '3'], [5, '5'], [10, '10'], [20, '20'], [0, t('allSessions')]] }),
+          SettingsRow,
+          { title: t('setPerGroup'), description: t('setPerGroupHint') },
+          h(SettingsSelect, { label: t('setPerGroup'), value: cfg.sessionsPerGroup, onChange: (v) => setSetting('sessionsPerGroup', Number(v)), options: [[3, '3'], [5, '5'], [10, '10'], [20, '20'], [0, t('allSessions')]] }),
         ),
-        h(SettingRow, { title: t('setPreload'), hint: t('setPreloadHint') }, h(Toggle, { label: t('setPreload'), checked: cfg.preload, onChange: (v) => setSetting('preload', v) })),
+        h(SettingsRow, { title: t('setPreload'), description: t('setPreloadHint') }, h(SettingsSwitch, { label: t('setPreload'), checked: cfg.preload, onChange: (v) => setSetting('preload', v) })),
         h(
-          SettingRow,
-          { title: t('setEditor'), hint: t('setEditorHint') },
-          h(Select, {
+          SettingsRow,
+          { title: t('setEditor'), description: t('setEditorHint') },
+          h(SettingsSelect, {
             label: t('setEditor'),
             value: cfg.editor || currentEditor().id,
             onChange: (v) => {
@@ -2123,22 +2430,26 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
           }),
         ),
         h(
-          SettingRow,
-          { title: t('setDefault'), hint: t('setDefaultHint') },
-          h(Select, { label: t('setDefault'), value: cfg.defaultDevice, onChange: (v) => setSetting('defaultDevice', v), options: [['local', t('thisMac')], ...devices.map((d) => [d.id, d.name])] }),
+          SettingsRow,
+          { title: t('setDefault'), description: t('setDefaultHint') },
+          h(SettingsSelect, { label: t('setDefault'), value: cfg.defaultDevice, onChange: (v) => setSetting('defaultDevice', v), options: [['local', t('thisMac')], ...devices.map((d) => [d.id, d.name])] }),
         ),
         h(
-          'div',
-          { className: 'dshdev-set-foot' },
-          h(Btn, {
-            variant: 'outline',
-            onClick: () => {
-              if (close) close()
-              try {
-                appCtx.layout.selectPanel(PANEL_ID)
-              } catch {}
+          SettingsRow,
+          { title: t('manageDevices'), description: t('subtitle') },
+          h(
+            ModalButton,
+            {
+              variant: 'outline',
+              onClick: () => {
+                if (close) close()
+                try {
+                  appCtx.layout.selectPanel(PANEL_ID)
+                } catch {}
+              },
             },
-          }, t('manageDevices')),
+            t('open'),
+          ),
         ),
       )
     }
@@ -2165,43 +2476,29 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
           setError(e.message)
         }
       }
-      return h(SimpleDialog, {
+      return h(NativeModal, {
         t,
         title: t('editorHost'),
         description: device.transport.kind === 'url' ? fill(t('editorHostNeeded'), { device: device.name }) : t('editorHostHint'),
         onClose: close,
-        footer: h(React.Fragment, null, h(Btn, { variant: 'outline', onClick: close }, t('cancel')), h(Btn, { variant: 'primary', disabled: !value.trim(), onClick: save }, t('save'))),
+        footer: h(React.Fragment, null, h(ModalButton, { variant: 'outline', onClick: close }, nt('cancel', null, t('cancel'))), h(ModalButton, { variant: 'primary', disabled: !value.trim(), onClick: save }, t('save'))),
         children: h(
-          'div',
-          { className: 'dshdev-form' },
-          h(Field, { label: t('editorHost'), hint: t('editorHostHint') }, h(TextInput, { value, onChange: setValue, placeholder: 'vps-julio  /  root@203.0.113.10', autoFocus: true })),
-          error ? h('div', { className: 'dshdev-err' }, error) : null,
+          React.Fragment,
+          null,
+          h(NativeField, { value, onChange: setValue, onEnter: save, label: t('editorHost'), placeholder: 'vps-julio  /  root@203.0.113.10', autoFocus: true }),
+          h('p', { className: 'dshdev-hint-text' }, t('editorHostHint')),
+          error ? h('p', { className: 'dshdev-error-text', role: 'alert' }, error) : null,
         ),
       })
     }
 
-    // ── Devices page (management) ───────────────────────────────────────────
-    function TextInput({ value, onChange, placeholder, list, autoFocus, type, ariaLabel }) {
-      return h('input', {
-        className: 'dshdev-input', value, type: type || 'text', placeholder, list, autoFocus,
-        'aria-label': ariaLabel || placeholder, spellCheck: false, autoCapitalize: 'off', autoComplete: 'off',
-        onChange: (e) => onChange(e.target.value),
-      })
+    // ── Devices page, laid out like DSH's Plugins page ──────────────────────
+    function TextInput({ value, onChange, placeholder, autoFocus, type, ariaLabel, onEnter }) {
+      return h(NativeField, { value, onChange, placeholder, autoFocus, type, label: ariaLabel || placeholder, onEnter })
     }
 
     function Field({ label, hint, children }) {
-      return h('div', { className: 'dshdev-field' }, h('label', null, label), children, hint ? h('div', { className: 'dshdev-hint' }, hint) : null)
-    }
-
-    function dotState(status) {
-      if (status === 'online') return 'done'
-      if (status === 'connecting' || status === 'running') return 'ongoing'
-      if (status === 'offline') return 'idle'
-      return 'error'
-    }
-
-    function Dot({ status }) {
-      return P.StateDot ? h(P.StateDot, { state: dotState(status) }) : h('span', { style: { width: 8, height: 8, borderRadius: 4, background: status === 'online' ? '#22c55e' : '#9ca3af', display: 'inline-block' } })
+      return h('div', { className: 'dshdev-field' }, h('label', { className: 'dshdev-field-label' }, label), children, hint ? h('div', { className: 'dshdev-hint-text' }, hint) : null)
     }
 
     function Btn(props) {
@@ -2209,93 +2506,86 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       return P.Button ? h(P.Button, { size: 'sm', variant: 'outline', ...rest }, children) : h('button', rest, children)
     }
 
-    function DeviceCard({ device, t, self, onOpen, onAction }) {
-      const [menu, setMenu] = useState(false)
-      const ref = useRef(null)
-      useEffect(() => {
-        if (!menu) return
-        const close = (e) => {
-          if (ref.current && !ref.current.contains(e.target)) setMenu(false)
-        }
-        document.addEventListener('pointerdown', close)
-        return () => document.removeEventListener('pointerdown', close)
-      }, [menu])
+    const STATUS_TAG_TONE = { online: 'success', connecting: 'neutral', offline: 'quiet', error: 'danger', revoked: 'danger' }
+
+    function deviceCardMenu(device, t) {
+      const online = device.status === 'online'
+      const archived = (device.archived || []).length
+      return [
+        { id: 'refresh', icon: Icon('IconRefreshOutlineRegular'), label: t('refresh') },
+        { id: 'window', icon: Icon('IconRightUpOutlineRegular'), label: t('openWindow'), disabled: !online },
+        { type: 'separator', id: 's1' },
+        { id: 'plugins', icon: Icon('IconCordisPluginOutlineRegular'), label: t('pluginsMenu'), disabled: !online },
+        { id: 'automations', icon: Icon('IconAlarmClockOutlineRegular'), label: t('automationsMenu'), disabled: !online },
+        { id: 'ports', icon: Icon('IconGlobeOutlineRegular'), label: t('portsMenu'), disabled: !online },
+        { id: 'sync', icon: Icon('IconRefreshOutlineRegular'), label: t('syncMenu'), disabled: !online },
+        { id: 'account', icon: Icon('IconUserOutlineRegular'), label: t('accountMenu'), disabled: !online },
+        ...(archived ? [{ id: 'archived', icon: Icon('IconArchiveOutlineRegular'), label: fill(t('archivedMenu'), { n: archived }) }] : []),
+        { type: 'separator', id: 's2' },
+        { id: 'settings', icon: Icon('IconSettingsOutlineRegular'), label: t('deviceSettings'), disabled: !online },
+        { id: 'editorHost', icon: Icon('IconCodeOutlineRegular'), label: t('editorHostMenu') },
+        { id: 'rename', icon: Icon('IconEditOutlineRegular'), label: t('rename') },
+        ...(device.transport.kind === 'ssh' ? [{ id: 'update', icon: Icon('IconDownloadOutlineRegular'), label: t('update') }] : []),
+        { id: 'remove', icon: Icon('IconTrashOutlineRegular'), label: t('remove'), danger: true },
+      ]
+    }
+
+    function DeviceCard({ device, t, onOpen, onAction }) {
+      const [menuOpen, setMenuOpen] = useState(false)
+      const online = device.status === 'online'
       const via = device.transport.kind === 'ssh' ? fill(t('viaSsh'), { target: device.transport.target }) : fill(t('viaUrl'), { url: device.transport.url })
-      const statusText =
-        device.status === 'online'
-          ? `${t('status_online')}${device.uptimeSec != null ? ` · ${fill(t('up'), { when: duration(device.uptimeSec) })}` : ''}`
-          : `${t(`status_${device.status}`)} · ${fill(t('lastSeen'), { when: device.lastSeenAt ? shortAgo(device.lastSeenAt, t) : t('never') })}`
-      const versions = device.versions ? `dsh ${device.versions.dsh || '?'}` : ''
-      const sessions = (device.sessions || []).slice(0, 6)
-      const item = (key, label, cls) => h('button', { role: 'menuitem', className: cls, onClick: () => (setMenu(false), onAction(key, device)) }, label)
+      const when = online
+        ? device.uptimeSec != null
+          ? fill(t('up'), { when: duration(device.uptimeSec) })
+          : null
+        : fill(t('lastSeen'), { when: device.lastSeenAt ? timeLabel(device.lastSeenAt) : t('never') })
+      const noModels = online && device.model && !(device.model.ready ?? device.model.configured)
+      const tags = h(
+        React.Fragment,
+        null,
+        h(NativeTag, { tone: STATUS_TAG_TONE[device.status] || 'neutral' }, t(`status_${device.status}`)),
+        device.pendingCount ? h(NativeTag, { tone: 'warning' }, fill(t('waitingCount'), { n: device.pendingCount })) : null,
+        noModels ? h(NativeTag, { tone: 'warning' }, t('noModels')) : null,
+        device.outdated ? h(NativeTag, { tone: 'info' }, t('outdated')) : null,
+      )
+      const description = h(
+        React.Fragment,
+        null,
+        [via, device.versions ? `dsh ${device.versions.dsh || '?'}` : null, when].filter(Boolean).join(' · '),
+        device.error && !online ? h('span', { className: 'dshdev-card2-error' }, ` — ${device.error}`) : null,
+      )
+      const end = h(
+        React.Fragment,
+        null,
+        noModels ? h(Btn, { variant: 'outline', onClick: () => onAction('account', device) }, t('setUpModels')) : null,
+        device.outdated && device.canUpdate ? h(Btn, { variant: 'outline', onClick: () => onAction('update', device) }, t('updateNow')) : null,
+        h(Btn, { variant: 'primary', disabled: !online, onClick: () => onOpen(device) }, t('open')),
+        true
+          ? h(NativeMenu, {
+              open: menuOpen,
+              onClose: () => setMenuOpen(false),
+              items: deviceCardMenu(device, t),
+              onSelect: (id) => {
+                setMenuOpen(false)
+                onAction(id, device)
+              },
+              align: 'end',
+              portal: true,
+              anchor: h('button', { type: 'button', className: 'dshdev-icon-button', 'aria-label': `${t('more')} — ${device.name}`, 'aria-haspopup': 'menu', onClick: () => setMenuOpen((v) => !v) }, Icon('IconEllipsisOutlineRegular')),
+            })
+          : null,
+      )
       return h(
         'div',
-        { className: 'dshdev-card', 'data-testid': `device-${device.id}` },
-        h(
-          'div',
-          { className: 'dshdev-row' },
-          h(Dot, { status: device.status }),
-          h(
-            'div',
-            { className: 'dshdev-main' },
-            h(
-              'div',
-              { className: 'dshdev-name' },
-              h('span', null, device.name),
-              device.outdated ? h('span', { className: 'dshdev-tag warn', title: fill(t('updateHint'), { remote: device.versions && device.versions.dsh, local: self && self.dsh }) }, t('outdated')) : null,
-              device.pendingCount ? h('span', { className: 'dshdev-attn-badge', title: t('needsYou') }, String(device.pendingCount)) : null,
-            ),
-            h('div', { className: 'dshdev-meta' }, [statusText, via, versions].filter(Boolean).join('  ·  ')),
-            device.error && device.status !== 'online' ? h('div', { className: 'dshdev-err' }, device.error) : null,
-          ),
-          device.outdated && device.canUpdate && device.model ? h(Btn, { variant: 'outline', onClick: () => onAction('update', device) }, t('updateNow')) : null,
-          h(Btn, { variant: 'primary', disabled: device.status !== 'online', onClick: () => onOpen(device) }, t('open')),
-          h(
-            'div',
-            { className: 'dshdev-menu', ref },
-            h(Btn, { variant: 'ghost', 'aria-label': t('more'), 'aria-expanded': menu, onClick: () => setMenu(!menu) }, P.IconEllipsisOutlineRegular ? h(P.IconEllipsisOutlineRegular, { size: 16 }) : '⋯'),
-            menu
-              ? h(
-                  'div',
-                  { className: 'dshdev-pop', role: 'menu' },
-                  item('refresh', t('refresh')),
-                  item('window', t('openWindow')),
-                  device.status === 'online' ? item('plugins', t('pluginsMenu')) : null,
-                  device.status === 'online' ? item('automations', t('automationsMenu')) : null,
-                  device.status === 'online' ? item('ports', t('portsMenu')) : null,
-                  device.status === 'online' ? item('sync', t('syncMenu')) : null,
-                  device.status === 'online' ? item('account', t('accountMenu')) : null,
-                  (device.archived || []).length ? item('archived', fill(t('archivedMenu'), { n: device.archived.length })) : null,
-                  item('settings', t('deviceSettings')),
-                  item('editorHost', t('editorHostMenu')),
-                  item('rename', t('rename')),
-                  device.transport.kind === 'ssh' ? item('update', t('update')) : null,
-                  item('remove', t('remove'), 'danger'),
-                )
-              : null,
-          ),
-        ),
-        device.status === 'online' ? h('div', { style: { padding: '0 16px 12px' } }, h(ModelKeyPanel, { device, t, variant: 'card', onUpdate: (d) => onAction('update', d) })) : null,
-        sessions.length
-          ? h(
-              'div',
-              { className: 'dshdev-sessions' },
-              h('div', { className: 'dshdev-sessions-title' }, t('sessions')),
-              sessions.map((s) =>
-                h(
-                  'button',
-                  { key: s.sessionId, className: 'dshdev-session', onClick: () => onOpen(device, s) },
-                  s.pending
-                    ? h('span', { className: 'dshdev-attn', title: pendingText(s.pending, t) }, h(AttentionIcon, { size: 14 }))
-                    : s.running
-                      ? h(Dot, { status: 'running' })
-                      : h('span', { className: 'dshdev-remote-mark', style: { display: 'inline-flex', color: 'var(--dsw-alias-label-tertiary)' } }, h(RemoteIcon, { size: 14 })),
-                  h('span', { className: 'dshdev-s-title' }, s.title || t('untitled')),
-                  h('span', { className: 'dshdev-s-meta' }, [s.workspaceTitle || (s.cwd ? s.cwd.split('/').filter(Boolean).pop() : ''), s.pending ? t('needsYou') : s.running ? t('running') : shortAgo(s.updatedAt, t)].filter(Boolean).join(' · ')),
-                ),
-              ),
-            )
-          : null,
+        { 'data-testid': `device-${device.id}` },
+        h(Card, {
+          icon: h('span', { className: cx('dshdev-device-glyph', online && 'online') }, h(RemoteIcon, { size: 22 })),
+          title: device.name,
+          tags,
+          description,
+          end,
+          onOpen: online ? () => onOpen(device) : undefined,
+        }),
       )
     }
 
@@ -2398,16 +2688,20 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       const hostPrompt = job && job.state === 'error' && job.prompt && job.prompt.kind === 'hostkey' ? job.prompt : null
       const finished = !!success
       const canSubmit = !busy && !finished && (tab === 'ssh' ? target.trim() : code.trim() && (linkMode || url.trim()))
+      const submit = () => canSubmit && (tab === 'ssh' ? startSsh() : pairCode())
+      const option = ({ key, selected, onClick, icon, title, meta, tag }) =>
+        h(
+          'button',
+          { key, type: 'button', role: 'option', 'aria-selected': selected, className: cx('dshdev-option', selected && 'on'), disabled: busy, onClick },
+          h('span', { className: 'dshdev-option-icon' }, icon),
+          h('span', { className: 'dshdev-option-text' }, h('span', { className: 'dshdev-option-title' }, title), meta ? h('span', { className: 'dshdev-option-meta' }, meta) : null),
+          tag || null,
+        )
 
       const body = h(
         'div',
         { className: 'dshdev-form' },
-        h(
-          'div',
-          { className: 'dshdev-tabs', role: 'tablist' },
-          h('button', { role: 'tab', 'aria-selected': tab === 'ssh', onClick: () => setTab('ssh'), disabled: busy }, t('tabSsh')),
-          h('button', { role: 'tab', 'aria-selected': tab === 'code', onClick: () => setTab('code'), disabled: busy }, t('tabCode')),
-        ),
+        h(Segmented, { label: t('addTitle'), value: tab, disabled: busy, onChange: setTab, options: [{ value: 'ssh', label: t('tabSsh') }, { value: 'code', label: t('tabCode') }] }),
         tab === 'ssh'
           ? h(
               React.Fragment,
@@ -2418,63 +2712,49 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
                     { label: t('suggestions'), hint: saved.length ? t('savedHint') : null },
                     h(
                       'div',
-                      { className: 'dshdev-saved', role: 'listbox', 'aria-label': t('suggestions') },
+                      { className: 'dshdev-options', role: 'listbox', 'aria-label': t('suggestions') },
                       saved.map((m) =>
-                        h(
-                          'button',
-                          {
-                            key: `saved:${m.id}`,
-                            type: 'button',
-                            role: 'option',
-                            'aria-selected': savedId === m.id,
-                            className: `dshdev-saved-item${savedId === m.id ? ' on' : ''}`,
-                            disabled: busy,
-                            onClick: () => {
-                              setSavedId(m.id)
-                              setTarget(m.target)
-                              setName(m.name)
-                            },
+                        option({
+                          key: `saved:${m.id}`,
+                          selected: savedId === m.id,
+                          onClick: () => {
+                            setSavedId(m.id)
+                            setTarget(m.target)
+                            setName(m.name)
                           },
-                          h('span', { className: 'dshdev-remote-mark', style: { color: 'rgb(65,118,230)' } }, h(RemoteIcon, { size: 16 })),
-                          h('span', { className: 'dshdev-saved-text' }, h('span', { className: 'dshdev-saved-name' }, m.name), h('span', { className: 'dshdev-s-meta' }, m.target)),
-                          m.pairedDeviceId ? h('span', { className: 'dshdev-tag' }, t('alreadyAdded')) : m.fingerprint ? h('span', { className: 'dshdev-tag ok' }, t('trusted')) : null,
-                        ),
+                          icon: h(RemoteIcon, { size: 16 }),
+                          title: m.name,
+                          meta: m.target,
+                          tag: m.pairedDeviceId ? h(NativeTag, { tone: 'quiet' }, t('alreadyAdded')) : m.fingerprint ? h(NativeTag, { tone: 'success' }, t('trusted')) : null,
+                        }),
                       ),
-                      hosts.map((x) => {
-                        const value = x.alias
-                        const selected = !savedId && target === value
-                        return h(
-                          'button',
-                          {
-                            key: `alias:${value}`,
-                            type: 'button',
-                            role: 'option',
-                            'aria-selected': selected,
-                            className: `dshdev-saved-item${selected ? ' on' : ''}`,
-                            disabled: busy,
-                            onClick: () => {
-                              setSavedId(null)
-                              setTarget(value)
-                              if (!name) setName(value)
-                            },
+                      hosts.map((x) =>
+                        option({
+                          key: `alias:${x.alias}`,
+                          selected: !savedId && target === x.alias,
+                          onClick: () => {
+                            setSavedId(null)
+                            setTarget(x.alias)
+                            if (!name) setName(x.alias)
                           },
-                          h('span', { className: 'dshdev-remote-mark' }, h(RemoteIcon, { size: 16 })),
-                          h('span', { className: 'dshdev-saved-text' }, h('span', { className: 'dshdev-saved-name' }, value), h('span', { className: 'dshdev-s-meta' }, x.host ? `${x.user ? `${x.user}@` : ''}${x.host}${x.port && x.port !== 22 ? `:${x.port}` : ''}` : '')),
-                          h('span', { className: 'dshdev-tag' }, t('fromSshConfig')),
-                        )
-                      }),
+                          icon: Icon('IconBrowseOutlineRegular', { size: 16 }) || h(RemoteIcon, { size: 16 }),
+                          title: x.alias,
+                          meta: x.host ? `${x.user ? `${x.user}@` : ''}${x.host}${x.port && x.port !== 22 ? `:${x.port}` : ''}` : '',
+                          tag: h(NativeTag, { tone: 'quiet' }, t('fromSshConfig')),
+                        }),
+                      ),
                     ),
                   )
                 : null,
               h(
                 Field,
                 { label: saved.length || hosts.length ? `${t('orType')} — ${t('sshTarget')}` : t('sshTarget'), hint: t('sshTargetHint') },
-                h(TextInput, { value: savedId ? '' : target, onChange: (v) => (setTarget(v), setSavedId(null)), placeholder: 'root@203.0.113.10', autoFocus: !preset && !saved.length && !hosts.length }),
+                h(TextInput, { value: savedId ? '' : target, onChange: (v) => (setTarget(v), setSavedId(null)), onEnter: submit, placeholder: 'root@203.0.113.10', autoFocus: !preset && !saved.length && !hosts.length }),
               ),
               h(
                 'button',
                 { type: 'button', className: 'dshdev-disclosure', 'aria-expanded': advanced, onClick: () => setAdvanced(!advanced) },
-                h('span', { className: 'dshdev-chev', 'aria-hidden': true }, advanced ? '▾' : '▸'),
+                Icon('IconChevronRightOutlineRegular', { className: cx('dshdev-disclosure-chevron', advanced && 'open') }),
                 t('advanced'),
               ),
               advanced
@@ -2496,42 +2776,44 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
                 h('li', null, t('codeStep1'), ' ', h('code', null, 'dsh-device pair --url https://…')),
                 h('li', null, t('codeStep2')),
               ),
-              h(Field, { label: t('codeInput'), hint: t('codeHint') }, h(TextInput, { value: code, onChange: setCode, placeholder: 'dsh-device://pair?…  /  K7QF-2M9X', autoFocus: true })),
-              linkMode ? null : h(Field, { label: t('codeUrl'), hint: t('codeUrlHint') }, h(TextInput, { value: url, onChange: setUrl, placeholder: 'https://vps.example.ts.net' })),
+              h(Field, { label: t('codeInput'), hint: t('codeHint') }, h(TextInput, { value: code, onChange: setCode, onEnter: submit, placeholder: 'dsh-device://pair?…  /  K7QF-2M9X', autoFocus: true })),
+              linkMode ? null : h(Field, { label: t('codeUrl'), hint: t('codeUrlHint') }, h(TextInput, { value: url, onChange: setUrl, onEnter: submit, placeholder: 'https://vps.example.ts.net' })),
             ),
-        h(Field, { label: t('deviceName') }, h(TextInput, { value: name, onChange: setName, placeholder: 'VPS' })),
+        h(Field, { label: t('deviceName') }, h(TextInput, { value: name, onChange: setName, onEnter: submit, placeholder: 'VPS' })),
         job ? h(JobView, { job, t }) : null,
         hostPrompt
           ? h(
               'div',
-              null,
-              h('div', { className: 'dshdev-text', style: { fontWeight: 600, marginBottom: 6 } }, t('hostKeyTitle')),
-              h('div', { className: 'dshdev-text', style: { marginBottom: 8 } }, t('hostKeyBody')),
-              h('div', { className: 'dshdev-fp', 'data-testid': 'hostkey-fingerprint' }, hostPrompt.fingerprint),
+              { className: 'dshdev-callout' },
+              h('span', { className: 'dshdev-callout-dot' }),
+              h(
+                'div',
+                { className: 'dshdev-callout-main' },
+                h('div', { className: 'dshdev-callout-text', style: { fontWeight: 500 } }, t('hostKeyTitle')),
+                h('div', { className: 'dshdev-hint-text' }, t('hostKeyBody')),
+                h('div', { className: 'dshdev-fp', 'data-testid': 'hostkey-fingerprint' }, hostPrompt.fingerprint),
+              ),
             )
           : null,
-        error ? h('div', { className: 'dshdev-err', role: 'alert' }, error) : null,
-        success ? h('div', { className: 'dshdev-ok', role: 'status' }, success) : null,
+        error ? h('p', { className: 'dshdev-error-text', role: 'alert' }, error) : null,
+        success ? h('p', { className: 'dshdev-success-text', role: 'status' }, success) : null,
       )
 
       const footer = h(
         React.Fragment,
         null,
-        h(Btn, { variant: 'outline', onClick: onClose }, finished ? t('done') : t('cancel')),
+        h(ModalButton, { variant: 'outline', onClick: onClose }, finished ? t('done') : nt('cancel', null, t('cancel'))),
         hostPrompt
-          ? h(Btn, { variant: 'primary', onClick: () => startSsh(hostPrompt.fingerprint) }, t('trust'))
+          ? h(ModalButton, { variant: 'primary', onClick: () => startSsh(hostPrompt.fingerprint) }, t('trust'))
           : finished
             ? null
-            : h(Btn, { variant: 'primary', disabled: !canSubmit, onClick: () => (tab === 'ssh' ? startSsh() : pairCode()) }, busy ? t('working') : tab === 'ssh' ? t('connect') : t('pair')),
+            : h(ModalButton, { variant: 'primary', disabled: !canSubmit, onClick: submit }, busy ? t('working') : tab === 'ssh' ? t('connect') : t('pair')),
       )
-
-      if (P.Modal) return h(P.Modal, { open: true, onClose, title: t('addTitle'), description: t('addDescription'), closeLabel: t('close'), footer, className: 'dshdev-modal' }, body)
-      return h('div', { role: 'dialog', style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'grid', placeItems: 'center', zIndex: 50 } }, h('div', { style: { background: 'var(--dsw-alias-bg-base,#fff)', padding: 20, borderRadius: 12 } }, h('h2', null, t('addTitle')), body, h('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 } }, footer)))
+      return h(NativeModal, { t, title: t('addTitle'), description: t('addDescription'), onClose, footer, wide: true, children: body })
     }
 
     function SimpleDialog({ title, description, children, footer, onClose, t, wide }) {
-      if (P.Modal) return h(P.Modal, { open: true, onClose, title, description, closeLabel: t('close'), footer, className: `dshdev-modal ${wide ? 'dshdev-modal-lg' : 'dshdev-modal-sm'}` }, children)
-      return h('div', { role: 'dialog' }, h('h2', null, title), h('p', null, description), children, footer)
+      return h(NativeModal, { t, title, description, onClose, footer, wide, children })
     }
 
     async function openInWindow(device) {
@@ -2545,6 +2827,25 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         } catch {}
       }
       window.open(url, '_blank', 'noopener')
+    }
+
+    function SkeletonCards() {
+      return h(
+        'ul',
+        { className: 'dshdev-cards', 'aria-hidden': true },
+        [0, 1, 2].map((i) =>
+          h(
+            'li',
+            { key: i, className: 'dshdev-card2' },
+            h(
+              'div',
+              { className: 'dshdev-card2-head' },
+              h('span', { className: 'dshdev-card2-icon dshdev-skeleton' }),
+              h('div', { className: 'dshdev-card2-main' }, h('span', { className: 'dshdev-skeleton dshdev-skeleton-title' }), h('span', { className: 'dshdev-skeleton dshdev-skeleton-desc' })),
+            ),
+          ),
+        ),
+      )
     }
 
     function DevicesPage({ ctx, t }) {
@@ -2569,7 +2870,11 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         return () => clearInterval(timer)
       }, [updateJob && updateJob.id, updateJob && updateJob.state])
 
-      const onOpen = (device, session) => openRemote(ctx, device, session ? session.sessionId : null)
+      const onOpen = (device, session) => {
+        const latest = session || (device.sessions || [])[0]
+        if (latest) openRemote(ctx, device, latest.sessionId)
+        else newRemote(ctx, device, null)
+      }
       useEffect(() => {
         if (st.openAdd) {
           setStore({ openAdd: false })
@@ -2599,60 +2904,83 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         }
       }
 
+      const saveRename = async () => {
+        const name = renameValue.trim()
+        if (!name || !renaming || saveRename.busy) return
+        saveRename.busy = true
+        try {
+          await post('/devices/rename', { id: renaming.id, name })
+          setRenaming(null)
+          refreshDevices()
+        } catch (e) {
+          setNotice(e.message)
+        } finally {
+          saveRename.busy = false
+        }
+      }
       const devices = st.data.devices || []
+      const saved = (st.data.saved || []).filter((m) => !m.pairedDeviceId)
       return h(
         'div',
-        { className: 'dshdev-page', 'data-testid': 'dsh-devices-page' },
+        { className: 'dshdev-page2', 'data-testid': 'dsh-devices-page' },
         h(
           'div',
-          { className: 'dshdev-inner' },
+          { className: 'dshdev-page2-head' },
+          h('div', { className: 'dshdev-page2-heading' }, h('h1', { className: 'dshdev-page2-title' }, t('title')), h('p', { className: 'dshdev-page2-intro' }, t('subtitle'))),
           h(
             'div',
-            { className: 'dshdev-head' },
-            h('div', null, h('h1', null, t('title')), h('div', { className: 'dshdev-sub' }, t('subtitle'))),
-            h('div', { className: 'dshdev-actions' }, h(Btn, { variant: 'outline', onClick: () => post('/devices/refresh', {}).then(refreshDevices) }, t('refresh')), h(Btn, { variant: 'primary', onClick: () => setAdding({}) }, t('add'))),
+            { className: 'dshdev-page2-toolbar' },
+            h(IconButton, { label: t('refresh'), onClick: () => post('/devices/refresh', {}).then(refreshDevices) }, Icon('IconRefreshOutlineRegular')),
+            P.Button ? h(P.Button, { variant: 'primary', icon: Icon('IconPlusOutlineRegular'), onClick: () => setAdding({}), className: 'dshdev-page2-add' }, t('add')) : h(ModalButton, { variant: 'primary', onClick: () => setAdding({}) }, t('add')),
           ),
-          notice || st.error ? h('div', { className: 'dshdev-err', role: 'alert', style: { marginBottom: 12 } }, notice || st.error) : null,
-          updateJob ? h('div', { style: { marginBottom: 12 } }, h(JobView, { job: updateJob, t })) : null,
-          (st.data.saved || []).some((m) => !m.pairedDeviceId)
-            ? h(
-                'div',
-                { className: 'dshdev-card', 'data-testid': 'dsh-devices-saved' },
-                h('div', { className: 'dshdev-sessions-title', style: { padding: '12px 16px 2px' } }, t('savedTitle')),
-                (st.data.saved || [])
-                  .filter((m) => !m.pairedDeviceId)
-                  .map((m) =>
-                    h(
-                      'div',
-                      { key: m.id, className: 'dshdev-row', style: { paddingTop: 8, paddingBottom: 8 } },
-                      h('span', { className: 'dshdev-remote-mark', style: { display: 'inline-flex', color: 'rgb(65,118,230)' } }, h(RemoteIcon, { size: 16 })),
-                      h('div', { className: 'dshdev-main' }, h('div', { className: 'dshdev-name' }, m.name), h('div', { className: 'dshdev-meta' }, [`SSH · ${m.target}`, m.fingerprint ? t('hostKeyKnown') : null].filter(Boolean).join('  ·  '))),
-                      h(Btn, { variant: 'primary', onClick: () => setAdding({ preset: m }) }, t('addSaved')),
-                    ),
-                  ),
-              )
-            : null,
-          st.loaded && devices.length === 0 && !(st.data.saved || []).length ? h('div', { className: 'dshdev-empty' }, t('empty')) : null,
-          devices.map((d) => h(DeviceCard, { key: d.id, device: d, t, self: st.data.self, onOpen, onAction })),
         ),
+        notice || st.error ? h('p', { className: 'dshdev-error-text', role: 'alert' }, notice || st.error) : null,
+        updateJob ? h(JobView, { job: updateJob, t }) : null,
+        h(
+          'section',
+          { className: 'dshdev-group2' },
+          h('div', { className: 'dshdev-group2-head' }, h('h2', { className: 'dshdev-group2-title' }, t('yourDevices'))),
+          !st.loaded ? h(SkeletonCards) : devices.length ? h('ul', { className: 'dshdev-cards' }, devices.map((d) => h(DeviceCard, { key: d.id, device: d, t, onOpen, onAction }))) : h('p', { className: 'dshdev-empty-text' }, t('empty')),
+        ),
+        saved.length
+          ? h(
+              'section',
+              { className: 'dshdev-group2', 'data-testid': 'dsh-devices-saved' },
+              h('div', { className: 'dshdev-group2-head' }, h('h2', { className: 'dshdev-group2-title' }, t('savedServers'))),
+              h(
+                'ul',
+                { className: 'dshdev-cards' },
+                saved.map((m) =>
+                  h(Card, {
+                    key: m.id,
+                    icon: h('span', { className: 'dshdev-device-glyph' }, h(RemoteIcon, { size: 22 })),
+                    title: m.name,
+                    tags: m.fingerprint ? h(NativeTag, { tone: 'success' }, t('hostKeyKnown')) : null,
+                    description: `SSH · ${m.target}`,
+                    end: h(Btn, { variant: 'primary', onClick: () => setAdding({ preset: m }) }, t('addSaved')),
+                  }),
+                ),
+              ),
+            )
+          : null,
         adding ? h(AddDialog, { t, preset: adding.preset, onClose: () => setAdding(false), onDone: refreshDevices }) : null,
         h(EditorHostDialog, { t }),
         renaming
-          ? h(SimpleDialog, {
+          ? h(NativeModal, {
               t,
               title: t('rename'),
               onClose: () => setRenaming(null),
               footer: h(
                 React.Fragment,
                 null,
-                h(Btn, { variant: 'outline', onClick: () => setRenaming(null) }, t('cancel')),
-                h(Btn, { variant: 'primary', onClick: async () => { await post('/devices/rename', { id: renaming.id, name: renameValue }); setRenaming(null); refreshDevices() } }, t('save')),
+                h(ModalButton, { variant: 'outline', onClick: () => setRenaming(null) }, nt('cancel', null, t('cancel'))),
+                h(ModalButton, { variant: 'primary', disabled: !renameValue.trim(), onClick: saveRename }, t('save')),
               ),
-              children: h(Field, { label: t('renamePrompt') }, h(TextInput, { value: renameValue, onChange: setRenameValue, autoFocus: true })),
+              children: h(NativeField, { value: renameValue, onChange: setRenameValue, label: t('renamePrompt'), autoFocus: true, onEnter: saveRename }),
             })
           : null,
         removing
-          ? h(SimpleDialog, {
+          ? h(NativeModal, {
               t,
               title: fill(t('removeTitle'), { name: removing.name }),
               description: t('removeBody'),
@@ -2660,28 +2988,32 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
               footer: h(
                 React.Fragment,
                 null,
-                h(Btn, { variant: 'outline', onClick: () => setRemoving(null) }, t('cancel')),
-                h(Btn, {
-                  variant: 'primary',
-                  onClick: async () => {
-                    const d = removing
-                    setRemoving(null)
-                    try {
-                      await post('/devices/remove', { id: d.id })
-                      frames.drop(d.id)
-                    } catch (e) {
-                      setNotice(e.message)
-                    }
-                    refreshDevices()
+                h(ModalButton, { variant: 'outline', onClick: () => setRemoving(null) }, nt('cancel', null, t('cancel'))),
+                h(
+                  ModalButton,
+                  {
+                    variant: 'primary',
+                    onClick: async () => {
+                      const d = removing
+                      setRemoving(null)
+                      try {
+                        await post('/devices/remove', { id: d.id })
+                        frames.drop(d.id)
+                      } catch (e) {
+                        setNotice(e.message)
+                      }
+                      refreshDevices()
+                    },
                   },
-                }, t('remove')),
+                  t('remove'),
+                ),
               ),
             })
           : null,
       )
     }
 
-    // ── device & session actions: menus and dialogs ─────────────────────────
+    // ── device & session actions: dialogs, like DSH's own ───────────────────
     function deviceById(id) {
       return (store.data.devices || []).find((d) => d.id === id) || null
     }
@@ -2706,103 +3038,57 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       try {
         await post('/devices/session-action', { id: device.id, sessionId, action, ...extra })
         await refreshDevices()
+        if (action === 'archive') {
+          // DSH's own "Archived · Undo" toast.
+          showToast(nt('toast.archived', null, appT('archived')), {
+            icon: Icon('IconArchiveOutlineRegular'),
+            actions: [{ label: nt('toast.archivedUndo', null, appT('undo')), onClick: () => (setStore({ toast: null }), sessionAction(device, sessionId, 'unarchive')) }],
+            holdMs: 5000,
+          })
+        }
         return true
       } catch (e) {
         if (action === 'archive' && /session-active/.test(e.message)) setStore({ dialog: { kind: 'confirm-archive', deviceId: device.id, sessionId } })
-        else showToast(friendlyError(e, device))
+        else showToast(friendlyError(e, device), { icon: Icon('IconWarningOutlineRegular') })
         return false
       }
     }
 
-    function PopMenu({ x, y, items, onClose, label }) {
-      const ref = useRef(null)
-      useEffect(() => {
-        const down = (e) => {
-          if (ref.current && !ref.current.contains(e.target)) onClose()
-        }
-        const key = (e) => e.key === 'Escape' && onClose()
-        document.addEventListener('pointerdown', down, true)
-        document.addEventListener('keydown', key, true)
-        window.addEventListener('blur', onClose)
-        return () => {
-          document.removeEventListener('pointerdown', down, true)
-          document.removeEventListener('keydown', key, true)
-          window.removeEventListener('blur', onClose)
-        }
-      }, [])
-      const list = items.filter(Boolean)
-      const height = list.reduce((n, it) => n + (it === '-' ? 9 : 34), 12)
-      const left = Math.max(8, Math.min(x, window.innerWidth - 290))
-      const top = Math.max(8, Math.min(y, window.innerHeight - height - 8))
-      return h(
-        'div',
-        { ref, className: 'dshdev-dm', role: 'menu', 'aria-label': label, 'data-dsh-devices': 'action-menu', style: { left, top } },
-        list.map((it, i) =>
-          it === '-'
-            ? h('div', { key: `sep${i}`, className: 'dshdev-dm-sep', role: 'separator' })
-            : h(
-                'button',
-                {
-                  key: it.key,
-                  type: 'button',
-                  role: 'menuitem',
-                  disabled: !!it.disabled,
-                  className: `dshdev-dm-item${it.danger ? ' danger' : ''}`,
-                  'data-dshdev-menu': it.key,
-                  onClick: () => {
-                    onClose()
-                    it.onPick()
-                  },
-                },
-                h('span', { className: 'dshdev-dm-icon' }, it.icon || null),
-                h('span', { className: 'dshdev-dm-label' }, it.label, it.meta ? h('span', { className: 'dshdev-dm-meta' }, it.meta) : null),
-              ),
-        ),
-      )
+    /** DSH's modal with its own footer buttons. */
+    function NativeModal({ t, title, description, onClose, footer, children, wide, testid }) {
+      if (!P.Modal) return h('div', { role: 'dialog', 'data-testid': testid }, h('h2', null, title), description ? h('p', null, description) : null, children, footer)
+      return h(P.Modal, { open: true, onClose, title, description, closeLabel: nt('close', null, t('close')), footer, className: `dshdev-modal ${wide ? 'dshdev-modal-lg' : 'dshdev-modal-sm'}` }, h('div', { className: 'dshdev-modal-body', 'data-testid': testid }, children))
     }
-
-    function deviceMenuItems(device, t) {
-      const online = device.status === 'online'
-      const archived = (device.archived || []).length
-      const ports = (device.ports || []).length
-      const old = (f) => (hasFeature(device, f) ? null : t('outdated'))
-      return [
-        { key: 'new', icon: h(PlusIcon), label: fill(t('newRemote'), { device: device.name }), disabled: !online, onPick: () => newRemote(appCtx, device, null) },
-        { key: 'search', icon: h(SearchIcon), label: t('searchMenu'), onPick: () => setStore({ dialog: { kind: 'search' } }) },
-        '-',
-        { key: 'plugins', icon: h(PuzzleIcon), label: t('pluginsMenu'), disabled: !online, onPick: () => openDevicePanel(device, 'plugins') },
-        { key: 'automations', icon: h(ClockIcon), label: t('automationsMenu'), disabled: !online, onPick: () => openDevicePanel(device, 'schedules') },
-        { key: 'ports', icon: h(PortIcon), label: t('portsMenu'), meta: ports ? String(ports) : old('ports'), disabled: !online, onPick: () => setStore({ dialog: { kind: 'ports', deviceId: device.id } }) },
-        { key: 'sync', icon: h(SyncIcon), label: t('syncMenu'), meta: old('sync'), disabled: !online, onPick: () => setStore({ dialog: { kind: 'sync', deviceId: device.id } }) },
-        { key: 'account', icon: h(KeyIcon), label: t('accountMenu'), disabled: !online, onPick: () => setStore({ dialog: { kind: 'account', deviceId: device.id } }) },
-        archived ? { key: 'archived', icon: h(ArchiveIcon), label: fill(t('archivedMenu'), { n: archived }), onPick: () => setStore({ dialog: { kind: 'archived', deviceId: device.id } }) } : null,
-        '-',
-        { key: 'settings', icon: h(GearIcon), label: t('deviceSettings'), disabled: !online, onPick: () => openDeviceSettings(device) },
-        {
-          key: 'manage',
-          icon: h(DevicesIcon, { size: 16 }),
-          label: t('manageDevices'),
-          onPick: () => {
-            try {
-              appCtx.layout.selectPanel(PANEL_ID)
-            } catch {}
-          },
+    function ModalButton({ variant = 'outline', disabled, onClick, children, testid }) {
+      return P.Button ? h(P.Button, { variant, disabled, onClick, 'data-testid': testid }, children) : h('button', { type: 'button', disabled, onClick, 'data-testid': testid }, children)
+    }
+    /** A text field styled like DSH's rename field. */
+    function NativeField({ value, onChange, onEnter, label, placeholder, type, autoFocus, disabled }) {
+      const composing = useRef(false)
+      const prefix = (discoverPrefixes().list || '')
+      return h('input', {
+        className: cx('dshdev-field-input', prefix && `${prefix}renameInput`),
+        value,
+        type: type || 'text',
+        placeholder,
+        disabled,
+        'aria-label': label,
+        'data-modal-autofocus': autoFocus ? true : undefined,
+        autoFocus,
+        spellCheck: false,
+        autoCapitalize: 'off',
+        autoComplete: 'off',
+        onFocus: autoFocus ? (e) => e.target.select() : undefined,
+        onChange: (e) => onChange(e.target.value),
+        onCompositionStart: () => (composing.current = true),
+        onCompositionEnd: () => (composing.current = false),
+        onKeyDown: (e) => {
+          if (e.key === 'Enter' && !composing.current && onEnter) {
+            e.preventDefault()
+            onEnter()
+          }
         },
-      ]
-    }
-
-    function sessionMenuItems(device, sessionId, t) {
-      const s = (device.sessions || []).find((x) => x.sessionId === sessionId)
-      const ok = hasFeature(device, 'session-actions')
-      const meta = ok ? null : t('outdated')
-      return [
-        { key: 'open', icon: h(RemoteIcon, { size: 16 }), label: t('open'), onPick: () => openRemote(appCtx, device, sessionId) },
-        { key: 'rename', icon: null, label: t('renameSession'), meta, disabled: !ok, onPick: () => setStore({ dialog: { kind: 'rename', deviceId: device.id, sessionId, title: (s && s.title) || '' } }) },
-        { key: 'pin', icon: h(PinIcon), label: s && s.pinned ? t('unpin') : t('pin'), meta, disabled: !ok, onPick: () => sessionAction(device, sessionId, s && s.pinned ? 'unpin' : 'pin') },
-        { key: 'editor', icon: h(EditorGlyph), label: fill(t('openInEditor'), { editor: currentEditor().label }), onPick: () => openInEditor(device.id, { sessionId }) },
-        '-',
-        { key: 'archive', icon: h(ArchiveIcon), label: t('archive'), meta, disabled: !ok, onPick: () => sessionAction(device, sessionId, 'archive') },
-      ]
+      })
     }
 
     function RenameDialog({ t, dialog, onClose }) {
@@ -2810,187 +3096,106 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       const [value, setValue] = useState(dialog.title || '')
       const [busy, setBusy] = useState(false)
       if (!device) return null
+      const trimmed = value.trim()
       const save = async () => {
-        if (!value.trim()) return
+        if (!trimmed || busy) return
         setBusy(true)
-        const ok = await sessionAction(device, dialog.sessionId, 'rename', { title: value.trim() })
+        const ok = await sessionAction(device, dialog.sessionId, 'rename', { title: trimmed })
         setBusy(false)
         if (ok) onClose()
       }
-      return h(SimpleDialog, {
+      return h(NativeModal, {
         t,
-        title: t('renameTitle'),
-        onClose,
-        footer: h(React.Fragment, null, h(Btn, { variant: 'outline', onClick: onClose }, t('cancel')), h(Btn, { variant: 'primary', disabled: busy || !value.trim(), onClick: save }, t('save'))),
-        children: h(
-          'form',
-          { className: 'dshdev-form', onSubmit: (e) => (e.preventDefault(), save()) },
-          h(Field, { label: t('sessionName') }, h(TextInput, { value, onChange: setValue, autoFocus: true, ariaLabel: t('sessionName') })),
-        ),
+        title: nt('rename.session.title', null, t('renameTitle')),
+        onClose: () => !busy && onClose(),
+        footer: h(React.Fragment, null, h(ModalButton, { variant: 'outline', disabled: busy, onClick: onClose }, nt('cancel', null, t('cancel'))), h(ModalButton, { variant: 'primary', disabled: busy || !trimmed, onClick: save }, nt('rename', null, t('rename')))),
+        children: h(NativeField, { value, onChange: setValue, onEnter: save, label: t('sessionName'), autoFocus: true, disabled: busy }),
       })
     }
 
     function ConfirmArchiveDialog({ t, dialog, onClose }) {
       const device = deviceById(dialog.deviceId)
       if (!device) return null
-      return h(SimpleDialog, {
+      return h(NativeModal, {
         t,
-        title: t('archive'),
+        title: nt('menu.archiveSession', null, t('archive')),
         description: fill(t('archiveRunning'), { device: device.name }),
         onClose,
         footer: h(
           React.Fragment,
           null,
-          h(Btn, { variant: 'outline', onClick: onClose }, t('cancel')),
-          h(Btn, { variant: 'primary', onClick: () => (onClose(), sessionAction(device, dialog.sessionId, 'archive', { force: true })) }, t('stopAndArchive')),
+          h(ModalButton, { variant: 'outline', onClick: onClose }, nt('cancel', null, t('cancel'))),
+          h(ModalButton, { variant: 'primary', onClick: () => (onClose(), sessionAction(device, dialog.sessionId, 'archive', { force: true })) }, t('stopAndArchive')),
         ),
       })
     }
 
+    /** Archived remote chats, as DSH lists archived results: a row with an Unarchive button. */
     function ArchivedDialog({ t, dialog, onClose }) {
       const st = useStore()
       const device = (st.data.devices || []).find((d) => d.id === dialog.deviceId)
+      const cls = rowClasses()
       if (!device) return null
       const items = device.archived || []
-      return h(SimpleDialog, {
+      return h(NativeModal, {
         t,
         title: fill(t('archivedTitle'), { device: device.name }),
         onClose,
-        footer: h(Btn, { variant: 'outline', onClick: onClose }, t('close')),
+        testid: 'dsh-devices-archived',
+        footer: h(ModalButton, { variant: 'outline', onClick: onClose }, nt('close', null, t('close'))),
         children: items.length
           ? h(
               'div',
-              { className: 'dshdev-list', 'data-testid': 'dsh-devices-archived' },
+              { className: 'dshdev-archived-list', role: 'tree' },
               items.map((s) =>
                 h(
                   'div',
-                  { key: s.sessionId, className: 'dshdev-list-row' },
-                  h('span', { className: 'dshdev-remote-mark' }, h(ArchiveIcon)),
-                  h('div', { className: 'dshdev-list-main' }, h('div', { className: 'dshdev-list-title' }, s.title || t('untitled')), h('div', { className: 'dshdev-list-sub' }, [s.workspaceTitle, shortAgo(s.updatedAt, t)].filter(Boolean).join(' · '))),
-                  h(Btn, { variant: 'outline', onClick: () => sessionAction(device, s.sessionId, 'unarchive') }, t('unarchive')),
+                  { key: s.sessionId, className: cx(cls.searchRow, 'dshdev-archived-row'), role: 'treeitem', 'data-dshdev-archived': s.sessionId },
+                  h('span', { className: cls.searchHeading }, h('span', { className: cls.slot }, h(RemoteMark, null)), h('span', { className: cls.searchTitle }, s.title || nt('session.untitled', null, t('untitled')))),
+                  h('span', { className: cls.searchMeta }, h('span', { className: cls.searchWorkspace }, [s.workspaceTitle, timeLabel(s.updatedAt)].filter(Boolean).join(' · '))),
+                  h(
+                    'span',
+                    { className: cx(cls.actions, 'dshdev-archived-actions') },
+                    h(TipButton, { cls, label: nt('actions.unarchive', null, t('unarchive')), action: 'unarchive', onClick: () => sessionAction(device, s.sessionId, 'unarchive') }, Icon('IconUnarchiveOutlineRegular', { size: 14 })),
+                  ),
                 ),
               ),
             )
-          : h('div', { className: 'dshdev-text' }, t('noArchived')),
+          : h('p', { className: 'dshdev-empty-text' }, t('noArchived')),
       })
     }
 
-    function highlight(text, query) {
-      const s = String(text || '')
-      const q = String(query || '').trim()
-      if (!q) return s
-      const i = s.toLowerCase().indexOf(q.toLowerCase())
-      if (i < 0) return s
-      return h(React.Fragment, null, s.slice(0, i), h('mark', null, s.slice(i, i + q.length)), s.slice(i + q.length))
-    }
-
-    function SearchDialog({ t, onClose }) {
-      const st = useStore()
-      const [q, setQ] = useState('')
-      const [remote, setRemote] = useState({ q: '', results: [], loading: false })
-      useEffect(() => {
-        const query = q.trim()
-        if (query.length < 2) {
-          setRemote({ q: query, results: [], loading: false })
-          return
-        }
-        setRemote((r) => ({ ...r, loading: true }))
-        let live = true
-        const timer = setTimeout(async () => {
-          try {
-            const r = await api(`/devices/search?q=${encodeURIComponent(query)}`)
-            if (live) setRemote({ q: query, results: r.results || [], loading: false })
-          } catch {
-            if (live) setRemote({ q: query, results: [], loading: false })
-          }
-        }, 300)
-        return () => {
-          live = false
-          clearTimeout(timer)
-        }
-      }, [q])
-      const query = q.trim().toLowerCase()
-      const devices = st.data.devices || []
-      const titleHits = []
-      if (query) {
-        for (const d of devices) {
-          for (const s of d.sessions || []) {
-            if ((s.title || '').toLowerCase().includes(query) || (s.workspaceTitle || '').toLowerCase().includes(query)) titleHits.push({ device: d, sessionId: s.sessionId, title: s.title, sub: [s.workspaceTitle, d.name].filter(Boolean).join(' · ') })
-          }
-        }
-      }
-      const seen = new Set(titleHits.map((x) => `${x.device.id}:${x.sessionId}`))
-      const messageHits = []
-      for (const r of remote.results) {
-        const d = devices.find((x) => x.id === r.deviceId)
-        if (!d) continue
-        for (const it of r.items || []) {
-          const k = `${d.id}:${it.sessionId}`
-          if (seen.has(k)) continue
-          seen.add(k)
-          const s = (d.sessions || []).find((x) => x.sessionId === it.sessionId)
-          messageHits.push({ device: d, sessionId: it.sessionId, title: it.title || (s && s.title), snippet: it.snippet, sub: d.name })
-        }
-      }
-      const pick = (hit) => {
-        onClose()
-        openRemote(appCtx, hit.device, hit.sessionId)
-      }
-      const first = titleHits[0] || messageHits[0]
-      const row = (hit, i, withSnippet) =>
+    /** A card like the rows of DSH's Plugins page. */
+    function Card({ icon, title, tags, description, end, testid, onOpen }) {
+      return h(
+        'li',
+        { className: cx('dshdev-card2', onOpen && 'dshdev-card2-link'), 'data-testid': testid },
         h(
-          'button',
-          { key: `${hit.device.id}:${hit.sessionId}:${i}`, type: 'button', className: 'dshdev-list-row', 'data-dshdev-result': hit.sessionId, onClick: () => pick(hit) },
-          h('span', { className: 'dshdev-remote-mark', style: { color: 'rgb(65,118,230)', display: 'inline-flex' } }, h(RemoteIcon, { size: 15 })),
+          'div',
+          { className: 'dshdev-card2-head' },
+          icon ? h('span', { className: 'dshdev-card2-icon' }, icon) : null,
           h(
             'div',
-            { className: 'dshdev-list-main' },
-            h('div', { className: 'dshdev-list-title' }, withSnippet ? hit.title || t('untitled') : highlight(hit.title || t('untitled'), q)),
-            h('div', { className: 'dshdev-list-sub' }, withSnippet && hit.snippet ? highlight(hit.snippet, q) : hit.sub),
+            { className: 'dshdev-card2-main' },
+            h('div', { className: 'dshdev-card2-titlerow' }, onOpen ? h('button', { type: 'button', className: 'dshdev-card2-open', onClick: onOpen }, title) : h('span', { className: 'dshdev-card2-title' }, title), tags || null),
+            description ? h('div', { className: 'dshdev-card2-desc' }, description) : null,
           ),
-          withSnippet ? h('span', { className: 'dshdev-dm-meta' }, hit.sub) : null,
-        )
-      return h(SimpleDialog, {
-        t,
-        title: t('searchTitle'),
-        onClose,
-        footer: h(Btn, { variant: 'outline', onClick: onClose }, t('close')),
-        children: h(
-          'div',
-          { className: 'dshdev-form', 'data-testid': 'dsh-devices-search' },
-          h('input', {
-            className: 'dshdev-input',
-            autoFocus: true,
-            value: q,
-            placeholder: t('searchPlaceholder'),
-            'aria-label': t('searchPlaceholder'),
-            spellCheck: false,
-            onChange: (e) => setQ(e.target.value),
-            onKeyDown: (e) => {
-              if (e.key === 'Enter' && first) pick(first)
-            },
-          }),
-          query
-            ? h(
-                'div',
-                { className: 'dshdev-list' },
-                titleHits.length ? h('div', { className: 'dshdev-list-caption' }, t('searchInTitles')) : null,
-                titleHits.slice(0, 30).map((hit, i) => row(hit, i, false)),
-                messageHits.length ? h('div', { className: 'dshdev-list-caption' }, t('searchInMessages')) : null,
-                messageHits.slice(0, 30).map((hit, i) => row(hit, i, true)),
-                remote.loading ? h('div', { className: 'dshdev-hint' }, t('searching')) : null,
-                !remote.loading && !titleHits.length && !messageHits.length && remote.q === q.trim() ? h('div', { className: 'dshdev-text' }, t('searchNoResults')) : null,
-              )
-            : null,
+          end ? h('div', { className: 'dshdev-card2-end' }, end) : null,
         ),
-      })
+      )
+    }
+    function IconButton({ label, onClick, children, disabled, testid }) {
+      const button = h('button', { type: 'button', className: 'dshdev-icon-button', 'aria-label': label, disabled, onClick, 'data-testid': testid }, children)
+      return P.Tooltip ? h(P.Tooltip, { label, side: 'bottom', align: 'end', delayMs: 500, portal: true }, button) : button
+    }
+    function NativeTag({ tone = 'outline', children }) {
+      return P.Tag ? h(P.Tag, { tone, className: 'dshdev-status-tag' }, children) : h('span', { className: 'dshdev-status-tag' }, children)
     }
 
     function PortsDialog({ t, dialog, onClose }) {
       const st = useStore()
       const device = (st.data.devices || []).find((d) => d.id === dialog.deviceId)
       const [error, setError] = useState(null)
-      const [copied, setCopied] = useState(null)
       useEffect(() => {
         api(`/devices/ports?id=${encodeURIComponent(dialog.deviceId)}`)
           .then(() => refreshDevices())
@@ -3009,65 +3214,66 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       }
       const copy = async (url) => {
         try {
-          await navigator.clipboard.writeText(url)
-          setCopied(url)
-          setTimeout(() => setCopied(null), 1500)
+          if (P.writeClipboard) await P.writeClipboard(url)
+          else await navigator.clipboard.writeText(url)
+          showToast(nt('hover.copied', null, t('portCopied')), { tone: 'success' })
         } catch {}
       }
-      return h(SimpleDialog, {
+      return h(NativeModal, {
         t,
         title: fill(t('portsTitle'), { device: device.name }),
         description: fill(t('portsHint'), { device: device.name }),
         onClose,
         wide: true,
+        testid: 'dsh-devices-ports',
         footer: h(
           React.Fragment,
           null,
           h(
             'label',
-            { className: 'dshdev-switch-row', style: { marginRight: 'auto' } },
-            h(Toggle, { label: t('portAuto'), checked: device.autoForwardPorts !== false, onChange: (v) => act('/devices/port-auto', { on: v }) }),
-            t('portAuto'),
+            { className: 'dshdev-footer-switch' },
+            h(NativeSwitch, { checked: device.autoForwardPorts !== false, label: t('portAuto'), onChange: (v) => act('/devices/port-auto', { on: v }) }),
+            h('span', null, t('portAuto')),
           ),
-          h(Btn, { variant: 'outline', onClick: onClose }, t('close')),
+          h(ModalButton, { variant: 'outline', onClick: onClose }, nt('close', null, t('close'))),
         ),
         children: h(
-          'div',
-          { className: 'dshdev-form', 'data-testid': 'dsh-devices-ports' },
-          ports.length === 0 ? h('div', { className: 'dshdev-text' }, fill(t('portsEmpty'), { device: device.name })) : null,
+          React.Fragment,
+          null,
+          ports.length === 0 ? h('p', { className: 'dshdev-empty-text' }, fill(t('portsEmpty'), { device: device.name })) : null,
           ports.length
             ? h(
-                'div',
-                { className: 'dshdev-list' },
+                'ul',
+                { className: 'dshdev-cards' },
                 ports.map((p) => {
                   const url = p.localPort ? `http://localhost:${p.localPort}/` : null
                   return h(
                     'div',
-                    { key: p.port, className: 'dshdev-list-row', 'data-dshdev-port': p.port },
-                    h('span', { className: 'dshdev-port' }, `:${p.port}`),
-                    h(
-                      'div',
-                      { className: 'dshdev-list-main' },
-                      h('div', { className: 'dshdev-list-title' }, p.label || t('untitled')),
-                      h('div', { className: 'dshdev-list-sub' }, [url ? `→ localhost:${p.localPort}` : t('notForwarded'), p.cwd ? p.cwd.replace(/^\/(root|home\/[^/]+)/, '~') : null].filter(Boolean).join(' · ')),
-                    ),
-                    h(
-                      'div',
-                      { className: 'dshdev-list-side' },
-                      url ? h(Btn, { variant: 'primary', onClick: () => openForwarded(p.localPort) }, t('portOpen')) : null,
-                      url ? h(Btn, { variant: 'ghost', onClick: () => copy(url) }, copied === url ? t('portCopied') : t('portCopy')) : null,
-                      url ? h(Btn, { variant: 'ghost', onClick: () => act('/devices/port-close', { port: p.port }) }, t('portStop')) : h(Btn, { variant: 'outline', onClick: () => act('/devices/port-forward', { port: p.port }) }, t('portForward')),
-                    ),
+                    { key: p.port, 'data-dshdev-port': p.port },
+                    h(Card, {
+                      icon: Icon('IconGlobeOutlineRegular'),
+                      title: h(React.Fragment, null, h('span', { className: 'dshdev-port-number' }, `:${p.port}`), ' ', p.label || ''),
+                      tags: url ? h(NativeTag, { tone: 'success' }, `localhost:${p.localPort}`) : null,
+                      description: [url ? null : t('notForwarded'), p.cwd ? p.cwd.replace(/^\/(root|home\/[^/]+)(?=\/|$)/, '~') : null].filter(Boolean).join(' · ') || ' ',
+                      end: h(
+                        React.Fragment,
+                        null,
+                        url ? h(IconButton, { label: t('portOpen'), onClick: () => openForwarded(p.localPort), testid: `port-open-${p.port}` }, Icon('IconRightUpOutlineRegular')) : null,
+                        url ? h(IconButton, { label: t('portCopy'), onClick: () => copy(url) }, Icon('IconCopyOutlineRegular')) : null,
+                        h(NativeSwitch, { checked: !!url, label: url ? t('portStop') : t('portForward'), onChange: (on) => act(on ? '/devices/port-forward' : '/devices/port-close', { port: p.port }) }),
+                      ),
+                    }),
                   )
                 }),
               )
             : null,
-          error ? h('div', { className: 'dshdev-err', role: 'alert' }, error) : null,
+          error ? h('p', { className: 'dshdev-error-text', role: 'alert' }, error) : null,
         ),
       })
     }
 
     const SYNC_GROUPS = ['instructions', 'skill', 'mcp', 'preset', 'plugin']
+    const SYNC_ICONS = { instructions: () => Icon('IconListPenOutlineRegular'), skill: () => Icon('IconSkillOutlineRegular'), mcp: () => Icon('IconApiOutlineRegular'), preset: () => Icon('IconAgentPresetOutlineRegular'), plugin: () => Icon('IconCordisPluginOutlineRegular') }
     /** The device's report line for one plan item. */
     function reportFor(report, item) {
       if (!report) return null
@@ -3081,6 +3287,8 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         }) || null
       )
     }
+    const STATUS_TONE = { new: 'info', changed: 'warning', same: 'quiet', unsupported: 'neutral', conflict: 'neutral' }
+
     function SyncDialog({ t, dialog, onClose }) {
       const device = deviceById(dialog.deviceId)
       const [plan, setPlan] = useState(null)
@@ -3122,50 +3330,51 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       }
       const report = job && job.state === 'done' && job.result ? job.result.report || [] : null
       const body = !plan
-        ? h('div', { className: 'dshdev-text' }, error ? null : fill(t('syncLoading'), { device: device.name }))
+        ? error
+          ? null
+          : h('p', { className: 'dshdev-empty-text' }, P.TextShimmer ? h(P.TextShimmer, null, fill(t('syncLoading'), { device: device.name })) : fill(t('syncLoading'), { device: device.name }))
         : allItems.length === 0 || (items.length === 0 && sameCount === 0)
-          ? h('div', { className: 'dshdev-text' }, t('syncNothing'))
+          ? h('p', { className: 'dshdev-empty-text' }, t('syncNothing'))
           : h(
               'div',
-              { className: 'dshdev-list', 'data-testid': 'dsh-devices-sync' },
+              { className: 'dshdev-groups', 'data-testid': 'dsh-devices-sync' },
               SYNC_GROUPS.filter((g) => items.some((i) => i.kind === g)).map((g) =>
                 h(
-                  React.Fragment,
-                  { key: g },
-                  h('div', { className: 'dshdev-list-caption' }, t(`syncGroup_${g}`)),
-                  items
-                    .filter((i) => i.kind === g)
-                    .map((i) => {
-                      const blocked = i.status === 'unsupported' || i.status === 'conflict'
-                      const result = reportFor(report, i)
-                      return h(
-                        'label',
-                        { key: i.key, className: 'dshdev-list-row', 'data-dshdev-sync': i.key, style: { cursor: blocked || job ? 'default' : 'pointer' } },
-                        h('input', {
-                          type: 'checkbox',
-                          className: 'dshdev-check',
-                          checked: !!picked[i.key],
-                          disabled: blocked || !!job,
-                          onChange: (e) => setPicked({ ...picked, [i.key]: e.target.checked }),
-                        }),
-                        h(
+                  'section',
+                  { key: g, className: 'dshdev-group2' },
+                  h('h3', { className: 'dshdev-group2-title' }, t(`syncGroup_${g}`)),
+                  h(
+                    'ul',
+                    { className: 'dshdev-cards' },
+                    items
+                      .filter((i) => i.kind === g)
+                      .map((i) => {
+                        const blocked = i.status === 'unsupported' || i.status === 'conflict'
+                        const result = reportFor(report, i)
+                        const tag = result
+                          ? h(NativeTag, { tone: result.ok ? 'success' : 'danger' }, result.ok ? '✓' : t('failed'))
+                          : h(NativeTag, { tone: STATUS_TONE[i.status] || 'outline' }, t(`syncStatus_${i.status}`))
+                        return h(
                           'div',
-                          { className: 'dshdev-list-main' },
-                          h('div', { className: 'dshdev-list-title' }, i.label),
-                          h('div', { className: 'dshdev-list-sub' }, [i.detail, i.reason ? t(`syncReason_${i.reason}`) : null].filter(Boolean).join(' · ')),
-                          (i.warn || []).length ? h('div', { className: 'dshdev-warn' }, i.warn.map((w) => t(`syncWarn_${w}`)).join(' · ')) : null,
-                        ),
-                        result
-                          ? h('span', { className: result.ok ? 'dshdev-report-ok' : 'dshdev-report-fail', title: result.detail || '' }, result.ok ? '✓' : `✗ ${result.detail || ''}`.slice(0, 60))
-                          : h('span', { className: `dshdev-tag${i.status === 'new' || i.status === 'changed' ? ' ok' : blocked ? ' warn' : ''}` }, t(`syncStatus_${i.status}`)),
-                      )
-                    }),
+                          { key: i.key, 'data-dshdev-sync': i.key },
+                          h(Card, {
+                            icon: (SYNC_ICONS[i.kind] || SYNC_ICONS.plugin)(),
+                            title: i.label,
+                            tags: tag,
+                            description: [i.detail, i.reason ? t(`syncReason_${i.reason}`) : null, ...(i.warn || []).map((w) => t(`syncWarn_${w}`)), result && !result.ok ? result.detail : null].filter(Boolean).join(' · '),
+                            end: P.Checkbox
+                              ? h(P.Checkbox, { checked: !!picked[i.key], disabled: blocked || !!job, label: '', title: i.label, onChange: (v) => setPicked({ ...picked, [i.key]: v }) })
+                              : h('input', { type: 'checkbox', checked: !!picked[i.key], disabled: blocked || !!job, onChange: (e) => setPicked({ ...picked, [i.key]: e.target.checked }) }),
+                          }),
+                        )
+                      }),
+                  ),
                 ),
               ),
-              items.length === 0 ? h('div', { className: 'dshdev-text', style: { padding: '8px 4px' } }, t('syncAllSame')) : null,
-              sameCount && !showSame ? h('button', { type: 'button', className: 'dshdev-linkbtn', style: { alignSelf: 'flex-start', margin: '8px 4px 0' }, onClick: () => setShowSame(true) }, fill(t('syncShowSame'), { n: sameCount })) : null,
+              items.length === 0 ? h('p', { className: 'dshdev-empty-text' }, t('syncAllSame')) : null,
+              sameCount && !showSame ? h('button', { type: 'button', className: 'dshdev-link-button', onClick: () => setShowSame(true) }, fill(t('syncShowSame'), { n: sameCount })) : null,
             )
-      return h(SimpleDialog, {
+      return h(NativeModal, {
         t,
         title: fill(t('syncTitle'), { device: device.name }),
         description: fill(t('syncHint'), { device: device.name }),
@@ -3174,17 +3383,17 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         footer: h(
           React.Fragment,
           null,
-          h(Btn, { variant: 'outline', onClick: onClose }, report ? t('done') : t('cancel')),
-          report ? null : h(Btn, { variant: 'primary', disabled: keys.length === 0 || !!job, onClick: run, 'data-testid': 'dsh-devices-sync-run' }, job ? t('working') : fill(t('syncRun'), { n: keys.length })),
+          h(ModalButton, { variant: 'outline', onClick: onClose }, report ? t('done') : nt('cancel', null, t('cancel'))),
+          report ? null : h(ModalButton, { variant: 'primary', disabled: keys.length === 0 || !!job, onClick: run, testid: 'dsh-devices-sync-run' }, job ? t('working') : fill(t('syncRun'), { n: keys.length })),
         ),
         children: h(
-          'div',
-          { className: 'dshdev-form' },
+          React.Fragment,
+          null,
           body,
-          items.some((i) => i.kind === 'plugin') ? h('div', { className: 'dshdev-hint' }, t('syncPluginsNote')) : null,
+          items.some((i) => i.kind === 'plugin') ? h('p', { className: 'dshdev-hint-text' }, t('syncPluginsNote')) : null,
           job ? h(JobView, { job, t }) : null,
-          report ? h('div', { className: 'dshdev-ok', role: 'status' }, fill(t('syncDone'), { ok: report.filter((r) => r.ok).length, n: report.length })) : null,
-          error || (job && job.state === 'error') ? h('div', { className: 'dshdev-err', role: 'alert' }, error || job.error) : null,
+          report ? h('p', { className: 'dshdev-success-text', role: 'status' }, fill(t('syncDone'), { ok: report.filter((r) => r.ok).length, n: report.length })) : null,
+          error || (job && job.state === 'error') ? h('p', { className: 'dshdev-error-text', role: 'alert' }, error || job.error) : null,
         ),
       })
     }
@@ -3193,83 +3402,108 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
       const st = useStore()
       const device = (st.data.devices || []).find((d) => d.id === dialog.deviceId)
       if (!device) return null
-      return h(SimpleDialog, {
+      return h(NativeModal, {
         t,
         title: fill(t('accountTitle'), { device: device.name }),
         onClose,
         wide: true,
-        footer: h(Btn, { variant: 'outline', onClick: onClose }, t('close')),
-        children: h('div', { className: 'dshdev-form', 'data-testid': 'dsh-devices-account' }, h(ModelKeyPanel, { device, t, variant: 'card' })),
+        testid: 'dsh-devices-account',
+        footer: h(ModalButton, { variant: 'outline', onClick: onClose }, nt('close', null, t('close'))),
+        children: h(ModelKeyPanel, { device, t, variant: 'card', onUpdate: startDeviceUpdate }),
       })
     }
 
-    function Notes({ t }) {
+    /** Update a device host from anywhere (the Devices page follows its own job log). */
+    async function startDeviceUpdate(device) {
+      try {
+        const job = await post('/devices/update', { id: device.id })
+        showToast(fill(appT('updating'), { device: device.name }), { icon: Icon('IconDownloadOutlineRegular'), holdMs: 5000 })
+        const timer = setInterval(async () => {
+          try {
+            const next = await api(`/devices/job?id=${encodeURIComponent(job.id)}`)
+            if (next.state === 'running') return
+            clearInterval(timer)
+            refreshDevices()
+            if (next.state === 'done') showToast(fill(appT('updated'), { device: device.name }), { tone: 'success' })
+            else showToast(next.error || appT('failed'), { icon: Icon('IconWarningOutlineRegular') })
+          } catch {}
+        }, 1500)
+      } catch (e) {
+        showToast(e.message, { icon: Icon('IconWarningOutlineRegular') })
+      }
+    }
+
+    /** "Where should this session run?" — DSH's menu, anchored to the pill that opened it. */
+    function DevicePicker({ t }) {
       const st = useStore()
-      const notes = st.notes || []
-      const showToastHere = st.toast && st.activePanel !== CHAT_PANEL_ID
-      if (!notes.length && !showToastHere) return null
-      return h(
-        React.Fragment,
-        null,
-        notes.length
-          ? h(
-              'div',
-              { className: 'dshdev-notes', role: 'region', 'aria-live': 'polite', 'data-dsh-devices': 'notes' },
-              notes.map((n) =>
-                h(
-                  'div',
-                  { key: n.id, className: `dshdev-note${n.kind ? ` ${n.kind}` : ''}`, 'data-dshdev-note': n.kind || 'info' },
-                  n.kind === 'attention' ? h('span', { className: 'dshdev-attn' }, h(AttentionIcon, { size: 16 })) : h('span', { className: 'dshdev-remote-mark', style: { color: 'rgb(65,118,230)', display: 'inline-flex' } }, h(PortIcon)),
-                  h(
-                    'div',
-                    { className: 'dshdev-note-main' },
-                    h('div', { className: 'dshdev-note-title' }, n.title),
-                    n.body ? h('div', { className: 'dshdev-note-body' }, n.body) : null,
-                    (n.actions || []).length
-                      ? h('div', { className: 'dshdev-note-actions' }, n.actions.map((a, i) => h(Btn, { key: i, variant: i === 0 ? 'primary' : 'ghost', onClick: () => (dismissNote(n.id), a.run()) }, a.label)))
-                      : null,
-                  ),
-                  h('button', { type: 'button', className: 'dshdev-note-x', 'aria-label': t('close'), onClick: () => dismissNote(n.id) }, '×'),
-                ),
-              ),
-            )
-          : null,
-        showToastHere ? h('div', { className: 'dshdev-global-toast', role: 'status' }, st.toast.text) : null,
-      )
+      const p = st.picker
+      if (!p) return null
+      const devices = st.data.devices || []
+      const items = [
+        { type: 'label', id: 'title', text: t('chooseDevice') },
+        { id: 'local', icon: h(LaptopIcon), label: t('thisMac') },
+        ...devices.map((d) => {
+          const meta = d.status === 'online' ? (d.model && !(d.model.ready ?? d.model.configured) ? t('modelLabel') + ' ⚠' : null) : t(`status_${d.status}`)
+          return { id: `device:${d.id}`, icon: h(RemoteIcon, { size: 16 }), label: meta ? h('span', { className: 'dshdev-menu-labelled' }, d.name, h('span', { className: 'dshdev-menu-suffix' }, meta)) : d.name, disabled: d.status !== 'online' }
+        }),
+        { type: 'separator', id: 'sep' },
+        { id: 'add', icon: Icon('IconPlusOutlineRegular'), label: t('addDeviceMenu') },
+      ]
+      const rect = p.rect
+      return h(NativeMenu, {
+        open: true,
+        portal: true,
+        autoFocus: true,
+        items,
+        selectedId: p.current ? `device:${p.current}` : 'local',
+        getAnchorRect: () => rect,
+        onClose: () => setStore({ picker: null }),
+        onSelect: (id) => {
+          setStore({ picker: null })
+          if (id === 'local') startLocalSession()
+          else if (id === 'add') {
+            setStore({ openAdd: true })
+            try {
+              appCtx.layout.selectPanel(PANEL_ID)
+            } catch {}
+          } else if (id.startsWith('device:')) {
+            const d = deviceById(id.slice(7))
+            if (d) newRemote(appCtx, d, null)
+          }
+        },
+      })
     }
 
     function Overlays({ t }) {
       const st = useStore()
-      const menu = st.menu
       const dialog = st.dialog
-      const closeMenu = () => setStore({ menu: null })
       const closeDialog = () => setStore({ dialog: null })
-      let menuEl = null
-      if (menu) {
-        const device = deviceById(menu.deviceId)
-        if (device) {
-          menuEl = h(PopMenu, {
-            key: `${menu.kind}:${menu.deviceId}:${menu.sessionId || ''}:${menu.x}:${menu.y}`,
-            x: menu.x,
-            y: menu.y,
-            label: menu.kind === 'session' ? t('sessionActions') : t('moreActions'),
-            items: menu.kind === 'session' ? sessionMenuItems(device, menu.sessionId, t) : deviceMenuItems(device, t),
-            onClose: closeMenu,
-          })
-        }
-      }
       let dialogEl = null
       if (dialog) {
         const props = { t, dialog, onClose: closeDialog, key: `${dialog.kind}:${dialog.deviceId || ''}:${dialog.sessionId || ''}` }
         if (dialog.kind === 'rename') dialogEl = h(RenameDialog, props)
         if (dialog.kind === 'confirm-archive') dialogEl = h(ConfirmArchiveDialog, props)
         if (dialog.kind === 'archived') dialogEl = h(ArchivedDialog, props)
-        if (dialog.kind === 'search') dialogEl = h(SearchDialog, props)
         if (dialog.kind === 'ports') dialogEl = h(PortsDialog, props)
         if (dialog.kind === 'sync') dialogEl = h(SyncDialog, props)
         if (dialog.kind === 'account') dialogEl = h(AccountDialog, props)
       }
-      return h(React.Fragment, null, menuEl, dialogEl, h(Notes, { t }))
+      const toast = st.toast
+      const toastEl =
+        toast && !P.Toast
+          ? h(FallbackToast, { key: toast.seq, text: toast.text, actions: toast.actions, holdMs: toast.holdMs, onDone: () => toastDone(toast.seq) })
+          : toast
+          ? h(P.Toast, {
+              key: toast.seq,
+              text: toast.text,
+              icon: toast.icon,
+              tone: toast.tone,
+              actions: toast.actions,
+              holdMs: toast.holdMs,
+              onDone: () => toastDone(toast.seq),
+            })
+          : null
+      return h(React.Fragment, null, h(DevicePicker, { t }), dialogEl, toastEl ? h('span', { 'data-dsh-devices': 'toast', 'data-dshdev-toast': toast.kind || 'info', hidden: true }) : null, toastEl)
     }
 
     function mountOverlays(t) {
@@ -3300,6 +3534,9 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         }, `dsh-devices: ${tag} dictionary`)
       }
       const t = ctx.locale.bind(NS)
+      try {
+        nativeT = ctx.locale.bind('workspace')
+      } catch {}
       ensureStyles()
       appCtx = ctx
       appT = t
@@ -3330,6 +3567,15 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
         return ctx.layout.panelInfo.subscribe(sync)
       }, 'dsh-devices: panel tracking')
       ctx.effect(() => mountWorkspaceMenu(ctx, t), 'dsh-devices: workspace chooser')
+      ctx.effect(() => watchNativeSearch(), 'dsh-devices: sidebar search')
+      ctx.effect(() => {
+        document.addEventListener('visibilitychange', clearVisibleUnread)
+        window.addEventListener('focus', clearVisibleUnread)
+        return () => {
+          document.removeEventListener('visibilitychange', clearVisibleUnread)
+          window.removeEventListener('focus', clearVisibleUnread)
+        }
+      }, 'dsh-devices: read marks')
       ctx.effect(() => mountOverlays(t), 'dsh-devices: menus, dialogs and notices')
       // The remote groups sit in the sidebar's own list; poll while mounted.
       ctx.effect(() => {
@@ -3345,6 +3591,13 @@ button.dshdev-list-row:hover,button.dshdev-list-row:focus-visible{background:var
     exports.name = 'dsh-devices'
     exports.inject = inject
     exports.apply = apply
+    /** Internals for the unit tests' smoke render (not an API). */
+    exports.__test = {
+      store,
+      setStore,
+      components: { RemoteSidebar, RemoteGroup, RemoteSessionRow, RemoteSearchResults, DevicesPage, DeviceCard, DevicesSettings, ModelKeyPanel, RemoteChatPanel, Overlays, DevicePicker, AddDialog },
+      dialogs: { RenameDialog, ConfirmArchiveDialog, ArchivedDialog, PortsDialog, SyncDialog, AccountDialog },
+    }
     return module.exports
   },
 })

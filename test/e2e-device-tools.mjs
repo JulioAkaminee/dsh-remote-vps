@@ -74,14 +74,28 @@ const until = async (fn, ms = 15000, step = 250) => {
   }
   return null
 }
-const groupRow = () => page.locator('[data-dsh-devices=sidebar] [data-dshdev-device] [role=treeitem]').first()
+const groupRow = () => page.locator('[data-dsh-devices=sidebar] [data-dshdev-group]').first()
+// DSH's own menus: items are found by their label.
+const MENU = {
+  plugins: /^Plugins$/,
+  automations: /^Automations$/,
+  ports: /^Ports & previews/,
+  sync: /^Sync with this computer/,
+  account: /^Models & account/,
+  archived: /^Archived chats/,
+  search: /^Search chats/,
+  rename: /^Rename$/,
+  pin: /^(Pin|Unpin) session$/,
+  archive: /^Archive session$/,
+}
 const openDeviceMenu = async () => {
   await groupRow().hover()
-  await page.locator('[data-dsh-devices=sidebar] [data-dshdev-action=more]').first().click()
-  await page.waitForSelector('[data-dsh-devices=action-menu]', { timeout: 5000 })
+  await groupRow().locator('[data-dshdev-action=more]').click()
+  await page.waitForSelector('[role=menu]', { timeout: 5000 })
 }
+// The newest open menu (a closing one may still be fading out).
 const pickMenu = async (key) => {
-  await page.locator(`[data-dsh-devices=action-menu] [data-dshdev-menu=${key}]`).click()
+  await page.locator('[role=menu]').last().getByRole('menuitem', { name: MENU[key] }).first().click()
 }
 const sendInFrame = async (frame, text) => {
   const composer = frame.locator('[contenteditable=true], textarea').first()
@@ -106,8 +120,8 @@ try {
 
   // ── 1. device panels ──────────────────────────────────────────────────────
   await openDeviceMenu()
-  const menuKeys = await page.locator('[data-dsh-devices=action-menu] [data-dshdev-menu]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dshdev-menu')))
-  check('device menu offers plugins, automations, ports, sync, account and search', ['plugins', 'automations', 'ports', 'sync', 'account', 'search'].every((k) => menuKeys.includes(k)), menuKeys.join(','))
+  const menuLabels = await page.locator('[role=menu] [role=menuitem]').evaluateAll((els) => els.map((e) => e.textContent.trim()))
+  check('device menu offers plugins, automations, ports, sync, account and search', ['plugins', 'automations', 'ports', 'sync', 'account', 'search'].every((k) => menuLabels.some((l) => MENU[k].test(l))), menuLabels.join(' | '))
   await pickMenu('plugins')
   let frame = await waitFrame()
   const pluginsShown = await until(async () => (await frame.locator('main, body').first().innerText()).match(/Plug-?ins?/i) && (await frame.locator('[contenteditable=true]').count()) === 0)
@@ -124,26 +138,30 @@ try {
   check('opening a remote chat leaves the device panel', !!(await until(async () => (await frame.locator('[contenteditable=true], textarea').count()) > 0)))
 
   // ── 6. search, rename, pin, archive ───────────────────────────────────────
+  // DSH's own sidebar search answers with remote chats too ("Search chats…" opens it)
   await openDeviceMenu()
   await pickMenu('search')
-  await page.waitForSelector('[data-testid=dsh-devices-search]', { timeout: 5000 })
-  await page.locator('[data-testid=dsh-devices-search] input').fill('notify me')
-  const hit = await until(async () => (await page.locator('[data-testid=dsh-devices-search] [data-dshdev-result]').count()) > 0, 15000)
+  await page.waitForSelector('input[class*="_searchInput"]', { timeout: 5000 })
+  await page.keyboard.type('notify me')
+  const hit = await until(async () => (await page.locator('[data-dshdev-search] [data-dshdev-result]').count()) > 0, 15000)
   await shot(page, 'tools-03-search')
-  check('search finds remote chats by message content', !!hit)
+  check('the sidebar search finds remote chats by message content', !!hit)
   if (hit) {
-    const target = await page.locator('[data-testid=dsh-devices-search] [data-dshdev-result]').first().getAttribute('data-dshdev-result')
-    await page.locator('[data-testid=dsh-devices-search] [data-dshdev-result]').first().click()
-    const opened = await until(async () => (await page.locator(`[data-dshdev-session="${target}"][aria-selected=true]`).count()) > 0, 10000)
+    const target = await page.locator('[data-dshdev-search] [data-dshdev-result]').first().getAttribute('data-dshdev-result')
+    await page.locator('[data-dshdev-search] [data-dshdev-result]').first().click()
+    const opened = await until(async () => (await page.locator(`[data-dshdev-search] [data-dshdev-session="${target}"][aria-selected=true]`).count()) > 0, 10000)
     check('a search result opens that chat', !!opened)
   }
+  await page.locator('input[class*="_searchInput"]').fill('')
+  await page.keyboard.press('Escape')
+  await until(async () => (await page.locator('[data-dshdev-search]').count()) === 0, 5000)
 
   const rowId = await page.locator('[data-dshdev-session]').nth(1).getAttribute('data-dshdev-session')
   const row = () => page.locator(`[data-dshdev-session="${rowId}"]`)
   const sessionMenu = async (key) => {
     await row().hover()
     await row().locator('[data-dshdev-action=session-more]').click()
-    await page.waitForSelector('[data-dsh-devices=action-menu]', { timeout: 5000 })
+    await page.waitForSelector('[role=menu]', { timeout: 5000 })
     await pickMenu(key)
   }
   const newTitle = `Renamed on the Mac ${stamp}`
@@ -168,7 +186,7 @@ try {
   await pickMenu('archived')
   await page.waitForSelector('[data-testid=dsh-devices-archived]', { timeout: 5000 })
   await shot(page, 'tools-05-archived')
-  await page.locator('[data-testid=dsh-devices-archived] .dshdev-list-row', { hasText: newTitle }).getByRole('button').click()
+  await page.locator('[data-testid=dsh-devices-archived] [data-dshdev-archived]', { hasText: newTitle }).locator('[data-dshdev-action=unarchive]').click()
   const back = await until(async () => (await row().count()) > 0, 10000)
   check('unarchive brings it back', !!back)
   await page.keyboard.press('Escape')
@@ -178,14 +196,17 @@ try {
   await sendInFrame(frame, 'NEED-APPROVAL')
   await page.getByRole('button', { name: 'Devices' }).first().click() // look elsewhere
   const waitingRow = await until(async () => (await page.locator('[data-dshdev-pending=approval]').count()) > 0, 20000)
-  const note = await until(async () => (await page.locator('[data-dshdev-note=attention]').count()) > 0, 10000)
+  const note = await until(async () => (await page.locator('[data-dsh-devices=toast][data-dshdev-toast=attention]').count()) > 0, 10000)
   await shot(page, 'tools-06-needs-you')
-  check('an approval on the device marks the remote row “Needs you”', !!waitingRow)
+  const trailing = await page.locator('[data-dshdev-pending=approval] [data-dshdev-time]').first().textContent().catch(() => '')
+  check('an approval on the device marks the remote row like a local one (warning dot, “Approval”)', !!waitingRow && /Approval/.test(trailing || ''), trailing || '')
   check('…and notifies here while you look elsewhere', !!note)
-  const badge = await page.locator('[data-dsh-devices=sidebar] [data-dshdev-waiting]').count()
-  check('the remote group shows how many chats need you', badge > 0)
+  await groupRow().click() // collapse
+  const badge = await until(async () => (await page.locator('[data-dsh-devices=sidebar] [data-dshdev-waiting]').count()) > 0, 3000)
+  await groupRow().click() // expand
+  check('a collapsed remote group still shows that a chat needs you', !!badge)
   if (note) {
-    await page.locator('[data-dshdev-note=attention]').getByRole('button').first().click()
+    await page.getByRole('alert').getByRole('button', { name: 'Open' }).first().click()
     frame = await waitFrame()
     const allow = frame.getByRole('button', { name: /Allow once/i })
     await allow.waitFor({ timeout: 15000 })
@@ -212,8 +233,8 @@ try {
   const listed = await until(async () => (await page.locator(`[data-dshdev-port="${manualPort}"]`).count()) > 0, 15000)
   check('a dev server on the device is listed under Ports & previews', !!listed)
   // (a manual forward from an earlier run stays, like VS Code's)
-  const forwardBtn = page.locator(`[data-dshdev-port="${manualPort}"]`).getByRole('button', { name: /^Forward$/ })
-  if (await forwardBtn.count()) await forwardBtn.click()
+  const forwardSwitch = page.locator(`[data-dshdev-port="${manualPort}"]`).getByRole('switch')
+  if ((await forwardSwitch.getAttribute('aria-checked')) !== 'true') await forwardSwitch.click()
   const localText = await until(async () => {
     const t = await page.locator(`[data-dshdev-port="${manualPort}"]`).innerText()
     return /localhost:(\d+)/.test(t) ? t : null
@@ -250,7 +271,7 @@ try {
   const agentPort = 4614
   frame = await newRemoteSession()
   await sendInFrame(frame, `START-SERVER ${agentPort}`)
-  const portNote = await until(async () => (await page.locator('[data-dshdev-note=info]', { hasText: `${agentPort}` }).count()) > 0, 25000)
+  const portNote = await until(async () => (await page.locator('[data-dsh-devices=toast][data-dshdev-toast=info]').count()) > 0 && (await page.getByRole('alert').filter({ hasText: `${agentPort}` }).count()) > 0, 25000)
   await shot(page, 'tools-09-port-note')
   check('a server started by the agent is forwarded automatically, with a notice', !!portNote)
 
@@ -292,8 +313,8 @@ try {
   check('“Use this computer’s account” signs the device in', !!accountOk && hostCred.includes('deepseek-account-platform/default'))
   await page.keyboard.press('Escape')
 } catch (error) {
-  check('unexpected error', false, error.message.split('\n')[0])
-  await shot(page, 'tools-error').catch(() => {})
+  check('unexpected error', false, error.message.split('\n').slice(0, 3).join(' / '))
+  await page.screenshot({ path: '/tmp/dshdev/shots/tools-error.png', timeout: 5000 }).catch((e) => console.log('screenshot failed:', e.message))
 }
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '))
 await browser.close()

@@ -36,13 +36,13 @@ try {
   const pillText = (await page.locator('[data-dsh-devices=device-pill]').innerText()).trim()
   check('new-session page shows a device picker next to the workspace chooser', !!pillText, pillText)
   await page.locator('[data-dsh-devices=device-pill]').click()
-  await page.waitForSelector('.dshdev-dm', { timeout: 5000 })
-  const menuText = (await page.locator('.dshdev-dm').innerText()).replace(/\n+/g, ' | ')
+  await page.waitForSelector('[role=menu]', { timeout: 5000 })
+  const menuText = (await page.locator('[role=menu]').last().innerText()).replace(/\n+/g, ' | ')
   check('device menu lists this computer and the devices', /VPS teste|srv/.test(menuText), menuText)
   await shot(page, 'mp-01-device-menu')
 
   // 2. pick the device: its new-session page opens inline with a device pill
-  await page.locator('.dshdev-dm-item').filter({ hasText: dev.name }).click()
+  await page.getByRole('menuitem', { name: dev.name }).click()
   await page.waitForFunction(() => getComputedStyle(document.getElementById('dsh-devices-frames')).display === 'block', null, { timeout: 15000 })
   let frame
   for (let i = 0; i < 60 && !frame; i++) {
@@ -94,13 +94,13 @@ try {
   await page.getByRole('button', { name: 'New session' }).first().click()
   await page.waitForSelector('[data-dsh-devices=device-pill]', { timeout: 15000 })
   await page.locator('[data-dsh-devices=device-pill]').click()
-  await page.locator('.dshdev-dm-item').filter({ hasText: dev.name }).click()
+  await page.getByRole('menuitem', { name: dev.name }).click()
   await page.waitForFunction(() => getComputedStyle(document.getElementById('dsh-devices-frames')).display === 'block', null, { timeout: 15000 })
   frame = frameOf()
   await frame.waitForSelector('[data-dsh-device-pill]', { timeout: 20000 })
   await frame.locator('[data-dsh-device-pill]').click()
-  await page.waitForSelector('.dshdev-dm', { timeout: 5000 })
-  await page.locator('.dshdev-dm-item').first().click()
+  await page.waitForSelector('[role=menu]', { timeout: 5000 })
+  await page.getByRole('menuitem', { name: 'This computer' }).click()
   await page.waitForFunction(() => getComputedStyle(document.getElementById('dsh-devices-frames')).display === 'none', null, { timeout: 10000 })
   check('device pill switches back to a local new session', (await page.locator('[data-dsh-devices=device-pill]').count()) > 0)
 
