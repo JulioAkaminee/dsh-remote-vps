@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { DeviceClient, DeviceHttpError, generateClientKey, hello, pair } from './device-client.js'
 import { DeviceGateway } from './gateway.js'
 import { editorUri, openUrl, pickEditor } from './editors.js'
+import { applyUpdate, cachedUpdate, checkForUpdate } from './plugin-update.js'
 import { PortForwards } from './ports.js'
 import { ACCOUNT_GRANT_KEY, MODEL_KEY_REF, parsePairingInput, PROTOCOL_VERSION } from './protocol.js'
 import { DeviceRegistry } from './registry.js'
@@ -797,6 +798,7 @@ export class DeviceManager {
       devices: this.registry.list().map((d) => this.view(d)),
       saved: this.savedMachines(),
       notifications: this.notifications,
+      pluginUpdate: cachedUpdate(),
       version: this.version,
       self: { hostname: os.hostname(), platform: process.platform, dsh: localDshVersion(), plugin: PLUGIN_VERSION },
       prefs: this.prefs(),
@@ -821,6 +823,20 @@ export class DeviceManager {
     // Turning automatic updates on acts at once on idle devices.
     if (next.autoUpdate === 'auto') for (const d of this.registry.list()) this._maybeAutoUpdate(d, this._ensureState(d.id))
     return this.prefs()
+  }
+
+  // ── this plugin's own update ─────────────────────────────────────────────
+
+  /** Newest release of this plugin, as GitHub reports it (cached for ten minutes). */
+  pluginUpdateStatus({ force = false } = {}) {
+    return checkForUpdate({ profileDir: this.local.profileDir(), force })
+  }
+
+  /** Unpack the newest release here and point the profile at it; a restart loads it. */
+  async applyPluginUpdate() {
+    const result = await applyUpdate({ profileDir: this.local.profileDir(), logger: this.logger })
+    this._changed()
+    return result
   }
 
   // ── jobs ─────────────────────────────────────────────────────────────────

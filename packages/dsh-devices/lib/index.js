@@ -47,6 +47,8 @@ export function apply(ctx, config) {
     logger: { info: (...a) => console.log('[dsh-devices]', ...a), warn: (...a) => console.warn('[dsh-devices]', ...a) },
   })
   manager.start()
+  // Ask once at boot whether a newer release exists; the Devices page shows it.
+  manager.pluginUpdateStatus().catch(() => {})
   ctx.effect(() => () => manager.dispose(), 'dsh-devices: manager')
 
   // Wake-from-sleep: a stalled interval means the machine was suspended.
@@ -148,6 +150,15 @@ export function apply(ctx, config) {
     ['POST', '/devices/update', async (request) => {
       const b = await body(request)
       return json(manager.update(b.id))
+    }],
+    // This plugin's own update: newest release, then swap it in place.
+    ['GET', '/devices/plugin-update', async () => json(await manager.pluginUpdateStatus())],
+    ['POST', '/devices/plugin-update', async () => {
+      try {
+        return json(await manager.applyPluginUpdate())
+      } catch (error) {
+        return json({ error: String(error?.message ?? error) }, 400)
+      }
     }],
     ['POST', '/devices/prefs', async (request) => json({ prefs: manager.setPrefs(await body(request)) })],
     // remote sessions: rename / pin / archive, and search

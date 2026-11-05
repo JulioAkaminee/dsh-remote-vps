@@ -322,6 +322,7 @@ window.__ModuleLoader__.load({
       unloadMinutes: 'After {n} minutes', unloadNever: 'Never',
       setHealthAlerts: 'Warn about device health', setHealthAlertsHint: 'Disk almost full, memory almost exhausted or a device overloaded.',
       updateAvailable: 'Update available for {device}', updateNow2: 'Update', updatedTo: '{device} updated to {version}.', updateFailed: 'Could not update {device}: {error}',
+      pluginUpdateAvailable: 'A newer version of this plugin is out: {version}', pluginUpdateHint: 'Installs it on this computer. Devices, pairing and chats are untouched.', pluginUpdateNow: 'Update plugin', pluginUpdating: 'Updating…', pluginUpdateDone: 'Plugin updated to {version}. Restart DeepSeek Harness to load it.', pluginUpdateFailed: 'Could not update the plugin: {error}',
       updatingTag: 'Updating…', updateFailedTag: 'Update failed',
       cpu: 'CPU', memory: 'Memory', disk: 'Disk', ofSize: '{used} of {total}',
       healthDisk: '{device}: disk almost full ({free} free)', healthMemory: '{device}: memory almost exhausted ({percent}% in use)', healthCpu: '{device} is overloaded (CPU {percent}%)',
@@ -380,6 +381,7 @@ window.__ModuleLoader__.load({
       unloadMinutes: 'Depois de {n} minutos', unloadNever: 'Nunca',
       setHealthAlerts: 'Avisar sobre a saúde dos devices', setHealthAlertsHint: 'Disco quase cheio, memória quase esgotada ou device sobrecarregado.',
       updateAvailable: 'Atualização disponível para {device}', updateNow2: 'Atualizar', updatedTo: '{device} atualizado para {version}.', updateFailed: 'Não foi possível atualizar {device}: {error}',
+      pluginUpdateAvailable: 'Saiu uma versão nova deste plugin: {version}', pluginUpdateHint: 'Instala neste computador. Devices, pareamento e chats não são afetados.', pluginUpdateNow: 'Atualizar plugin', pluginUpdating: 'Atualizando…', pluginUpdateDone: 'Plugin atualizado para {version}. Reinicie o DeepSeek Harness para carregar.', pluginUpdateFailed: 'Não foi possível atualizar o plugin: {error}',
       updatingTag: 'Atualizando…', updateFailedTag: 'Falha na atualização',
       cpu: 'CPU', memory: 'Memória', disk: 'Disco', ofSize: '{used} de {total}',
       healthDisk: '{device}: disco quase cheio ({free} livres)', healthMemory: '{device}: memória quase esgotada ({percent}% em uso)', healthCpu: '{device} está sobrecarregado (CPU {percent}%)',
@@ -419,6 +421,7 @@ window.__ModuleLoader__.load({
       setUnload: '释放空闲设备的内存', setUnloadHint: '设备界面一段时间不在屏幕上时在本机卸载，回来时会快速重新加载。', unloadMinutes: '{n} 分钟后', unloadNever: '从不',
       setHealthAlerts: '设备状况提醒', setHealthAlertsHint: '磁盘快满、内存快用完或设备过载。',
       updateAvailable: '{device} 有可用更新', updateNow2: '更新', updatedTo: '{device} 已更新到 {version}。', updateFailed: '无法更新 {device}：{error}',
+      pluginUpdateAvailable: '此插件有新版本：{version}', pluginUpdateHint: '安装在此计算机上。设备、配对与会话不受影响。', pluginUpdateNow: '更新插件', pluginUpdating: '正在更新…', pluginUpdateDone: '插件已更新到 {version}。重启 DeepSeek Harness 以加载。', pluginUpdateFailed: '无法更新插件：{error}',
       updatingTag: '更新中…', updateFailedTag: '更新失败', cpu: 'CPU', memory: '内存', disk: '磁盘', ofSize: '{used} / {total}',
       healthDisk: '{device}：磁盘快满了（剩余 {free}）', healthMemory: '{device}：内存快用完了（已用 {percent}%）', healthCpu: '{device} 过载（CPU {percent}%）',
       tagDisk: '磁盘快满', tagMemory: '内存高', tagCpu: '过载', apiKeyName: 'DeepSeek API Key', accountName: 'DeepSeek 账号', configured: '已配置', notConfigured: '未设置', signedIn: '已登录', notSignedIn: '未登录',
@@ -3650,6 +3653,7 @@ window.__ModuleLoader__.load({
       const [renameValue, setRenameValue] = useState('')
       const [notice, setNotice] = useState(null)
       const [updateJob, setUpdateJob] = useState(null)
+      const [pluginJob, setPluginJob] = useState({})
 
       useEffect(() => {
         if (!updateJob || updateJob.state !== 'running') return
@@ -3699,6 +3703,18 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function updatePlugin() {
+        if (pluginJob.busy) return
+        setPluginJob({ busy: true })
+        try {
+          const r = await post('/devices/plugin-update', {})
+          setPluginJob({ done: r.version })
+          refreshDevices()
+        } catch (e) {
+          setPluginJob({ error: e.message })
+        }
+      }
+
       const saveRename = async () => {
         const name = renameValue.trim()
         if (!name || !renaming || saveRename.busy) return
@@ -3730,6 +3746,26 @@ window.__ModuleLoader__.load({
           ),
         ),
         notice || st.error ? h('p', { className: 'dshdev-error-text', role: 'alert' }, notice || st.error) : null,
+        st.data.pluginUpdate && st.data.pluginUpdate.available && !pluginJob.done
+          ? h(
+              'div',
+              { className: 'dshdev-callout', 'data-testid': 'dsh-plugin-update' },
+              h('span', { className: 'dshdev-callout-dot' }),
+              h(
+                'div',
+                { className: 'dshdev-callout-main' },
+                h('div', { className: 'dshdev-callout-text' }, fill(t('pluginUpdateAvailable'), { version: st.data.pluginUpdate.latest })),
+                h('div', { className: 'dshdev-hint-text' }, t('pluginUpdateHint')),
+              ),
+              h(
+                'div',
+                { className: 'dshdev-callout-actions' },
+                h(SmallButton, { primary: true, disabled: !!pluginJob.busy, onClick: updatePlugin, testid: 'dsh-plugin-update-now' }, pluginJob.busy ? t('pluginUpdating') : t('pluginUpdateNow')),
+              ),
+            )
+          : null,
+        pluginJob.done ? h('p', { className: 'dshdev-hint-text', 'data-testid': 'dsh-plugin-updated' }, fill(t('pluginUpdateDone'), { version: pluginJob.done })) : null,
+        pluginJob.error ? h('p', { className: 'dshdev-error-text', role: 'alert' }, fill(t('pluginUpdateFailed'), { error: pluginJob.error })) : null,
         updateJob ? h(JobView, { job: updateJob, t }) : null,
         h(
           'section',
