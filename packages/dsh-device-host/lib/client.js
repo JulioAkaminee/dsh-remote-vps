@@ -140,6 +140,222 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // Hover previews stay inside this device's authenticated gateway. No history scan,
+    // prefetch, desktop paths, or arbitrary URL fetching is involved.
+    const IMAGE_LIMIT = 4 * 1024 * 1024
+    const IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+    function imagePath(value, cwd) {
+      if (typeof value !== 'string' || !value || /[\x00-\x1f]/.test(value)) return null
+      if (/^(?:~|\/\/|[a-z][a-z\d+.-]*:)/i.test(value)) return null
+      if (!/\.(?:png|jpe?g|gif|webp)$/i.test(value)) return null
+      if (!value.startsWith('/')) {
+        if (typeof cwd !== 'string' || !cwd.startsWith('/') || cwd.startsWith('//')) return null
+        value = `${cwd}/${value}`
+      }
+      const parts = []
+      for (const part of value.split('/')) {
+        if (part === '..') parts.pop()
+        else if (part && part !== '.') parts.push(part)
+      }
+      return '/' + parts.join('/')
+    }
+    function imageFileUrl(path) {
+      const url = new URL('api/file?path=' + encodeURIComponent(path), document.baseURI)
+      return url.origin === window.location.origin ? url.href : null
+    }
+    function imageTarget(target, cwd) {
+      const el = target?.closest?.('button[class*="_fileLink"], a[href]')
+      if (!el) return null
+      let path
+      if (el.tagName === 'BUTTON') {
+        if (!el.closest('[data-tool="read_image"]')) return null
+        path = el.textContent
+        // Tool summaries may show original relative arguments even when the recorded
+        // canonical file differs. That hidden metadata is not available in this DOM.
+        if (!path?.startsWith('/') || path.startsWith('//')) return null
+      } else {
+        const href = el.getAttribute('href')
+        if (!href) return null
+        // Only the exact local file endpoint may be an HTTP URL.
+        const url = new URL(href, document.baseURI)
+        const api = new URL('api/file', document.baseURI)
+        if (url.origin === window.location.origin && url.origin === api.origin && url.pathname === api.pathname) {
+          path = url.searchParams.get('path')
+        } else if (/^file:\/\/\//i.test(href)) {
+          if (url.hostname) return null
+          try { path = decodeURIComponent(url.pathname) } catch { return null }
+        } else {
+          if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href) || href.includes('?')) return null
+          try { path = decodeURIComponent(href.replace(/#L\d+(?:-L?\d+)?$/, '')) } catch { return null }
+        }
+      }
+      path = imagePath(path, cwd)
+      return path ? { el, path } : null
+    }
+    async function readHoverImage(url, signal) {
+      const response = await fetch(url, { signal, credentials: 'same-origin', redirect: 'error', cache: 'no-store' })
+      const mime = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
+      const reader = response.body?.getReader()
+      try {
+        if (!response.ok || !IMAGE_MIMES.has(mime)) throw new Error('Image unavailable')
+        if (Number(response.headers.get('content-length')) > IMAGE_LIMIT) throw new Error('Image exceeds 4 MiB')
+        if (!reader) throw new Error('Image stream unavailable')
+        const chunks = []
+        let size = 0
+        for (;;) {
+          if (signal.aborted) throw new Error('Image cancelled')
+          const { done, value } = await reader.read()
+          if (signal.aborted) throw new Error('Image cancelled')
+          if (done) break
+          size += value.byteLength
+          if (size > IMAGE_LIMIT) throw new Error('Image exceeds 4 MiB')
+          chunks.push(value)
+        }
+        return new Blob(chunks, { type: mime })
+      } finally {
+        if (reader) {
+          try { await reader.cancel() } catch {}
+          reader.releaseLock()
+        }
+      }
+    }
+    function mountImageHover(ctx) {
+      const cache = new Map()
+      let cacheBytes = 0
+      let active = null, popup = null, delay = null, request = null, expiry = null, generation = 0, disposed = false
+      const selection = ctx.uiWorkspace?.selection
+      const session = () => {
+        const value = selection?.getSnapshot?.()
+        return (typeof value === 'string' ? value : value?.sessionId ?? value?.id) || currentSessionId()
+      }
+      const cwd = (id) => ctx.uiWorkspace?.sessions?.list?.getSnapshot?.()?.byId?.[id]?.cwd
+      const evict = (key) => {
+        const entry = cache.get(key)
+        if (!entry) return
+        cache.delete(key)
+        cacheBytes -= entry.size
+        URL.revokeObjectURL(entry.url)
+      }
+      const prune = () => {
+        for (const [key, entry] of cache) if (entry.until <= Date.now()) evict(key)
+        clearTimeout(expiry)
+        expiry = cache.size ? setTimeout(prune, Math.max(1, Math.min(...Array.from(cache.values(), (entry) => entry.until)) - Date.now())) : null
+      }
+      const cancel = () => {
+        generation++
+        clearTimeout(delay)
+        delay = null
+        request?.abort()
+        request = null
+        active = null
+        popup?.remove()
+        popup = null
+      }
+      const position = (el) => {
+        if (!popup) return
+        const r = el.getBoundingClientRect()
+        const width = popup.offsetWidth, height = popup.offsetHeight
+        popup.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - width - 8))}px`
+        popup.style.top = `${Math.max(8, Math.min(r.bottom + 8, window.innerHeight - height - 8))}px`
+      }
+      const show = async (item, id, seq, selected) => {
+        if (disposed || seq !== generation || selected !== session() || !item.el.isConnected) return
+        const url = imageFileUrl(item.path)
+        if (!url) return
+        popup = document.createElement('div')
+        popup.setAttribute('data-dsh-image-hover', '')
+        popup.setAttribute('data-state', 'loading')
+        popup.setAttribute('role', 'status')
+        popup.style.cssText = 'position:fixed;z-index:2147483647;pointer-events:none;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:hidden;padding:8px;border:1px solid #6666;border-radius:8px;background:var(--dsw-alias-background-primary,#202124);color:var(--dsw-alias-label-primary,#fff);box-shadow:0 4px 20px #0004;font:12px/1.4 sans-serif'
+        popup.textContent = 'Loading image…'
+        document.body.appendChild(popup)
+        position(item.el)
+        const key = `${id}\n${url}`
+        let controller, timeout
+        const valid = () => !disposed && seq === generation && selected === session() && item.el.isConnected
+        try {
+          prune()
+          let entry = cache.get(key)
+          if (!entry) {
+            controller = new AbortController()
+            request = controller
+            timeout = setTimeout(() => controller.abort(), 8000)
+            const blob = await readHoverImage(url, controller.signal)
+            if (!valid() || controller.signal.aborted) return
+            entry = { url: URL.createObjectURL(blob), size: blob.size, until: Date.now() + 30_000 }
+            cache.set(key, entry)
+            cacheBytes += entry.size
+            while (cache.size > 8 || cacheBytes > 8 * 1024 * 1024) evict(cache.keys().next().value)
+            prune()
+          } else {
+            cache.delete(key)
+            cache.set(key, entry)
+          }
+          if (!valid()) return
+          const img = document.createElement('img')
+          img.alt = item.path.split('/').pop()
+          img.style.cssText = 'display:block;max-width:min(320px,calc(100vw - 32px));max-height:min(240px,calc(100vh - 32px));object-fit:contain'
+          img.onload = () => { if (valid()) position(item.el) }
+          img.onerror = () => {
+            evict(key)
+            if (valid()) { popup.textContent = 'Image unavailable'; popup.setAttribute('data-state', 'error'); position(item.el) }
+          }
+          img.src = entry.url
+          popup.textContent = ''
+          popup.appendChild(img)
+          popup.setAttribute('data-state', 'ready')
+          position(item.el)
+        } catch (error) {
+          if (valid()) {
+            popup.textContent = controller?.signal.aborted ? 'Image preview timed out' : error.message === 'Image exceeds 4 MiB' ? error.message : 'Image unavailable'
+            popup.setAttribute('data-state', 'error')
+            position(item.el)
+          }
+        } finally {
+          clearTimeout(timeout)
+          if (request === controller) request = null
+        }
+      }
+      const enter = (event) => {
+        if (disposed || event.pointerType === 'touch') return
+        let item, id
+        try {
+          id = event.target?.closest?.('[data-conversation-session]')?.dataset.conversationSession
+          if (!id) return
+          item = imageTarget(event.target, cwd(id))
+        } catch { return }
+        if (!item || active?.el === item.el) return
+        cancel()
+        active = item
+        const seq = generation, selected = session()
+        delay = setTimeout(() => { delay = null; void show(item, id, seq, selected) }, 200)
+      }
+      const leave = (event) => {
+        if (active?.el.contains(event.target) && !active.el.contains(event.relatedTarget)) cancel()
+      }
+      const keydown = (event) => { if (event.key === 'Escape') cancel() }
+      const visibility = () => { if (document.hidden) cancel() }
+      const bindings = [[document, 'pointerover', enter], [document, 'pointerout', leave], [document, 'focusin', enter], [document, 'focusout', leave], [document, 'keydown', keydown], [document, 'scroll', cancel], [document, 'visibilitychange', visibility], [window, 'blur', cancel], [window, 'resize', cancel]]
+      for (const [target, event, handler] of bindings) target.addEventListener(event, handler, true)
+      let lastSession = session()
+      const off = selection?.subscribe?.(() => {
+        const id = session()
+        if (id === lastSession) return
+        lastSession = id
+        cancel()
+        for (const key of cache.keys()) evict(key)
+        prune()
+      })
+      return () => {
+        disposed = true
+        cancel()
+        clearTimeout(expiry)
+        if (typeof off === 'function') off()
+        for (const [target, event, handler] of bindings) target.removeEventListener(event, handler, true)
+        for (const key of cache.keys()) evict(key)
+      }
+    }
+
     function selectPanel(ctx, panel) {
       const layout = ctx.get ? ctx.get('layout') : ctx.layout
       if (!layout || typeof layout.selectPanel !== 'function') throw new Error('layout not ready')
@@ -478,6 +694,7 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
         if (deviceName) ctx.effect(() => mountHeaderBadge(ctx, deviceName), 'dsh-device-host: header badge')
         mountOpenInEditor(ctx)
         ctx.effect(() => mountLinkRewrite(), 'dsh-device-host: dev-server links')
+        ctx.effect(() => mountImageHover(ctx), 'dsh-device-host: image hover')
         ctx.effect(() => () => {
           window.removeEventListener('message', onMessage)
           clearInterval(timer)

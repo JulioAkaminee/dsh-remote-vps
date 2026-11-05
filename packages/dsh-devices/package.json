@@ -1,6 +1,6 @@
 {
   "name": "dsh-devices",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Control remote DeepSeek Harness (dsh) devices from your desktop dsh: pair over SSH (auto-install) or with a one-time code, see every device's sessions, and open its UI. The agent runs on the device.",
   "type": "module",
   "license": "MIT",

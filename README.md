@@ -302,6 +302,28 @@ test/                       unit/, e2e-ui.mjs, devenv.sh, mock-llm.mjs
 docs/                       ARQUITETURA.md
 ```
 
+## Preview de imagens ao passar o mouse (0.1.18)
+
+No chat remoto, pare o mouse por 200 ms sobre o caminho de uma imagem em **Read image**
+para abrir uma miniatura flutuante. Também funciona com links locais de imagens no chat
+quando o caminho é identificável. O clique original continua funcionando; sair do link,
+rolar a conversa ou pressionar Escape fecha a miniatura. Foco pelo teclado também abre o preview.
+
+- PNG, JPEG, GIF e WebP, até 4 MiB por imagem; SVG e URLs externas não são carregados.
+- Nada é baixado antecipadamente. Cache temporário por iframe/device: até 8 imagens / 8 MiB,
+  com expiração de 30 segundos. Arquivos alterados podem aparecer em cache por esse período.
+- Usa a rota de arquivos autenticada do DSH da própria VPS, respeitando suas permissões.
+  Em **Read image**, apenas rótulos com caminho absoluto são usados: a UI nativa pode
+  abreviar o caminho e não expõe o destino original no DOM. Rótulos relativos ou `~`
+  são ignorados para não mostrar outra imagem por engano. Em links locais comuns,
+  caminhos relativos usam o diretório da sessão da conversa.
+- Requer **dsh-device-host 0.1.18 na VPS** e recarregamento da interface remota.
+  Atualize o plugin do desktop e depois o host pelo painel Devices. **Espere os agentes
+  terminarem:** atualizar o device reinicia o host e interrompe turnos em execução.
+- Teste de navegador isolado (Chromium, sem modificar instâncias reais):
+  `PW_TOOLS=/caminho/playwright/ CHROME=/caminho/chrome node test/e2e-image-hover.mjs`.
+  A integração ao vivo no WebKit do Mac ainda precisa ser validada.
+
 ## Concorrência e recuperação (0.1.17)
 
 - Trocas rápidas entre VPS respeitam a última navegação solicitada; uma abertura antiga
