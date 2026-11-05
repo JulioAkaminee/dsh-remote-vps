@@ -74,7 +74,7 @@ const until = async (fn, ms = 15000, step = 250) => {
   }
   return null
 }
-const groupRow = () => page.locator('[data-dsh-devices=sidebar] [data-dshdev-group]').first()
+const groupRow = () => page.locator('[data-dsh-devices=sidebar] [data-dshdev-group]').filter({ hasText: /^project-on-vps$/ }).first()
 // DSH's own menus: items are found by their label.
 const MENU = {
   plugins: /^Plugins$/,

@@ -40,7 +40,7 @@ start_one() {
     host)
       "$NODE" "$ROOT/scripts/make-profile.mjs" --home "$BASE/host-home" --profile device-host --link "$ROOT/packages/dsh-device-host" > /dev/null
       ensure_test_rows "$BASE/host-home/profiles/device-host"
-      (cd "$BASE" && DSH_HOME="$BASE/host-home" DEEPSEEK_API_KEY="${HOST_KEY-test-key}" DEEPSEEK_BASE_URL=http://127.0.0.1:4599 \
+      (cd "$BASE" && DSH_HOME="$BASE/host-home" DSH_DEVICE_TOOLS_ROOT="${DSH_DEVICE_TOOLS_ROOT-$BASE/device-tools}" DEEPSEEK_API_KEY="${HOST_KEY-test-key}" DEEPSEEK_BASE_URL=http://127.0.0.1:4599 \
         nohup "$NODE" "$DSH" --profile device-host --no-open --host 127.0.0.1 --port 3181 > "$BASE/host.log" 2>&1 &
         echo $! > "$pidf") ;;
     ctrl)

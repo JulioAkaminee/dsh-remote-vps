@@ -400,7 +400,9 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
             setTimeout(() => retry(run, 'new session'), 250)
             return undefined
           }
-          return specific && workspaceKnown(workspaceId) ? ctx.uiWorkspace.openWorkspace(workspaceId) : ctx.uiWorkspace.startSession()
+          // DSH's own "+" of a workspace: startSession(workspaceId). With a target it never falls
+          // back to the current or most recent workspace (that would start the chat in another project).
+          return specific ? ctx.uiWorkspace.startSession(workspaceId) : ctx.uiWorkspace.startSession()
         }
         retry(run, 'new session', { timeoutMs: 30_000 })
       }

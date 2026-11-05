@@ -452,3 +452,117 @@ test('self-update: validation, the runner keeps a good install and rolls a broke
   fs.writeFileSync(path.join(root, 'update-status.json'), JSON.stringify({ state: 'running', from: '0.2.9', to: '0.3.0', startedAt: twoMinutesAgo }))
   assert.equal(stale.status().state, 'done')
 })
+
+test('folders: chats group by the workspace that IS their folder; folders list with project hints; workspaces are added, renamed, removed', async () => {
+  const { owningWorkspace, parentWorkspacePath, listFolders, makeFolder, workspaceAction } = await import('../../packages/dsh-device-host/lib/folders.js')
+  // DSH's rule, not "first workspace whose path is a prefix".
+  const parent = { id: 'w-parent', path: '/root/Projetos', title: 'Projetos', sessionIds: ['s-root'] }
+  const child = { id: 'w-child', path: '/root/Projetos/cenora', title: 'cenora', sessionIds: ['s-cenora'] }
+  const workspaces = [parent, child]
+  assert.equal(owningWorkspace({ sessionId: 's-cenora', cwd: '/root/Projetos/cenora' }, workspaces).id, 'w-child', 'membership wins')
+  assert.equal(owningWorkspace({ sessionId: 's-new', cwd: '/root/Projetos/cenora' }, [{ ...parent, sessionIds: undefined }, { ...child, sessionIds: undefined }]).id, 'w-child', 'else the exact folder')
+  assert.equal(owningWorkspace({ sessionId: 's-sub', cwd: '/root/Projetos/other' }, workspaces), null, 'a parent folder does not collect its subfolders (Ungrouped)')
+  assert.equal(owningWorkspace({ sessionId: 's-x', cwd: null }, workspaces), null)
+  assert.equal(parentWorkspacePath('/root/Projetos/cenora/api', ['/root', '/root/Projetos', '/root/Projetos/cenora']), '/root/Projetos/cenora')
+  assert.equal(parentWorkspacePath('/srv/x', ['/root/Projetos']), null)
+
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-folders-'))
+  fs.mkdirSync(path.join(home, 'Projetos', 'cenora', '.git'), { recursive: true })
+  fs.mkdirSync(path.join(home, 'Projetos', 'site'), { recursive: true })
+  fs.writeFileSync(path.join(home, 'Projetos', 'site', 'package.json'), '{}')
+  fs.mkdirSync(path.join(home, 'Projetos', 'notas'))
+  fs.mkdirSync(path.join(home, 'Projetos', '.cache'))
+  fs.writeFileSync(path.join(home, 'Projetos', 'README.md'), 'x')
+  const root = path.join(home, 'Projetos')
+  const level = listFolders(root, { workspaces: [{ id: 'w1', path: path.join(root, 'cenora') }], home })
+  assert.equal(level.path, root)
+  assert.equal(level.parent, home)
+  assert.deepEqual(level.folders.map((f) => f.name), ['cenora', 'notas', 'site'], 'folders only, sorted, hidden ones skipped')
+  assert.deepEqual(level.folders.find((f) => f.name === 'cenora').project, ['.git'])
+  assert.equal(level.folders.find((f) => f.name === 'cenora').workspaceId, 'w1')
+  assert.deepEqual(level.folders.find((f) => f.name === 'site').project, ['package.json'])
+  assert.deepEqual(level.folders.find((f) => f.name === 'notas').project, [])
+  assert.ok(listFolders(root, { home, showHidden: true }).folders.some((f) => f.name === '.cache'))
+  assert.equal(listFolders(undefined, { home }).path, home, 'no path: the home folder')
+  assert.throws(() => listFolders(path.join(root, 'missing'), { home }), /folder-not-found/)
+
+  assert.equal(makeFolder(root, 'novo'), path.join(root, 'novo'))
+  assert.ok(fs.statSync(path.join(root, 'novo')).isDirectory())
+  assert.throws(() => makeFolder(root, 'novo'), /folder-exists/)
+  for (const bad of ['', '..', '.', 'a/b', 'x\\y', 'a\0b']) assert.throws(() => makeFolder(root, bad), /invalid-folder-name/, bad)
+  assert.throws(() => makeFolder(path.join(root, 'nope'), 'x'), /folder-not-found/)
+
+  // Through a registry shaped like DSH's.
+  const made = []
+  const registry = {
+    items: [{ id: 'w1', path: path.join(root, 'cenora'), title: 'cenora', async setTitle(t) { this.title = t } }],
+    list() { return this.items },
+    async resolveByPath(p) { return this.items.find((w) => w.path === p) },
+    async create(p) {
+      const w = { id: `w${this.items.length + 1}`, path: p, title: path.basename(p), async setTitle(t) { this.title = t } }
+      this.items.push(w)
+      made.push(p)
+      return w
+    },
+    async delete(id) {
+      const n = this.items.length
+      this.items = this.items.filter((w) => w.id !== id)
+      return this.items.length < n
+    },
+  }
+  const r = await workspaceAction(registry, { action: 'create', paths: [path.join(root, 'cenora'), path.join(root, 'site'), path.join(root, 'README.md')] })
+  assert.deepEqual(r.results.map((x) => [path.basename(x.path), x.created ?? null, x.error ?? null]), [['cenora', false, null], ['site', true, null], ['README.md', null, 'not-a-folder']])
+  assert.deepEqual(made, [path.join(root, 'site')])
+  await assert.rejects(workspaceAction(registry, { action: 'create', path: 'relative/path' }), /invalid-path/)
+  await assert.rejects(workspaceAction(registry, { action: 'rename', workspaceId: 'w2', title: 'cenora' }), /name-conflict/)
+  assert.equal((await workspaceAction(registry, { action: 'rename', workspaceId: 'w2', title: 'Site da loja' })).workspace.title, 'Site da loja')
+  assert.deepEqual(await workspaceAction(registry, { action: 'remove', workspaceId: 'w2' }), { removed: true })
+  await assert.rejects(workspaceAction(registry, { action: 'remove', workspaceId: 'w2' }), /workspace-not-found/)
+  await assert.rejects(workspaceAction(null, { action: 'create', path: root }), /workspaces-unavailable/)
+  fs.rmSync(home, { recursive: true, force: true })
+})
+
+test('pnpm: a device gets one for DSH’s plugin manager — its own first, installed once when missing', async () => {
+  const { execFileSync } = await import('node:child_process')
+  const { PnpmGuard, pnpmPaths, pnpmWrapper, PNPM_VERSION } = await import('../../packages/dsh-device-host/lib/tools.js')
+  const quiet = { info() {}, warn() {} }
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-tools-'))
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-bare-')) // a PATH without pnpm
+  // no device root (a linked dev host) and no pnpm: reported, nothing installed
+  assert.equal((await new PnpmGuard({ root: null, env: { PATH: bare }, logger: quiet }).ensure()).status, 'missing')
+  // a system pnpm is used when the device has none of its own
+  fs.writeFileSync(path.join(bare, 'pnpm'), '#!/bin/sh\n', { mode: 0o755 })
+  const sys = await new PnpmGuard({ root: null, env: { PATH: bare }, logger: quiet }).ensure()
+  assert.equal(`${sys.status}/${sys.source}`, 'ok/system')
+  fs.rmSync(path.join(bare, 'pnpm'))
+  // missing on a device: installed once under its root, wrapped, first on PATH
+  const calls = []
+  const p = pnpmPaths(root)
+  const fakeNpm = async (cmd, args) => {
+    calls.push(args)
+    fs.mkdirSync(path.dirname(p.cli), { recursive: true })
+    fs.writeFileSync(p.cli, `console.log(${JSON.stringify(PNPM_VERSION)})\n`)
+    return { code: 0, out: '' }
+  }
+  const env = { PATH: bare }
+  const guard = new PnpmGuard({ root, env, logger: quiet, runner: fakeNpm, node: process.execPath })
+  const [a, b] = await Promise.all([guard.ensure(), guard.ensure()])
+  assert.equal(`${a.status}/${a.source}`, 'ok/device')
+  assert.equal(a, b)
+  assert.equal(calls.length, 1, 'installed once even when asked twice at once')
+  assert.ok(calls[0].includes(`pnpm@${PNPM_VERSION}`) && calls[0].includes(p.tools))
+  assert.equal(env.PATH.split(path.delimiter)[0], p.bin, 'DSH finds this pnpm first')
+  assert.equal(fs.readFileSync(p.wrapper, 'utf8'), pnpmWrapper(process.execPath, p.cli))
+  assert.equal(execFileSync(p.wrapper, ['--version'], { encoding: 'utf8' }).trim(), PNPM_VERSION, 'the wrapper runs it with this node')
+  // next start: already there, nothing to install
+  const env2 = { PATH: '/usr/bin' }
+  const again = await new PnpmGuard({ root, env: env2, logger: quiet, runner: async () => assert.fail('no second install') }).ensure()
+  assert.equal(`${again.status}/${again.source}`, 'ok/device')
+  assert.ok(env2.PATH.startsWith(`${p.bin}${path.delimiter}`))
+  // an install that fails says why
+  const root2 = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-tools-'))
+  const failed = await new PnpmGuard({ root: root2, env: { PATH: bare }, logger: quiet, runner: async () => ({ code: 1, out: 'npm ERR! code ENOTFOUND\nnpm ERR! network request failed' }) }).ensure()
+  assert.equal(failed.status, 'failed')
+  assert.match(failed.error, /network request failed/)
+  for (const d of [root, root2, bare]) fs.rmSync(d, { recursive: true, force: true })
+})

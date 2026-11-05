@@ -97,6 +97,33 @@ cat > "$ROOT/bin/dsh" <<EOF
 DSH_HOME="\${DSH_HOME:-$DSH_HOME}" exec "$NODE" "$DSH_BIN" "\$@"
 EOF
 chmod 755 "$ROOT/bin/dsh-device" "$ROOT/bin/dsh"
+
+# ── pnpm: DSH's plugin manager adds and removes plugins with it ──────────────
+# The desktop app ships its own. A device keeps the pnpm it already has (switching
+# versions could upset the profile's lockfile); with none, it gets one here, first
+# on the service PATH.
+PNPM_VERSION="${DSH_DEVICE_PNPM_VERSION:-11.7.0}"
+PNPM_CLI="$ROOT/tools/node_modules/pnpm/bin/pnpm.cjs"
+system_pnpm=""
+for d in "$NODE_BIN_DIR" "$HOME/.local/bin" /usr/local/bin /usr/bin /bin; do
+  if [ -x "$d/pnpm" ]; then system_pnpm="$d/pnpm"; break; fi
+done
+if [ -f "$ROOT/bin/pnpm" ] || [ -z "$system_pnpm" ]; then
+  if [ "$("$NODE" "$PNPM_CLI" --version 2>/dev/null || true)" != "$PNPM_VERSION" ]; then
+    echo "installing pnpm $PNPM_VERSION (for the device's plugin manager)"
+    mkdir -p "$ROOT/tools"
+    [ -f "$ROOT/tools/package.json" ] || printf '{\n  "name": "dsh-device-tools",\n  "private": true\n}\n' > "$ROOT/tools/package.json"
+    "$NPM" install --prefix "$ROOT/tools" --no-audit --no-fund --loglevel=error "pnpm@$PNPM_VERSION" \
+      || echo "warning: could not install pnpm; the device host installs it later by itself"
+  fi
+else
+  echo "using this machine's pnpm ($system_pnpm)"
+  PNPM_CLI=""
+fi
+if [ -n "$PNPM_CLI" ] && [ -f "$PNPM_CLI" ]; then
+  printf '#!/bin/sh\n# pnpm for DSH'"'"'s plugin manager on this device (written by install-host.sh)\nexec "%s" "%s" "$@"\n' "$NODE" "$PNPM_CLI" > "$ROOT/bin/pnpm"
+  chmod 755 "$ROOT/bin/pnpm"
+fi
 [ -f "$ROOT/env" ] || { printf '# Extra environment for the device host, e.g.\n# DEEPSEEK_API_KEY=sk-...\n' > "$ROOT/env"; chmod 600 "$ROOT/env"; }
 if [ -d "$HOME/.local/bin" ] && [ ! -e "$HOME/.local/bin/dsh-device" ]; then ln -s "$ROOT/bin/dsh-device" "$HOME/.local/bin/dsh-device" 2>/dev/null || true; fi
 
@@ -143,7 +170,7 @@ fi
 mode="none"
 if [ "$SERVICE" = 1 ]; then
   if systemctl --user show-environment >/dev/null 2>&1; then
-    "$ROOT/bin/dsh-device" service install --port "$PORT" --node "$NODE" --dsh-bin "$DSH_BIN" || result_fail "systemd service install failed"
+    DSH_DEVICE_ROOT="$ROOT" "$ROOT/bin/dsh-device" service install --port "$PORT" --node "$NODE" --dsh-bin "$DSH_BIN" || result_fail "systemd service install failed"
     systemctl --user restart dsh-device-host || result_fail "could not restart dsh-device-host"
     mode="systemd"
   else
@@ -156,7 +183,7 @@ if [ "$SERVICE" = 1 ]; then
     fi
     # shellcheck disable=SC1091
     ( set -a; [ -f "$ROOT/env" ] && . "$ROOT/env"; set +a
-      DSH_HOME="$DSH_HOME" nohup "$NODE" "$DSH_BIN" --profile device-host --no-open --host 127.0.0.1 --port "$PORT" >> "$ROOT/host.log" 2>&1 &
+      PATH="$ROOT/bin:$PATH" DSH_HOME="$DSH_HOME" nohup "$NODE" "$DSH_BIN" --profile device-host --no-open --host 127.0.0.1 --port "$PORT" >> "$ROOT/host.log" 2>&1 &
       echo $! > "$ROOT/host.pid" )
     mode="background"
   fi

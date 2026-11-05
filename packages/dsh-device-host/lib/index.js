@@ -26,6 +26,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { HostAuth, parsePublicKey } from './auth.js'
+import { listFolders, makeFolder, owningWorkspace, workspaceAction } from './folders.js'
 import { HealthSampler } from './health.js'
 import { readJsonBody, remoteAddress, sendError, sendJson } from './http-util.js'
 import { PendingTracker } from './pending.js'
@@ -43,6 +44,7 @@ import {
   WATCH_MAX_MS,
 } from './protocol.js'
 import { RevisionFeed } from './revision.js'
+import { PnpmGuard } from './tools.js'
 import { HostStore } from './store.js'
 import { DeviceSync } from './sync.js'
 import { LocalTunnel } from './tunnel.js'
@@ -167,8 +169,13 @@ export function apply(ctx, rawConfig) {
   let sessionsCache = null
 
   const health = new HealthSampler()
+  const deviceRoot = runtimeRoot(path.join(here, '..'))
+  // DSH's plugin manager runs pnpm: make sure this device has one (installed once if missing).
+  // (DSH_DEVICE_TOOLS_ROOT: where a host outside ~/.dsh-device keeps its tools, e.g. the test env)
+  const pnpm = new PnpmGuard({ root: process.env.DSH_DEVICE_TOOLS_ROOT || deviceRoot, logger })
+  pnpm.ensure().catch((error) => logger.warn?.(`[dsh-device-host] pnpm check failed: ${error.message}`))
   const updater = new Updater({
-    root: runtimeRoot(path.join(here, '..')),
+    root: deviceRoot,
     version: PLUGIN_VERSION,
     port: () => Number(new URL(ctx.webServer.getOrigin()).port) || 3180,
     logger,
@@ -182,6 +189,7 @@ export function apply(ctx, rawConfig) {
     features: updater.supported() ? [...HOST_FEATURES, SELF_UPDATE_FEATURE] : HOST_FEATURES,
     health: health.sample(),
     update: updater.status(),
+    tools: { pnpm: pnpm.view() },
     startedAt: startedAt.toISOString(),
     uptimeSec: Math.round(process.uptime()),
     loadavg: os.loadavg(),
@@ -225,7 +233,8 @@ export function apply(ctx, rawConfig) {
       const rows = (value?.items ?? [])
         .filter((row) => !row.parentSessionId && row.origin !== 'subagent' && !row.blank)
         .map((row) => {
-          const ws = workspaces.find((w) => row.cwd && (row.cwd === w.path || row.cwd.startsWith(w.path + path.sep)))
+          // DSH's rule: the workspace whose path is the session's directory (not a parent folder).
+          const ws = owningWorkspace(row, workspaces)
           const pin = pinnedIds.indexOf(row.sessionId)
           return {
             sessionId: row.sessionId,
@@ -420,6 +429,34 @@ export function apply(ctx, rawConfig) {
       sessionsCache = null
       feed.bump()
       logger.info(`session ${body.sessionId} ${body.action} by ${client.label}`)
+      sendJson(res, 200, { ok: true, ...result })
+    },
+
+    async [ROUTES.folders](req, res) {
+      const client = requireClient(req, res)
+      if (!client) return
+      const registry = ctx.get('workspaceRegistry')
+      const workspaces = registry?.list?.() ?? []
+      if (req.method === 'GET') {
+        const q = new URL(req.url, 'http://device').searchParams
+        return sendJson(res, 200, listFolders(q.get('path') || undefined, { workspaces, showHidden: q.get('hidden') === '1' }))
+      }
+      if (req.method !== 'POST') return sendError(res, 405, 'method-not-allowed')
+      const body = (await readJsonBody(req, 16 * 1024)) ?? {}
+      const created = makeFolder(body.path, body.name)
+      logger.info(`folder ${created} created by ${client.label}`)
+      sendJson(res, 200, { path: created })
+    },
+
+    async [ROUTES.workspaceAction](req, res) {
+      const client = requireClient(req, res)
+      if (!client) return
+      if (req.method !== 'POST') return sendError(res, 405, 'method-not-allowed')
+      const body = (await readJsonBody(req, 64 * 1024)) ?? {}
+      const result = await workspaceAction(ctx.get('workspaceRegistry'), body)
+      sessionsCache = null
+      feed.bump()
+      logger.info(`workspace ${body.action} by ${client.label}`)
       sendJson(res, 200, { ok: true, ...result })
     },
 

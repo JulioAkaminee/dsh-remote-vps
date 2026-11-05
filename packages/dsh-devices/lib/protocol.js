@@ -55,6 +55,13 @@ export const ROUTES = Object.freeze({
    * device host on the device itself, rolling back if it does not come up; GET reports the last update.
    */
   selfUpdate: `${DEVICE_BASE}/self-update`,
+  /**
+   * Authenticated. GET `?path=&hidden=1` lists one level of folders (project hints, which are
+   * workspaces); POST `{ path, name }` creates a folder there.
+   */
+  folders: `${DEVICE_BASE}/folders`,
+  /** Authenticated. POST `{ action: 'create', path | paths }` | `{ action: 'rename', workspaceId, title }` | `{ action: 'remove', workspaceId }`. */
+  workspaceAction: `${DEVICE_BASE}/workspace-action`,
   /** Authenticated. Everything below is proxied to the host's own DSH web UI. */
   tunnel: `${DEVICE_BASE}/t`,
 })
@@ -69,7 +76,7 @@ export const ACCOUNT_GRANT_KEY = 'deepseek-account-platform/default'
 export const PORT_TUNNEL_PROTOCOL = 'dsh-port-tunnel'
 
 /** Capabilities a device host advertises in /info (desktops degrade gracefully without them). */
-export const HOST_FEATURES = Object.freeze(['watch', 'model-key', 'pending', 'session-actions', 'search', 'account', 'sync', 'ports', 'health', 'panels'])
+export const HOST_FEATURES = Object.freeze(['watch', 'model-key', 'pending', 'session-actions', 'search', 'account', 'sync', 'ports', 'health', 'panels', 'workspaces'])
 /** Advertised only when the host was installed by install-host.sh (it knows its installation root). */
 export const SELF_UPDATE_FEATURE = 'self-update'
 

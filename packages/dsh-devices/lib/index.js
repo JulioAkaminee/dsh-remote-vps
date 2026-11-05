@@ -159,6 +159,30 @@ export function apply(ctx, config) {
         return json({ error: error.detail || error.message, code: error.code ?? null }, error.status && error.status < 500 ? error.status : 400)
       }
     }],
+    ['GET', '/devices/folders', async (request) => {
+      const q = new URL(request.url).searchParams
+      try {
+        return json(await manager.listFolders(q.get('id'), q.get('path') || undefined, { hidden: q.get('hidden') === '1' }))
+      } catch (error) {
+        return json({ error: error.detail || error.message, code: error.code ?? null }, error.status && error.status < 500 ? error.status : 400)
+      }
+    }],
+    ['POST', '/devices/folders', async (request) => {
+      const b = await body(request)
+      try {
+        return json(await manager.makeFolder(b.id, b.path, b.name))
+      } catch (error) {
+        return json({ error: error.detail || error.message, code: error.code ?? null }, error.status && error.status < 500 ? error.status : 400)
+      }
+    }],
+    ['POST', '/devices/workspace-action', async (request) => {
+      const b = await body(request)
+      try {
+        return json(await manager.workspaceAction(b.id, b))
+      } catch (error) {
+        return json({ error: error.detail || error.message, code: error.code ?? null }, error.status && error.status < 500 ? error.status : 400)
+      }
+    }],
     ['GET', '/devices/search', async (request) => {
       const q = new URL(request.url).searchParams.get('q') ?? ''
       const only = new URL(request.url).searchParams.get('id')

@@ -118,3 +118,26 @@ cliente e o cabeçalho do token removidos; `Set-Cookie` nunca volta.
   dele que tinham desistido recarregam, abrindo o que está selecionado agora (chat ou painel).
 - **Instalador:** se o dsh pedido pelo Mac não existe no npm (E404), o host é atualizado mantendo
   o dsh atual do device.
+
+### Pastas, agrupamento e pnpm (0.1.12)
+
+- **Regra do DSH para grupos:** um chat pertence ao espaço de trabalho cuja pasta é exatamente a
+  pasta dele (`workspace.sessionIds`, conferido pelo caminho canônico). O host usa essa associação
+  (e, sem ela, o caminho igual), não mais "o primeiro espaço cujo caminho é prefixo".
+- **Rotas novas** (feature `workspaces`): `GET/POST /device/v1/folders` (lista um nível de pastas com
+  dicas de projeto e se já são espaço de trabalho; cria pasta) e `POST /device/v1/workspace-action`
+  (`create` com um ou vários caminhos, `rename`, `remove`, pelo `workspaceRegistry` do DSH). O Mac
+  expõe `/devices/folders` e `/devices/workspace-action` e atualiza as listas na hora.
+- **Agrupar por:** o Mac lê o `groupBy` que o DSH guarda em `localStorage['dsh.workspace.view.v5']`
+  (`workspace` | `workspace-tree` | `flat`) e agrupa os chats remotos igual: todos os espaços do
+  device (vazios também), *Desagrupado* por último; na árvore, o pai é a pasta-mãe mais próxima
+  (`--dsh-workspace-indent` = profundidade × 12 px, como o DSH); recolher o pai esconde os filhos.
+- **Nova sessão numa pasta:** a UI do device usa `uiWorkspace.startSession(workspaceId)` (o "+"
+  nativo), que nunca cai no espaço atual/mais recente.
+- **pnpm:** o gerenciador de plug-ins do DSH executa `pnpm` (o app desktop passa o dele). No device,
+  `install-host.sh` mantém um pnpm já existente; sem nenhum, instala `pnpm@11.7.0` em
+  `~/.dsh-device/tools` com o wrapper `~/.dsh-device/bin/pnpm`, e a unidade systemd ganha
+  `PATH=~/.dsh-device/bin:<node>:~/.local/bin:/usr/local/bin:/usr/bin:/bin` (sobrescrevível em
+  `~/.dsh-device/env`). O host (`PnpmGuard`) cobre quem subiu sem isso: usa o pnpm do device, senão o
+  do sistema, senão instala uma vez e põe o próprio primeiro no `PATH` do processo; `/info` traz
+  `tools.pnpm`.

@@ -198,6 +198,23 @@ export class DeviceClient {
     return this.call('POST', ROUTES.sessionAction, body)
   }
 
+  /** One level of folders on the device (`path` absent: its home folder). */
+  folders(path, { hidden = false } = {}) {
+    const q = new URLSearchParams()
+    if (path) q.set('path', path)
+    if (hidden) q.set('hidden', '1')
+    const qs = q.toString()
+    return this.call('GET', `${ROUTES.folders}${qs ? `?${qs}` : ''}`)
+  }
+
+  makeFolder(path, name) {
+    return this.call('POST', ROUTES.folders, { path, name })
+  }
+
+  workspaceAction(body) {
+    return this.call('POST', ROUTES.workspaceAction, body)
+  }
+
   search(q) {
     return this.call('GET', `${ROUTES.search}?${new URLSearchParams({ q })}`, undefined, { timeoutMs: 20_000 })
   }

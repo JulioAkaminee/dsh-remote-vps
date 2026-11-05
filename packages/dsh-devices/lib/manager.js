@@ -573,6 +573,37 @@ export class DeviceManager {
     return r
   }
 
+  // ── folders and workspaces on the device (one workspace per project folder) ──
+
+  async listFolders(id, path, { hidden = false } = {}) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'workspaces')
+    return client.folders(path, { hidden })
+  }
+
+  async makeFolder(id, path, name) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'workspaces')
+    return client.makeFolder(path, name)
+  }
+
+  /** Add (one or many folders), rename or remove a workspace on the device; the lists refresh at once. */
+  async workspaceAction(id, body = {}) {
+    const { device, s, client } = await this._ready(id)
+    this._requireFeature(device, s, 'workspaces')
+    const { action, path, paths, workspaceId, title } = body
+    const r = await client.workspaceAction({ action, path, paths, workspaceId, title })
+    const [sessions, workspaces] = await Promise.all([client.sessions().catch(() => null), client.workspaces().catch(() => null)])
+    if (sessions) {
+      s.sessions = sessions.items ?? []
+      s.archived = sessions.archived ?? []
+      s.sessionsAt = Date.now()
+    }
+    if (workspaces) s.workspaces = workspaces.items ?? []
+    this._changed()
+    return r
+  }
+
   async search(id, q) {
     const { device, s, client } = await this._ready(id)
     if (!(s.features ?? []).includes('search')) return { items: [], unsupported: true }

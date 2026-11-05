@@ -258,6 +258,15 @@ window.__ModuleLoader__.load({
       panelTimeout: '设备没有及时响应。请重试，或在窗口中打开。', panelOldHost: '{device} 暂时无法在这里打开{panel}。',
       panelOldHostHint: '它运行的是旧版设备主机（{version}）。更新一次后，其面板即可在此打开。', panelOldHostManual: '它运行的是旧版设备主机（{version}），且通过配对码配对。通过 SSH 重新添加即可安装新版主机，会话会保留；或暂时在窗口中打开。',
       updateViaSsh: '通过 SSH 更新…', newSessionRow: '新建会话', reconnect: '重新连接', reconnecting: '正在重新连接 {device}…',
+      newSessionHere: '在此新建会话', addFolderMenu: '添加文件夹…', addFolderTo: '在 {device} 上添加文件夹', splitProjects: '拆分为项目…', removeWorkspace: '删除工作区',
+      removeWorkspaceHint: '这会从工作区列表中移除“{name}”。文件夹和会话仍保留在设备上；其会话将显示在“未分组”下。', renameWorkspace: '重命名工作区', workspaceName: '工作区名称',
+      ungrouped: '未分组', defaultWorkspace: '默认工作区', foldersTitle: '在 {device} 上添加文件夹', foldersHint: '每个文件夹在侧边栏中成为一个分组；在其中开始的会话会留在该分组。',
+      splitTitle: '将“{folder}”拆分为项目', splitHint: '勾选 {folder} 中的项目文件夹。每个都会成为独立分组，该项目的新会话会留在其中。已在 {folder} 中的会话保持不变。',
+      addThisFolder: '添加“{name}”', addFolders: '添加 {n} 个文件夹', folderUp: '上一级', folderHome: '主文件夹', folderOpen: '打开文件夹', folderPath: '文件夹路径（输入后按回车）', alreadyAdded: '已添加', projectTag: '项目',
+      foldersLoading: '正在读取文件夹…', foldersEmpty: '这里没有文件夹。', foldersTruncated: '仅显示前 500 个文件夹。', pickProjects: '勾选这里的 {n} 个项目文件夹', newFolder: '新建文件夹',
+      newFolderPlaceholder: '新文件夹名称', createFolder: '创建文件夹', folderAdded: '已在 {device} 上添加“{name}”', foldersAdded: '已在 {device} 上添加 {n} 个文件夹',
+      errFolderNotFound: '该文件夹已不存在。', errFolderUnreadable: '设备无法读取该文件夹。', errFolderName: '请使用简单的文件夹名（不含斜杠）。', errFolderExists: '此处已存在同名文件夹。',
+      errNameConflict: '已有其他工作区使用该名称。', errWorkspaceGone: '该工作区已不存在；列表已刷新。',
       newIn: '在 {workspace} 中新建会话', emptyOffline: '离线 — 设备恢复响应后会话会重新出现',
       keyHint: '保存在设备上（设备的凭据存储），不会留在本机。',
     })
@@ -293,6 +302,17 @@ window.__ModuleLoader__.load({
       accountNote: 'The device uses this computer’s sign-in. Signing out on the device keeps this computer signed in; signing out on this computer also stops the device.',
       modelReadyAccount: 'Using your DeepSeek account', addApiKey: 'Add an API key', hostOutdatedFeature: 'Update {device} to use this.',
       reconnect: 'Reconnect', reconnecting: 'Reconnecting to {device}…', newIn: 'New session in {workspace}',
+      newSessionHere: 'New session here', addFolderMenu: 'Add a folder…', addFolderTo: 'Add a folder on {device}', splitProjects: 'Split into projects…',
+      removeWorkspace: 'Remove workspace', removeWorkspaceHint: 'This removes “{name}” from the workspace list. The folder and its chats stay on the device; its chats appear under Ungrouped.',
+      renameWorkspace: 'Rename workspace', workspaceName: 'Workspace name', ungrouped: 'Ungrouped', defaultWorkspace: 'Default workspace',
+      foldersTitle: 'Add a folder on {device}', foldersHint: 'Each folder becomes a group in the sidebar, like your local workspaces; chats started in it stay there.',
+      splitTitle: 'Split “{folder}” into projects', splitHint: 'Tick the project folders inside {folder}. Each becomes its own group and new chats of that project stay in it. Chats already in {folder} stay there.',
+      addThisFolder: 'Add “{name}”', addFolders: 'Add {n} folders', folderUp: 'Up one folder', folderHome: 'Home folder', folderOpen: 'Open folder', folderPath: 'Folder path (type one and press Enter)',
+      alreadyAdded: 'added', projectTag: 'project', foldersLoading: 'Reading folders…', foldersEmpty: 'No folders here.', foldersTruncated: 'Showing the first 500 folders.',
+      pickProjects: 'Tick the {n} project folders here', newFolder: 'New folder', newFolderPlaceholder: 'New folder name', createFolder: 'Create folder',
+      folderAdded: '“{name}” added on {device}', foldersAdded: '{n} folders added on {device}',
+      errFolderNotFound: 'That folder no longer exists on the device.', errFolderUnreadable: 'The device cannot read that folder.', errFolderName: 'Use a simple folder name (no slashes).',
+      errFolderExists: 'A folder with that name already exists here.', errNameConflict: 'Another workspace already has that name.', errWorkspaceGone: 'That workspace is gone; the list was refreshed.',
       emptyOffline: 'Offline — its chats come back when it answers',
       deviceSection: 'Device', waitingCount: '{n} waiting for you', archived: 'Archived', undo: 'Undo', failed: 'failed',
       updating: 'Updating the device host on {device}…', updated: '{device} is up to date.',
@@ -340,6 +360,17 @@ window.__ModuleLoader__.load({
       accountNote: 'O device usa o login deste computador. Sair no device mantém este computador conectado; sair neste computador também desconecta o device.',
       modelReadyAccount: 'Usando a sua conta DeepSeek', addApiKey: 'Adicionar chave da API', hostOutdatedFeature: 'Atualize {device} para usar isto.',
       reconnect: 'Reconectar', reconnecting: 'Reconectando a {device}…', newIn: 'Nova sessão em {workspace}',
+      newSessionHere: 'Nova sessão aqui', addFolderMenu: 'Adicionar pasta…', addFolderTo: 'Adicionar pasta em {device}', splitProjects: 'Separar em projetos…',
+      removeWorkspace: 'Remover espaço de trabalho', removeWorkspaceHint: 'Isto tira “{name}” da lista de espaços de trabalho. A pasta e os chats continuam no device; os chats aparecem em Desagrupado.',
+      renameWorkspace: 'Renomear espaço de trabalho', workspaceName: 'Nome do espaço de trabalho', ungrouped: 'Desagrupado', defaultWorkspace: 'Espaço de trabalho padrão',
+      foldersTitle: 'Adicionar pasta em {device}', foldersHint: 'Cada pasta vira um grupo na barra lateral, como os seus espaços de trabalho locais; os chats começados nela ficam nele.',
+      splitTitle: 'Separar “{folder}” em projetos', splitHint: 'Marque as pastas de projeto dentro de {folder}. Cada uma vira um grupo e os chats novos daquele projeto ficam nele. Os chats que já estão em {folder} continuam lá.',
+      addThisFolder: 'Adicionar “{name}”', addFolders: 'Adicionar {n} pastas', folderUp: 'Subir uma pasta', folderHome: 'Pasta inicial', folderOpen: 'Abrir pasta', folderPath: 'Caminho da pasta (digite um e tecle Enter)',
+      alreadyAdded: 'adicionada', projectTag: 'projeto', foldersLoading: 'Lendo as pastas…', foldersEmpty: 'Nenhuma pasta aqui.', foldersTruncated: 'Mostrando as primeiras 500 pastas.',
+      pickProjects: 'Marcar as {n} pastas de projeto daqui', newFolder: 'Nova pasta', newFolderPlaceholder: 'Nome da nova pasta', createFolder: 'Criar pasta',
+      folderAdded: '“{name}” adicionada em {device}', foldersAdded: '{n} pastas adicionadas em {device}',
+      errFolderNotFound: 'Essa pasta não existe mais no device.', errFolderUnreadable: 'O device não consegue ler essa pasta.', errFolderName: 'Use um nome de pasta simples (sem barras).',
+      errFolderExists: 'Já existe uma pasta com esse nome aqui.', errNameConflict: 'Outro espaço de trabalho já tem esse nome.', errWorkspaceGone: 'Esse espaço de trabalho não existe mais; a lista foi atualizada.',
       emptyOffline: 'Offline — os chats voltam quando ele responder',
       deviceSection: 'Device', waitingCount: '{n} esperando por você', archived: 'Arquivada', undo: 'Desfazer', failed: 'falhou',
       updating: 'Atualizando o device host de {device}…', updated: '{device} está atualizado.',
@@ -436,6 +467,36 @@ window.__ModuleLoader__.load({
     const post = (path, value) => api(path, { method: 'POST', body: JSON.stringify(value ?? {}) })
 
     // ── shared store (sidebar root, main panels and Devices page) ───────────
+    /** The "Group by" picked in DSH's sidebar view options (stored by DSH in the browser). */
+    const NATIVE_VIEW_KEY = 'dsh.workspace.view.v5'
+    function nativeGroupBy() {
+      try {
+        const v = JSON.parse(localStorage.getItem(NATIVE_VIEW_KEY) || 'null')
+        const g = v && (v.groupBy ?? (v.state && v.state.groupBy))
+        return g === 'flat' || g === 'workspace-tree' ? g : 'workspace'
+      } catch {
+        return 'workspace'
+      }
+    }
+    /** Follow it: remote chats group the way the local ones do. */
+    function watchNativeGroupBy() {
+      const check = () => {
+        const g = nativeGroupBy()
+        if (g !== store.groupBy) setStore({ groupBy: g })
+      }
+      const timer = setInterval(check, 1200)
+      const onStorage = (e) => e.key === NATIVE_VIEW_KEY && check()
+      window.addEventListener('storage', onStorage)
+      // The view-options menu writes it on a click: check right after one, too.
+      const onClick = () => setTimeout(check, 50)
+      document.addEventListener('click', onClick, true)
+      return () => {
+        clearInterval(timer)
+        window.removeEventListener('storage', onStorage)
+        document.removeEventListener('click', onClick, true)
+      }
+    }
+
     const store = {
       data: { devices: [], self: null },
       loaded: false,
@@ -461,6 +522,8 @@ window.__ModuleLoader__.load({
       unread: readUnread(),
       /** query typed in DSH's own sidebar search */
       nativeSearch: '',
+      /** DSH's own sidebar "Group by" (its view options): 'workspace' | 'workspace-tree' | 'flat' */
+      groupBy: nativeGroupBy(),
       expanded: {},
       localUntil: 0,
       version: 0,
@@ -1422,7 +1485,26 @@ window.__ModuleLoader__.load({
 .dshdev-device-chevron{flex:none;opacity:0;transition:opacity .12s,transform .18s;color:var(--dsw-alias-label-tertiary)}
 .dshdev-device-chevron.dshdev-collapsed{transform:rotate(-90deg);opacity:1}
 .dshdev-device-header:hover .dshdev-device-chevron,.dshdev-device-header:focus-visible .dshdev-device-chevron{opacity:1}
-.dshdev-device-header .dshdev-device-actions{flex:none}
+.dshdev-device-header .dshdev-device-actions{flex:none;max-width:none}
+.dshdev-folders{display:flex;flex-direction:column;gap:10px}
+.dshdev-folders-bar{display:flex;align-items:center;gap:6px;min-height:28px}
+.dshdev-folders-up{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:none;background:none;border-radius:var(--dsw-radius-sm);color:var(--dsw-alias-label-secondary);cursor:pointer;flex:none}
+.dshdev-folders-up:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.dshdev-folders-up:disabled{opacity:.4;cursor:default}
+.dshdev-folders-path{flex:1;min-width:0;box-sizing:border-box;height:30px;padding:0 10px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);background:none;outline:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshdev-folders-path:focus{border-color:var(--dsw-focus-ring-color,#4176e6)}
+.dshdev-folders-list{display:flex;flex-direction:column;gap:2px;max-height:320px;overflow-y:auto;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg);padding:4px}
+.dshdev-folders-empty,.dshdev-folders-note{padding:12px;font-size:13px;color:var(--dsw-alias-label-tertiary)}
+.dshdev-folders-note{padding:0}
+.dshdev-folders-error{font-size:12px;line-height:18px;color:var(--dsw-alias-state-error-primary)}
+.dshdev-folder-row{display:flex;align-items:center;gap:6px;border-radius:var(--dsw-radius-md);padding:0 4px 0 8px;min-height:34px}
+.dshdev-folder-row:hover,.dshdev-folder-picked{background:var(--dsw-alias-interactive-bg-hover)}
+.dshdev-folder-check{display:inline-flex;align-items:center;justify-content:center;width:20px;flex:none;color:var(--dsw-alias-label-tertiary)}
+.dshdev-folder-check label{gap:0}.dshdev-folder-check label>span:not(:first-child){display:none}
+.dshdev-folder-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;height:34px;border:none;background:none;padding:0 4px;font:inherit;font-size:14px;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left}
+.dshdev-folder-open>svg{flex:none;color:var(--dsw-alias-label-tertiary)}
+.dshdev-folder-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshdev-folder-chevron{margin-left:auto;display:inline-flex;color:var(--dsw-alias-label-caption)}
+.dshdev-folders-new{display:flex;align-items:center;gap:8px}.dshdev-folders-new input{flex:1}
 .dshdev-device-header button:disabled{opacity:.4;cursor:default}
 .dshdev-device-header button:disabled:hover{background:none}
 .dshdev-device-off .dshdev-device-name{color:var(--dsw-alias-label-tertiary)}
@@ -1941,21 +2023,64 @@ window.__ModuleLoader__.load({
     }
 
     // ── sidebar: remote groups below the local workspaces ───────────────────
-    function groupSessions(device) {
-      const groups = new Map()
-      for (const s of device.sessions || []) {
-        const key = s.workspaceId || s.cwd || '_'
-        if (!groups.has(key)) {
-          const ws = (device.workspaces || []).find((w) => w.id === s.workspaceId)
-          const title = s.workspaceTitle || (s.cwd ? s.cwd.split('/').filter(Boolean).pop() : null) || device.name
-          groups.set(key, { key, workspaceId: s.workspaceId || null, title, path: ws ? ws.path : null, sessions: [] })
-        }
-        groups.get(key).sessions.push(s)
+    /** A workspace's name as DSH shows it (its default workspace in the reader's language). */
+    function workspaceTitle(title, p) {
+      if (title === 'default-workspace') return nt('workspace.defaultName', null, appT('defaultWorkspace'))
+      return title || (p ? p.split('/').filter(Boolean).pop() : '') || '?'
+    }
+    const pinFirst = (list) => list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.pinned && b.pinned ? (a.pinRank ?? 0) - (b.pinRank ?? 0) : 0))
+    /** The nearest other workspace folder that contains `p` (DSH's "workspace tree" parent). */
+    function parentFolder(p, paths) {
+      let best = null
+      for (const c of paths) {
+        if (!c || c === p) continue
+        const prefix = c.endsWith('/') ? c : `${c}/`
+        if (p.startsWith(prefix) && (!best || c.length > best.length)) best = c
       }
-      const list = [...groups.values()]
-      // Pinned sessions first (in pin order); the rest keep the device's recency order.
-      for (const g of list) g.sessions.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.pinned && b.pinned ? (a.pinRank ?? 0) - (b.pinRank ?? 0) : 0))
-      return list
+      return best
+    }
+    /**
+     * A device's chats grouped like DSH's sidebar: one group per workspace of the device
+     * (in its order, empty ones too), then Ungrouped. In "workspace-tree" a workspace inside
+     * another one's folder follows it, one level deeper.
+     */
+    function deviceGroups(device, mode = 'workspace') {
+      const workspaces = device.workspaces || []
+      const groups = workspaces.map((w) => ({ key: w.id, workspaceId: w.id, title: workspaceTitle(w.title, w.path), path: w.path || null, sessions: [], depth: 0, parentKey: null }))
+      const byId = new Map(groups.map((g) => [g.key, g]))
+      const stray = []
+      for (const s of device.sessions || []) {
+        let g = s.workspaceId ? byId.get(s.workspaceId) : null
+        if (!g && s.workspaceId) {
+          // (a workspace the list does not have yet)
+          g = { key: s.workspaceId, workspaceId: s.workspaceId, title: workspaceTitle(s.workspaceTitle, s.cwd), path: s.cwd || null, sessions: [], depth: 0, parentKey: null }
+          byId.set(g.key, g)
+          groups.push(g)
+        }
+        if (g) g.sessions.push(s)
+        else stray.push(s)
+      }
+      for (const g of groups) pinFirst(g.sessions)
+      let out = groups
+      if (mode === 'workspace-tree') {
+        const paths = groups.map((g) => g.path).filter(Boolean)
+        const keyByPath = new Map(groups.filter((g) => g.path).map((g) => [g.path, g.key]))
+        for (const g of groups) {
+          const parent = g.path ? parentFolder(g.path, paths) : null
+          g.parentKey = parent ? keyByPath.get(parent) : null
+        }
+        const children = new Map()
+        for (const g of groups) if (g.parentKey) children.set(g.parentKey, [...(children.get(g.parentKey) || []), g])
+        out = []
+        const visit = (g, depth) => {
+          g.depth = depth
+          out.push(g)
+          for (const c of children.get(g.key) || []) visit(c, depth + 1)
+        }
+        for (const g of groups) if (!g.parentKey) visit(g, 0)
+      }
+      if (stray.length) out.push({ key: '_ungrouped', workspaceId: null, title: nt('group.ungrouped', null, appT('ungrouped')), path: null, sessions: pinFirst(stray), depth: 0, parentKey: null, ungrouped: true })
+      return out
     }
 
     function StatusDots({ cls, status }) {
@@ -2079,6 +2204,7 @@ window.__ModuleLoader__.load({
             ]
           : []),
         { id: 'search', icon: Icon('IconSearchOutlineRegular'), label: t('searchMenu') },
+        ...(group ? [] : [{ id: 'add-folder', icon: Icon('IconProjectAddOutlineRegular'), label: `${t('addFolderMenu')}${old('workspaces')}`, disabled: !online }]),
         { type: 'separator', id: 'sep-1' },
         { id: 'plugins', icon: Icon('IconCordisPluginOutlineRegular'), label: t('pluginsMenu'), disabled: !online },
         { id: 'automations', icon: Icon('IconAlarmClockOutlineRegular'), label: t('automationsMenu'), disabled: !online },
@@ -2108,6 +2234,7 @@ window.__ModuleLoader__.load({
       if (id === 'automations') openDevicePanel(device, 'schedules')
       if (id === 'ports' || id === 'sync' || id === 'account' || id === 'archived') setStore({ dialog: { kind: id, deviceId: device.id } })
       if (id === 'settings') openDeviceSettings(device)
+      if (id === 'add-folder') openFolders(device)
       if (id === 'reconnect') {
         post('/devices/refresh', { id: device.id })
           .then(() => setTimeout(() => refreshDevices(), 1200))
@@ -2120,6 +2247,63 @@ window.__ModuleLoader__.load({
           ctx.layout.selectPanel(PANEL_ID)
         } catch {}
       }
+    }
+
+    function RemoteGroupHover({ cls, device, g, t }) {
+      const waiting = g.sessions.filter((s) => s.pending).length
+      return h(
+        'div',
+        { className: cls.hoverContent },
+        h('div', { className: cls.hoverTitle }, g.title),
+        g.path ? h('div', { className: cls.hoverPath || cls.hoverTime }, g.path.replace(/^\/(root|home\/[^/]+)(?=\/|$)/, '~')) : null,
+        h('div', { className: cls.hoverStatus }, h(RemoteMark, { size: 12 }), h('span', null, device.name)),
+        waiting ? h('div', { className: cls.hoverStatus }, h(Dot, { state: 'warning' }), h('span', null, fill(t('waitingCount'), { n: waiting }))) : null,
+      )
+    }
+
+    /** The menu of a remote workspace: its own actions, then the device's panels. */
+    function workspaceMenuItems(device, t, g) {
+      const online = device.status === 'online'
+      const manage = !!g.workspaceId && hasFeature(device, 'workspaces')
+      return [
+        ...(g.workspaceId ? [{ id: 'new', icon: Icon('IconNewChatOutlineRegular'), label: t('newSessionHere'), disabled: !online }] : []),
+        { id: 'files', icon: Icon('IconFolderOpenOutlineRegular'), label: t('openFiles'), disabled: !online },
+        { id: 'editor', icon: Icon('IconCodeOutlineRegular'), label: fill(t('openInEditor'), { editor: currentEditor().label }) },
+        ...(manage
+          ? [
+              { type: 'separator', id: 'sep-ws' },
+              { id: 'split', icon: Icon('IconProjectAddOutlineRegular'), label: t('splitProjects'), disabled: !online },
+              { id: 'rename-ws', icon: Icon('IconEditOutlineRegular'), label: nt('rename', null, t('rename')), disabled: !online },
+              { id: 'remove-ws', icon: Icon('IconTrashOutlineRegular'), label: nt('delete.workspace', null, t('removeWorkspace')), danger: true, disabled: !online },
+            ]
+          : []),
+        { type: 'separator', id: 'sep-dev' },
+        { type: 'label', id: 'device', text: device.name },
+        { id: 'plugins', icon: Icon('IconCordisPluginOutlineRegular'), label: t('pluginsMenu'), disabled: !online },
+        { id: 'automations', icon: Icon('IconAlarmClockOutlineRegular'), label: t('automationsMenu'), disabled: !online },
+      ]
+    }
+    function runWorkspaceAction(id, device, g) {
+      const ctx = appCtx
+      if (id === 'new') newRemote(ctx, device, g.workspaceId)
+      if (id === 'files') openRemoteFiles(ctx, device, g)
+      if (id === 'editor') {
+        const first = g.sessions[0]
+        openInEditor(device.id, { path: g.path || (first && first.cwd), sessionId: first && first.sessionId })
+      }
+      if (id === 'split') openFolders(device, { path: g.path, split: true })
+      if (id === 'rename-ws') setStore({ dialog: { kind: 'rename-ws', deviceId: device.id, workspaceId: g.workspaceId, title: g.title } })
+      if (id === 'remove-ws') setStore({ dialog: { kind: 'remove-ws', deviceId: device.id, workspaceId: g.workspaceId, title: g.title } })
+      if (id === 'plugins') openDevicePanel(device, 'plugins')
+      if (id === 'automations') openDevicePanel(device, 'schedules')
+    }
+    /** The folder browser of a device (add workspaces; split a folder into its projects). */
+    function openFolders(device, { path, split = false } = {}) {
+      if (!hasFeature(device, 'workspaces')) {
+        showToast(fill(appT('hostOutdatedFeature'), { device: device.name }), { icon: Icon('IconWarningOutlineRegular') })
+        return
+      }
+      setStore({ dialog: { kind: 'folders', deviceId: device.id, path: path || null, split } })
     }
 
     function RemoteGroupHover({ cls, device, g, t }) {
@@ -2165,10 +2349,10 @@ window.__ModuleLoader__.load({
           h(NativeMenu, {
             open: menuOpen,
             onClose: () => setMenuOpen(false),
-            items: deviceMenuItems(device, t, g),
+            items: workspaceMenuItems(device, t, g),
             onSelect: (id) => {
               setMenuOpen(false)
-              runDeviceAction(id, device, g)
+              runWorkspaceAction(id, device, g)
             },
             portal: true,
             closeOnPointerLeave: true,
@@ -2178,18 +2362,26 @@ window.__ModuleLoader__.load({
               Icon('IconEllipsisOutlineRegular'),
             ),
           }),
-          h(TipButton, { cls, label: fill(t('newIn'), { workspace: g.title }), action: 'new', disabled: !online, onClick: () => online && newRemote(ctx, device, g.workspaceId) }, Icon('IconNewChatOutlineRegular')),
+          g.workspaceId ? h(TipButton, { cls, label: fill(t('newIn'), { workspace: g.title }), action: 'new', disabled: !online, onClick: () => online && newRemote(ctx, device, g.workspaceId) }, Icon('IconNewChatOutlineRegular')) : null,
         ),
       )
       const rows = collapsed ? [] : perGroup && !st.expanded[ckey] ? g.sessions.slice(0, perGroup) : g.sessions
       return h(
         'div',
-        { className: cls.group, 'data-dshdev-workspace': ckey },
+        { className: cls.group, 'data-dshdev-workspace': ckey, 'data-dshdev-depth': g.depth || 0, style: g.depth ? { '--dsh-workspace-indent': `${g.depth * 12}px` } : undefined },
         P.HoverCard ? h(P.HoverCard, { anchor: header, content: h(RemoteGroupHover, { cls, device, g, t }), openDelayMs: 800, grouped: true, disabled: menuOpen, copyText: g.path || undefined, copyLabel: nt('copy', null, 'Copy'), copiedLabel: nt('hover.copied', null, 'Copied') }) : header,
         rows.map((s) => {
           const selected = chatActive && st.selection && st.selection.deviceId === device.id && (st.selection.sessionId === s.sessionId || (!st.selection.sessionId && st.embedded[device.id] === s.sessionId))
           return h(RemoteSessionRow, { key: s.sessionId, ctx, t, cls, device, s, selected, online })
         }),
+        !collapsed && g.sessions.length === 0 && g.workspaceId
+          ? h(
+              'div',
+              { className: cx(cls.session, 'dshdev-device-empty', !online && 'dshdev-dim'), role: 'treeitem', 'data-dshdev-empty-workspace': g.workspaceId, onClick: () => online && newRemote(ctx, device, g.workspaceId) },
+              h('span', { className: cls.slot }, Icon('IconNewChatOutlineRegular', { size: 14 })),
+              h('span', { className: cls.title }, t('newSessionRow')),
+            )
+          : null,
         !collapsed && perGroup && g.sessions.length > perGroup
           ? h(
               'button',
@@ -2235,7 +2427,8 @@ window.__ModuleLoader__.load({
       const collapsed = !!st.collapsed[key]
       const online = device.status === 'online'
       const state = deviceHeaderState(device, t)
-      const groups = groupSessions(device)
+      const mode = st.groupBy || 'workspace'
+      const groups = deviceGroups(device, mode)
       const waiting = device.pendingCount || (device.sessions || []).filter((s) => s.pending).length
       const list = discoverPrefixes().list
       const headerButton = list ? `${list}iconButton` : 'dshdev-fb-iconbtn'
@@ -2275,6 +2468,9 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: cx(list && `${list}headerActions`, 'dshdev-device-actions'), onClick: (e) => e.stopPropagation() },
+          hasFeature(device, 'workspaces')
+            ? h(TipButton, { cls, className: headerButton, label: fill(t('addFolderTo'), { device: device.name }), action: 'device-add-folder', disabled: !online, onClick: () => online && openFolders(device) }, Icon('IconProjectAddOutlineRegular', { size: 14 }))
+            : null,
           h(TipButton, { cls, className: headerButton, label: fill(t('newRemote'), { device: device.name }), action: 'device-new', disabled: !online, onClick: () => online && newRemote(ctx, device, null) }, Icon('IconNewChatOutlineRegular', { size: 14 })),
           h(NativeMenu, {
             open: menuOpen,
@@ -2296,8 +2492,39 @@ window.__ModuleLoader__.load({
       )
       let body = null
       if (!collapsed) {
-        if (groups.length) body = groups.map((g) => h(RemoteGroup, { key: `${device.id}:${g.key}`, ctx, t, cls, device, g, st, chatActive, perGroup }))
-        else
+        const all = device.sessions || []
+        if (mode === 'flat' && all.length) {
+          // "Single list": the device's chats straight under its header, like DSH's flat list.
+          const fkey = `${device.id}:_flat`
+          const list = pinFirst([...all])
+          const shown = perGroup && !st.expanded[fkey] ? list.slice(0, perGroup) : list
+          body = h(
+            'div',
+            { className: cls.group, 'data-dshdev-flat': device.id },
+            shown.map((s) => {
+              const selected = chatActive && st.selection && st.selection.deviceId === device.id && (st.selection.sessionId === s.sessionId || (!st.selection.sessionId && st.embedded[device.id] === s.sessionId))
+              return h(RemoteSessionRow, { key: s.sessionId, ctx, t, cls, device, s, selected, online })
+            }),
+            perGroup && list.length > perGroup
+              ? h(
+                  'button',
+                  { type: 'button', className: cls.overflow, 'aria-expanded': !!st.expanded[fkey], 'data-dshdev-more': fkey, onClick: () => setStore({ expanded: { ...st.expanded, [fkey]: !st.expanded[fkey] } }) },
+                  st.expanded[fkey] ? nt('sessions.collapse', null, t('showLess')) : nt('sessions.expand', { n: list.length - perGroup, count: list.length - perGroup }, fill(t('showMore'), { n: list.length - perGroup })),
+                )
+              : null,
+          )
+        } else if (groups.length) {
+          // In the tree, a collapsed workspace hides the ones inside it.
+          const hidden = new Set()
+          body = []
+          for (const g of groups) {
+            if (g.parentKey && (hidden.has(g.parentKey) || st.collapsed[`${device.id}:${g.parentKey}`])) {
+              hidden.add(g.key)
+              continue
+            }
+            body.push(h(RemoteGroup, { key: `${device.id}:${g.key}`, ctx, t, cls, device, g, st, chatActive, perGroup }))
+          }
+        } else
           body = h(
             'div',
             {
@@ -2796,7 +3023,7 @@ window.__ModuleLoader__.load({
           section.appendChild(wrap)
         }
         for (const device of online) {
-          const workspaces = device.workspaces && device.workspaces.length ? device.workspaces : groupSessions(device).filter((g) => g.workspaceId).map((g) => ({ id: g.workspaceId, title: g.title }))
+          const workspaces = device.workspaces && device.workspaces.length ? device.workspaces : deviceGroups(device).filter((g) => g.workspaceId).map((g) => ({ id: g.workspaceId, title: g.title }))
           for (const w of workspaces) add(svgRemote(16), w.title, device.name, () => newRemote(ctx, device, w.id))
           add(svgPlus, fill(t('menuNewOn'), { device: device.name }), '', () => newRemote(ctx, device, null))
         }
@@ -3719,6 +3946,263 @@ window.__ModuleLoader__.load({
       })
     }
 
+    /** Friendly words for the device's folder/workspace errors. */
+    function folderError(e, t) {
+      const code = (e && e.code) || ''
+      const known = { 'folder-not-found': 'errFolderNotFound', 'folder-unreadable': 'errFolderUnreadable', 'not-a-folder': 'errFolderUnreadable', 'invalid-folder-name': 'errFolderName', 'folder-exists': 'errFolderExists', 'name-conflict': 'errNameConflict', 'workspace-not-found': 'errWorkspaceGone' }
+      if (code === 'HOST_OUTDATED') return friendlyError(e)
+      return known[code] ? t(known[code]) : (e && e.message) || String(e)
+    }
+
+    /**
+     * Folders of a device, to add as workspaces (one group per project folder in the
+     * sidebar). "Split" opens on a folder with its project folders already ticked.
+     */
+    function FoldersDialog({ t, dialog, onClose }) {
+      const st = useStore()
+      const device = (st.data.devices || []).find((d) => d.id === dialog.deviceId)
+      const [listing, setListing] = useState(null)
+      const [loading, setLoading] = useState(true)
+      const [error, setError] = useState(null)
+      const [picked, setPicked] = useState(() => new Set())
+      const [newName, setNewName] = useState('')
+      const [busy, setBusy] = useState(false)
+      const [splitAt, setSplitAt] = useState(dialog.split ? dialog.path : null)
+      const [typed, setTyped] = useState(null)
+      const load = async (where, { preselect } = {}) => {
+        setLoading(true)
+        setError(null)
+        try {
+          const q = new URLSearchParams({ id: dialog.deviceId })
+          if (where) q.set('path', where)
+          const r = await api(`/devices/folders?${q}`)
+          setListing(r)
+          setTyped(null)
+          const next = new Set()
+          if (preselect === 'projects') for (const f of r.folders || []) if (!f.workspaceId && f.project && f.project.length) next.add(f.path)
+          if (typeof preselect === 'string' && preselect.startsWith('/')) next.add(preselect)
+          setPicked(next)
+        } catch (e) {
+          setError(folderError(e, t))
+        } finally {
+          setLoading(false)
+        }
+      }
+      useEffect(() => {
+        load(dialog.path || undefined, { preselect: dialog.split ? 'projects' : undefined })
+      }, [])
+      if (!device) return null
+      const home = listing && listing.home
+      const shortPath = (p) => (p && home && (p === home || p.startsWith(`${home}/`)) ? `~${p.slice(home.length)}` : p || '')
+      const current = listing ? listing.path : dialog.path || ''
+      const currentName = current.split('/').filter(Boolean).pop() || current
+      const toggle = (p) => {
+        const next = new Set(picked)
+        if (next.has(p)) next.delete(p)
+        else next.add(p)
+        setPicked(next)
+      }
+      const add = async (paths) => {
+        if (!paths.length || busy) return
+        setBusy(true)
+        setError(null)
+        try {
+          const r = await post('/devices/workspace-action', { id: device.id, action: 'create', paths })
+          const ok = (r.results || []).filter((x) => x.workspace)
+          const failed = (r.results || []).filter((x) => x.error)
+          await refreshDevices()
+          // Show the device (and its new groups) right away.
+          const collapsed = { ...store.collapsed }
+          delete collapsed[`device:${device.id}`]
+          for (const x of ok) delete collapsed[`${device.id}:${x.workspace.id}`]
+          setStore({ collapsed })
+          if (failed.length && !ok.length) {
+            setError(failed.map((x) => `${shortPath(x.path)}: ${x.error}`).join(' · '))
+            return
+          }
+          const only = ok.length === 1 ? ok[0].workspace : null
+          showToast(only ? fill(t('folderAdded'), { name: workspaceTitle(only.title, only.path), device: device.name }) : fill(t('foldersAdded'), { n: ok.length, device: device.name }), {
+            icon: Icon('IconProjectAddOutlineRegular'),
+            actions: only ? [{ label: t('newSessionRow'), onClick: () => (setStore({ toast: null }), newRemote(appCtx, device, only.id)) }] : undefined,
+            holdMs: 5000,
+          })
+          onClose()
+        } catch (e) {
+          setError(folderError(e, t))
+        } finally {
+          setBusy(false)
+        }
+      }
+      const create = async () => {
+        const name = newName.trim()
+        if (!name || busy || !listing) return
+        setBusy(true)
+        setError(null)
+        try {
+          const r = await post('/devices/folders', { id: device.id, path: listing.path, name })
+          setNewName('')
+          await load(listing.path, { preselect: r.path })
+        } catch (e) {
+          setError(folderError(e, t))
+        } finally {
+          setBusy(false)
+        }
+      }
+      const folders = (listing && listing.folders) || []
+      const projects = folders.filter((f) => !f.workspaceId && f.project && f.project.length)
+      const cls = rowClasses()
+      const pickedList = [...picked]
+      const split = splitAt && listing && listing.path === splitAt
+      return h(NativeModal, {
+        t,
+        wide: true,
+        testid: 'dsh-devices-folders',
+        title: split ? fill(t('splitTitle'), { folder: currentName }) : fill(t('foldersTitle'), { device: device.name }),
+        description: split ? fill(t('splitHint'), { folder: currentName }) : t('foldersHint'),
+        onClose: () => !busy && onClose(),
+        footer: h(
+          React.Fragment,
+          null,
+          h(ModalButton, { variant: 'outline', disabled: busy, onClick: onClose }, nt('cancel', null, t('cancel'))),
+          listing && !listing.workspaceId && !pickedList.length
+            ? h(ModalButton, { variant: 'primary', testid: 'dsh-devices-folders-add-current', disabled: busy || loading, onClick: () => add([listing.path]) }, fill(t('addThisFolder'), { name: currentName }))
+            : h(ModalButton, { variant: 'primary', testid: 'dsh-devices-folders-add', disabled: busy || loading || !pickedList.length, onClick: () => add(pickedList) }, pickedList.length === 1 ? fill(t('addThisFolder'), { name: pickedList[0].split('/').pop() }) : fill(t('addFolders'), { n: pickedList.length })),
+        ),
+        children: h(
+          'div',
+          { className: 'dshdev-folders' },
+          h(
+            'div',
+            { className: 'dshdev-folders-bar' },
+            h(TipButton, { cls, className: 'dshdev-folders-up', label: t('folderUp'), action: 'folder-up', disabled: !listing || !listing.parent || busy, onClick: () => listing && listing.parent && load(listing.parent) }, Icon('IconArrowUpOutlineRegular', { size: 14 }, () => '↑')),
+            // The path is a field too: type or paste one (~ is the home folder) and press Enter.
+            h('input', {
+              className: cx('dshdev-folders-path', (discoverPrefixes().list || '') && `${discoverPrefixes().list}renameInput`),
+              title: current,
+              'aria-label': t('folderPath'),
+              'data-testid': 'dsh-devices-folders-path',
+              value: typed !== null ? typed : shortPath(current),
+              disabled: busy,
+              spellCheck: false,
+              onChange: (e) => setTyped(e.target.value),
+              onBlur: () => setTyped(null),
+              onKeyDown: (e) => {
+                if (e.key === 'Escape' && typed !== null) {
+                  e.stopPropagation()
+                  setTyped(null)
+                }
+                if (e.key !== 'Enter' || typed === null) return
+                e.preventDefault()
+                const v = typed.trim()
+                const full = v === '~' ? home : v.startsWith('~/') && home ? `${home}${v.slice(1)}` : v
+                if (full && full.startsWith('/')) load(full)
+              },
+            }),
+            listing && listing.workspaceId ? h(NativeTag, { tone: 'neutral' }, t('alreadyAdded')) : null,
+            h(TipButton, { cls, className: 'dshdev-folders-up', label: t('folderHome'), action: 'folder-home', disabled: busy, onClick: () => load(undefined) }, Icon('IconHomeOutlineRegular', { size: 14 }, () => '~')),
+          ),
+          error ? h('div', { className: 'dshdev-folders-error', role: 'alert' }, error) : null,
+          h(
+            'div',
+            { className: 'dshdev-folders-list', role: 'tree', 'aria-busy': loading },
+            loading && !listing
+              ? h('div', { className: 'dshdev-folders-empty' }, P.TextShimmer ? h(P.TextShimmer, null, t('foldersLoading')) : t('foldersLoading'))
+              : folders.length === 0
+              ? h('div', { className: 'dshdev-folders-empty' }, t('foldersEmpty'))
+              : folders.map((f) =>
+                  h(
+                    'div',
+                    { key: f.path, className: cx('dshdev-folder-row', picked.has(f.path) && 'dshdev-folder-picked'), role: 'treeitem', 'data-dshdev-folder': f.name },
+                    f.workspaceId
+                      ? h('span', { className: 'dshdev-folder-check' }, Icon('IconCheckOutlineRegular', { size: 14 }, () => '✓'))
+                      : P.Checkbox
+                      ? h('span', { className: 'dshdev-folder-check', onClick: (e) => e.stopPropagation() }, h(P.Checkbox, { checked: picked.has(f.path), onChange: () => toggle(f.path), label: f.name }))
+                      : h('input', { type: 'checkbox', className: 'dshdev-folder-check', checked: picked.has(f.path), onChange: () => toggle(f.path), 'aria-label': f.name }),
+                    h(
+                      'button',
+                      { type: 'button', className: 'dshdev-folder-open', disabled: busy, onClick: () => load(f.path), title: t('folderOpen') },
+                      Icon('IconFolderCloseRegular', { size: 16 }),
+                      h('span', { className: 'dshdev-folder-name' }, f.name),
+                      f.project && f.project.length ? h(NativeTag, { tone: 'info' }, t('projectTag')) : null,
+                      f.workspaceId ? h(NativeTag, { tone: 'neutral' }, t('alreadyAdded')) : null,
+                      h('span', { className: 'dshdev-folder-chevron' }, Icon('IconChevronRightOutlineRegular', { size: 14 }, () => '›')),
+                    ),
+                  ),
+                ),
+          ),
+          listing && listing.truncated ? h('div', { className: 'dshdev-folders-note' }, t('foldersTruncated')) : null,
+          projects.length > 1 && !split
+            ? h('button', { type: 'button', className: 'dshdev-inline-link', 'data-testid': 'dsh-devices-folders-projects', onClick: () => (setSplitAt(listing.path), setPicked(new Set(projects.map((f) => f.path)))) }, fill(t('pickProjects'), { n: projects.length }))
+            : null,
+          h(
+            'div',
+            { className: 'dshdev-folders-new' },
+            h(NativeField, { value: newName, onChange: setNewName, onEnter: create, label: t('newFolder'), placeholder: t('newFolderPlaceholder'), disabled: busy || !listing }),
+            h(ModalButton, { variant: 'outline', testid: 'dsh-devices-folders-create', disabled: busy || !newName.trim() || !listing, onClick: create }, t('createFolder')),
+          ),
+        ),
+      })
+    }
+
+    function RenameWorkspaceDialog({ t, dialog, onClose }) {
+      const device = deviceById(dialog.deviceId)
+      const [value, setValue] = useState(dialog.title || '')
+      const [busy, setBusy] = useState(false)
+      const [error, setError] = useState(null)
+      if (!device) return null
+      const trimmed = value.trim()
+      const save = async () => {
+        if (!trimmed || busy) return
+        setBusy(true)
+        setError(null)
+        try {
+          await post('/devices/workspace-action', { id: device.id, action: 'rename', workspaceId: dialog.workspaceId, title: trimmed })
+          await refreshDevices()
+          onClose()
+        } catch (e) {
+          setError(folderError(e, t))
+        } finally {
+          setBusy(false)
+        }
+      }
+      return h(NativeModal, {
+        t,
+        title: nt('rename.workspace.title', null, t('renameWorkspace')),
+        onClose: () => !busy && onClose(),
+        footer: h(React.Fragment, null, h(ModalButton, { variant: 'outline', disabled: busy, onClick: onClose }, nt('cancel', null, t('cancel'))), h(ModalButton, { variant: 'primary', testid: 'dsh-devices-rename-ws', disabled: busy || !trimmed, onClick: save }, nt('rename', null, t('rename')))),
+        children: h(React.Fragment, null, h(NativeField, { value, onChange: setValue, onEnter: save, label: t('workspaceName'), autoFocus: true, disabled: busy }), error ? h('div', { className: 'dshdev-folders-error', role: 'alert' }, error) : null),
+      })
+    }
+
+    function RemoveWorkspaceDialog({ t, dialog, onClose }) {
+      const device = deviceById(dialog.deviceId)
+      const [busy, setBusy] = useState(false)
+      const [error, setError] = useState(null)
+      if (!device) return null
+      const remove = async () => {
+        if (busy) return
+        setBusy(true)
+        setError(null)
+        try {
+          await post('/devices/workspace-action', { id: device.id, action: 'remove', workspaceId: dialog.workspaceId })
+          await refreshDevices()
+          onClose()
+        } catch (e) {
+          setError(folderError(e, t))
+        } finally {
+          setBusy(false)
+        }
+      }
+      return h(NativeModal, {
+        t,
+        title: nt('delete.workspace', null, t('removeWorkspace')),
+        description: nt('delete.desc', { name: dialog.title }, fill(t('removeWorkspaceHint'), { name: dialog.title })),
+        onClose: () => !busy && onClose(),
+        footer: h(React.Fragment, null, h(ModalButton, { variant: 'outline', disabled: busy, onClick: onClose }, nt('cancel', null, t('cancel'))), h(ModalButton, { variant: 'primary', testid: 'dsh-devices-remove-ws', disabled: busy, onClick: remove }, nt('delete.workspace', null, t('removeWorkspace')))),
+        children: error ? h('div', { className: 'dshdev-folders-error', role: 'alert' }, error) : null,
+      })
+    }
+
     /** Archived remote chats, as DSH lists archived results: a row with an Unarchive button. */
     function ArchivedDialog({ t, dialog, onClose }) {
       const st = useStore()
@@ -4068,6 +4552,9 @@ window.__ModuleLoader__.load({
         if (dialog.kind === 'ports') dialogEl = h(PortsDialog, props)
         if (dialog.kind === 'sync') dialogEl = h(SyncDialog, props)
         if (dialog.kind === 'account') dialogEl = h(AccountDialog, props)
+        if (dialog.kind === 'folders') dialogEl = h(FoldersDialog, props)
+        if (dialog.kind === 'rename-ws') dialogEl = h(RenameWorkspaceDialog, props)
+        if (dialog.kind === 'remove-ws') dialogEl = h(RemoveWorkspaceDialog, props)
       }
       const toast = st.toast
       const toastEl =
@@ -4149,6 +4636,7 @@ window.__ModuleLoader__.load({
       }, 'dsh-devices: panel tracking')
       ctx.effect(() => mountWorkspaceMenu(ctx, t), 'dsh-devices: workspace chooser')
       ctx.effect(() => watchNativeSearch(), 'dsh-devices: sidebar search')
+      ctx.effect(() => watchNativeGroupBy(), 'dsh-devices: sidebar group by')
       ctx.effect(() => {
         const idleMs = () => {
           const s = store.settings
@@ -4192,7 +4680,9 @@ window.__ModuleLoader__.load({
       frames,
       deviceMenuItems,
       components: { RemoteSidebar, RemoteDevice, RemoteGroup, RemoteSessionRow, RemoteSearchResults, DevicesPage, DeviceCard, DevicesSettings, ModelKeyPanel, RemoteChatPanel, Overlays, DevicePicker, AddDialog },
-      dialogs: { RenameDialog, ConfirmArchiveDialog, ArchivedDialog, PortsDialog, SyncDialog, AccountDialog },
+      deviceGroups,
+      workspaceMenuItems,
+      dialogs: { RenameDialog, ConfirmArchiveDialog, ArchivedDialog, PortsDialog, SyncDialog, AccountDialog, FoldersDialog, RenameWorkspaceDialog, RemoveWorkspaceDialog },
     }
     return module.exports
   },

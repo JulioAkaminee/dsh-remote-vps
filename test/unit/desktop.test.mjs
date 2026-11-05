@@ -638,6 +638,36 @@ test('browser UI smoke render: every surface renders without recursion or throwi
     frames.byDevice.clear()
     frames.panels.clear()
     frames.active = null
+    // DSH's grouping for a device: every workspace (empty ones too), Ungrouped last; the tree nests by folder.
+    const gdev = {
+      ...device,
+      workspaces: [
+        { id: 'wp', title: 'Projetos', path: '/root/Projetos' },
+        { id: 'wd', title: 'default-workspace', path: '/root/Documents/deepseek-harness/default-workspace' },
+        { id: 'wc', title: 'cenora', path: '/root/Projetos/cenora' },
+        { id: 'wa', title: 'api', path: '/root/Projetos/cenora/api' },
+      ],
+      sessions: [
+        { sessionId: 'a', title: 'A', workspaceId: 'wc', updatedAt: 3 },
+        { sessionId: 'b', title: 'B', workspaceId: 'wp', updatedAt: 2 },
+        { sessionId: 'c', title: 'C', workspaceId: null, cwd: '/tmp', updatedAt: 1 },
+        { sessionId: 'd', title: 'D', workspaceId: 'wz', workspaceTitle: 'novo', cwd: '/srv/novo', updatedAt: 0 },
+      ],
+    }
+    const flat = mod.__test.deviceGroups(gdev, 'workspace')
+    const same = (a, b) => assert.equal(JSON.stringify(a), JSON.stringify(b))
+    same(flat.map((g) => [g.key, g.sessions.map((s) => s.sessionId).join('')]), [['wp', 'b'], ['wd', ''], ['wc', 'a'], ['wa', ''], ['wz', 'd'], ['_ungrouped', 'c']])
+    assert.ok(['workspace.defaultName', 'defaultWorkspace'].includes(flat.find((g) => g.key === 'wd').title), "DSH's default workspace gets DSH's own name, not its folder name")
+    const tree = mod.__test.deviceGroups(gdev, 'workspace-tree')
+    same(tree.map((g) => [g.key, g.depth, g.parentKey || null]), [['wp', 0, null], ['wc', 1, 'wp'], ['wa', 2, 'wc'], ['wd', 0, null], ['wz', 0, null], ['_ungrouped', 0, null]])
+    const wsItems = mod.__test.workspaceMenuItems({ ...gdev, features: [...gdev.features, 'workspaces'] }, t, flat[0])
+    same(wsItems.filter((i) => i.id && !i.type).map((i) => i.id), ['new', 'files', 'editor', 'split', 'rename-ws', 'remove-ws', 'plugins', 'automations'])
+    assert.ok(!mod.__test.workspaceMenuItems(gdev, t, flat[0]).some((i) => i.id === 'split'), 'an older host does not offer workspace changes')
+    setStore({ groupBy: 'workspace-tree', data: { ...store.data, devices: [gdev] } })
+    render(react.createElement(c.RemoteSidebar, { ctx, t }))
+    setStore({ groupBy: 'flat' })
+    render(react.createElement(c.RemoteSidebar, { ctx, t }))
+    setStore({ groupBy: 'workspace', data: { ...store.data, devices: [device] } })
     render(react.createElement(c.RemoteSessionRow, { ctx, t, cls: {}, device, s: device.sessions[0], selected: true, online: true }))
     render(react.createElement(c.RemoteSearchResults, { ctx, t, cls: {}, st: { ...store, nativeSearch: 'fix' }, query: 'fix' }))
     render(react.createElement(c.DevicesPage, { ctx, t }))

@@ -214,7 +214,13 @@ const commands = {
         const node = flags.node ?? process.execPath
         const dshBin = resolveDshBin(flags['dsh-bin'])
         if (!dshBin) throw new Error('cannot find @deepseek-ai/dsh; pass --dsh-bin <path to lib/bin.js>')
-        const envFile = path.join(os.homedir(), '.dsh-device', 'env')
+        const deviceRoot = process.env.DSH_DEVICE_ROOT || path.join(os.homedir(), '.dsh-device')
+        const envFile = path.join(deviceRoot, 'env')
+        // The agent's commands and DSH's plugin manager (pnpm in bin/) run with this PATH;
+        // ~/.dsh-device/env can still override it.
+        const servicePath = [path.join(deviceRoot, 'bin'), path.dirname(node), path.join(os.homedir(), '.local', 'bin'), '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin']
+          .filter((p, i, all) => all.indexOf(p) === i)
+          .join(':')
         const body = [
           '[Unit]',
           'Description=DSH device host (remote DeepSeek Harness)',
@@ -226,6 +232,7 @@ const commands = {
           `ExecStart=${node} ${dshBin} --profile device-host --no-open --host 127.0.0.1 --port ${port}`,
           `Environment=DSH_HOME=${dshHome()}`,
           'Environment=NODE_ENV=production',
+          `Environment=PATH=${servicePath}`,
           `EnvironmentFile=-${envFile}`,
           'Restart=always',
           'RestartSec=3',

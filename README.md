@@ -30,21 +30,21 @@ Dois pacotes:
 Gere os pacotes (na VPS ou em qualquer máquina com Node ≥ 22.19):
 
 ```sh
-npm run build        # → dist/dsh-devices-0.1.11.tgz, dist/dsh-device-host-0.1.11.tgz, dist/install-*.sh
+npm run build        # → dist/dsh-devices-0.1.12.tgz, dist/dsh-device-host-0.1.12.tgz, dist/install-*.sh
 ```
 
 ### 1. No Mac: instalar o `dsh-devices`
 
 **Pelo próprio app (mais simples):**
 
-1. Baixe **`dsh-devices-0.1.11.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
+1. Baixe **`dsh-devices-0.1.12.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
 2. No DeepSeek Harness: **Plug-ins → Adicionar plug-in**. No campo, cole o **caminho completo** do
-   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.11.tgz`
+   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.12.tgz`
    (no Finder: clique com o botão direito no arquivo, segure **Option** → *Copiar "…" como Nome de Caminho*).
 3. **Instalar**. O plug-in aparece em **Plug-ins instalados** desligado: **ligue a chave** do
    `dsh-devices`. Pronto: aparece **Devices** na barra lateral (não precisa reiniciar o app).
 
-**Para atualizar depois** (ex.: 0.1.10 → 0.1.11): baixe o `.tgz` novo e repita **Adicionar
+**Para atualizar depois** (ex.: 0.1.11 → 0.1.12): baixe o `.tgz` novo e repita **Adicionar
 plug-in** com o caminho dele — o DSH troca a versão na hora, sem reiniciar, e o plug-in continua
 ligado. Atenção: **não apague o `.tgz` antigo antes disso** (o gerenciador do DSH ainda procura o
 arquivo de onde a versão atual veio). Se já apagou, remova o `dsh-devices` em Plug-ins e instale o
@@ -66,17 +66,17 @@ sh ~/dsh-remote-vps/deploy/install-desktop.sh
 Para atualizar depois: `cd ~/dsh-remote-vps && git pull && sh deploy/install-desktop.sh`.
 Os pacotes prontos também estão nas *Releases* do repositório.
 
-Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.11.tgz` e `install-desktop.sh` para o Mac e rode:
+Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.12.tgz` e `install-desktop.sh` para o Mac e rode:
 
 ```sh
-sh install-desktop.sh ./dsh-devices-0.1.11.tgz            # detecta o profile do app
-sh install-desktop.sh ./dsh-devices-0.1.11.tgz --profile NOME
+sh install-desktop.sh ./dsh-devices-0.1.12.tgz            # detecta o profile do app
+sh install-desktop.sh ./dsh-devices-0.1.12.tgz --profile NOME
 ```
 
 Ou, direto do Mac, puxando da VPS por SSH:
 
 ```sh
-ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.11.tgz' > /tmp/dsh-devices.tgz
+ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.12.tgz' > /tmp/dsh-devices.tgz
 ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/install-desktop.sh' | sh -s /tmp/dsh-devices.tgz
 ```
 
@@ -102,7 +102,7 @@ mostra um código `XXXX-XXXX` (5 min, uso único) e um link `dsh-device://…`. 
 *Add device* → Pairing code → cole o link. Exige que o Mac alcance a VPS por HTTPS
 (Tailscale, Cloudflare Tunnel ou proxy reverso apontando para `127.0.0.1:3180`).
 
-Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.11.tgz`.
+Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.12.tgz`.
 
 **VPS com host antigo pareada por código** (anterior à 0.1.10, que não se atualiza sozinha): o Mac
 mostra **Atualizar por SSH…** — adicione a mesma VPS por SSH; o host novo é instalado, os chats
@@ -168,6 +168,20 @@ alfinete quando fixado, ⋯/arquivar/fixar ao passar o mouse, renomear com duplo
   chat remoto fica marcado com *Precisa de você* na barra lateral (o grupo mostra quantos), e
   aparece um aviso no canto com **Abrir** — mais uma notificação do sistema se o app estiver em
   segundo plano. Funciona com o chat fechado: quem detecta é a VPS.
+- **Agrupar por pasta / projeto, como no DSH:** os chats da VPS seguem o mesmo **Agrupar por**
+  da barra lateral do DSH (o botão de ajustes ao lado da busca): *Espaço de trabalho* (um grupo por
+  pasta), *Árvore de espaços de trabalho* (pastas de projeto aninhadas dentro da pasta-mãe) ou
+  *Lista única*. Cada chat fica no espaço de trabalho cuja pasta é a pasta dele — a mesma regra do
+  DSH (antes, chats de `/root/Projetos/app` podiam aparecer dentro de "Projetos").
+  - **Adicionar pasta** (ícone de pasta + no cabeçalho da VPS, ou ⋯ → *Adicionar pasta…*): navega
+    pelas pastas da VPS (ou cole o caminho, ex. `/root/Projetos/app`), cria pasta nova, marca uma ou
+    várias e adiciona cada uma como espaço de trabalho — um grupo na barra lateral.
+  - **Separar em projetos…** (⋯ de um espaço de trabalho como "Projetos"): lista as subpastas e já
+    marca as que parecem projeto (git, package.json, pyproject…); cada uma vira um grupo e os chats
+    novos daquele projeto ficam nele. Os chats antigos continuam onde estavam.
+  - No ⋯ do espaço de trabalho: *Nova sessão aqui*, Arquivos, Abrir no editor, Renomear, Excluir
+    da lista (a pasta e os chats ficam na VPS; os chats vão para *Desagrupado*). Espaços vazios
+    mostram **Nova sessão**.
 - **Menu ⋯ do device** (no cabeçalho da VPS; o ⋯ de cada workspace remoto tem o mesmo, mais
   Arquivos e Abrir no editor): nova sessão, **Buscar chats…**, **Plug-ins** e **Tarefas de
   automação** do device (as páginas do próprio DSH da VPS, inline), **Portas e previews**,
@@ -190,6 +204,10 @@ alfinete quando fixado, ⋯/arquivar/fixar ao passar o mouse, renomear com duplo
   device também abre. Em **⋯ → Portas e previews** dá para encaminhar outras portas, copiar a URL,
   parar, e desligar o encaminhamento automático. Por SSH vai direto pelo túnel SSH; devices por
   código usam um túnel autenticado do device host.
+- **Adicionar plug-ins na VPS:** o painel Plug-ins da VPS usa o gerenciador do próprio DSH, que
+  precisa do `pnpm`. O host garante um: se a VPS não tem pnpm, a instalação/atualização coloca o
+  pnpm 11.7.0 (o mesmo do DSH desktop) em `~/.dsh-device/tools`, e o host instala sozinho ao subir
+  se ainda faltar; se a VPS já tem um pnpm, ele é mantido.
 - **Sincronizar com este computador:** copia para a VPS o que você personalizou no Mac —
   instruções (`~/.dsh/AGENTS.md`, `~/.agents/AGENTS.md`), skills (`~/.dsh/skills`,
   `~/.agents/skills`), servidores MCP, presets de agente e plug-ins de terceiros (instalados pelo
@@ -264,6 +282,7 @@ node test/e2e-files-editor.mjs    # árvore/preview da VPS na janela + abrir no 
 node test/e2e-device-tools.mjs    # painéis do device, sync, conta, precisa de você, portas, busca/arquivo
 node test/e2e-health-memory.mjs   # saúde no card, liberar memória de devices parados, preferência de atualização
 node test/e2e-reconnect.mjs       # VPS cai e volta com um chat aberto: estado na sidebar, chat e painéis voltam
+node test/e2e-folders.mjs         # pastas da VPS como grupos: separar em projetos, criar, renomear, Agrupar por do DSH
 sh test/devenv.sh stop
 ```
 

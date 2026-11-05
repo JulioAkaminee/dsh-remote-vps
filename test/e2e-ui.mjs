@@ -120,7 +120,7 @@ try {
 
   // 6. a new remote session from the remote workspace row
   const idsBefore = await page.locator('[data-dshdev-session]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dshdev-session')))
-  const projectRow = page.locator('[data-dsh-devices=sidebar] [role=treeitem][aria-expanded]').first()
+  const projectRow = page.locator('[data-dsh-devices=sidebar] [role=treeitem][aria-expanded]').filter({ hasText: /^project-on-vps$/ }).first()
   await projectRow.hover()
   await projectRow.getByRole('button', { name: /New session (on|in) / }).click()
   await page.waitForTimeout(2500)
