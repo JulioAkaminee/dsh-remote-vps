@@ -6,10 +6,11 @@
 //   ?dsh-session=<id>     open that session once the UI is ready
 //   ?dsh-new=<wsId|1>     start a new session (in that workspace)
 //   ?dsh-device=<name>    prefix the window title with the device name
+//   ?dsh-panel=<id>       open that panel (Plugins, Automations…) once the UI is ready
 // Messages from the embedding desktop (window.parent):
 //   { source: 'dsh-devices', type: 'open-session', sessionId, files? }
 //   { source: 'dsh-devices', type: 'new-session', workspaceId?, files? }
-//   { source: 'dsh-devices', type: 'open-panel', panel }     plugins | schedules | …
+//   { source: 'dsh-devices', type: 'open-panel', panel }     plugins | schedules | … (answered with 'panel')
 //   { source: 'dsh-devices', type: 'open-settings' | 'open-files' }
 //   { source: 'dsh-devices', type: 'config', editorLabel, editorTitle }
 //   { source: 'dsh-devices', type: 'ports', map: { "<device port>": <desktop port> } }
@@ -18,6 +19,7 @@
 //   { source: 'dsh-device-host', type: 'open-editor', path?, sessionId?, kind }
 //   { source: 'dsh-device-host', type: 'pick-device', rect }
 //   { source: 'dsh-device-host', type: 'ensure-port', port }
+//   { source: 'dsh-device-host', type: 'panel', panel, ok, error? }   after an open-panel (or ?dsh-panel=)
 window.__ModuleLoader__.load({
   id: 'dsh-device-host',
   factory: (require) => {
@@ -151,6 +153,15 @@ window.__ModuleLoader__.load({
         return null
       }
     }
+    /** Whether this DSH tells which main panel is on screen (if not, a quiet selectPanel is trusted). */
+    function knowsActivePanel(ctx) {
+      try {
+        const layout = ctx.get ? ctx.get('layout') : ctx.layout
+        return typeof layout?.panelInfo?.getSnapshot === 'function'
+      } catch {
+        return false
+      }
+    }
 
     function openFiles(ctx) {
       retry(() => {
@@ -202,16 +213,27 @@ html.dsh-device-embed [class*="_sidebarCol"]{display:none!important}
 html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto!important;--dsh-frame-top-clearance:0px}
 `
 
-    function retry(fn, label) {
-      let attempts = 0
+    /** Run `fn` until it stops throwing (the UI may still be booting), for up to `timeoutMs`. */
+    function retry(fn, label, { onDone, onFail, timeoutMs = 10_000 } = {}) {
+      const deadline = Date.now() + timeoutMs
       const run = () => {
-        attempts += 1
         try {
           const r = fn()
-          if (r && typeof r.catch === 'function') r.catch((e) => console.warn(`[dsh-device-host] ${label}`, e))
+          if (r && typeof r.then === 'function') {
+            r.then(
+              () => onDone && onDone(),
+              (e) => {
+                console.warn(`[dsh-device-host] ${label}`, e)
+                if (onFail) onFail(e)
+              },
+            )
+          } else if (onDone) onDone()
         } catch (error) {
-          if (attempts < 40) setTimeout(run, 250)
-          else console.warn(`[dsh-device-host] ${label}`, error)
+          if (Date.now() < deadline) setTimeout(run, 250)
+          else {
+            console.warn(`[dsh-device-host] ${label}`, error)
+            if (onFail) onFail(error)
+          }
         }
       }
       setTimeout(run, 0)
@@ -304,7 +326,8 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
       const startNew = params.get('dsh-new')
       const deviceName = params.get('dsh-device')
       const filesAfter = params.get('dsh-files') === '1'
-      for (const k of ['dsh-embed', 'dsh-session', 'dsh-new', 'dsh-device', 'dsh-files']) params.delete(k)
+      const panelParam = params.get('dsh-panel')
+      for (const k of ['dsh-embed', 'dsh-session', 'dsh-new', 'dsh-device', 'dsh-files', 'dsh-panel']) params.delete(k)
       const query = params.toString()
       if (query !== window.location.search.slice(1)) {
         window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
@@ -341,11 +364,21 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
           selectPanel(ctx, null)
         } catch {}
       }
-      const openSession = (id) =>
-        retry(() => {
-          leavePanel()
-          return ctx.uiWorkspace.openSession(id)
-        }, `open session ${id}`)
+      // Each navigation supersedes the previous one: a slow one still retrying (e.g. a
+      // panel waiting for its plugin) must not pull the UI back after a newer click.
+      let navSeq = 0
+      const openSession = (id) => {
+        const seq = ++navSeq
+        retry(
+          () => {
+            if (seq !== navSeq) return undefined
+            leavePanel()
+            return ctx.uiWorkspace.openSession(id)
+          },
+          `open session ${id}`,
+          { timeoutMs: 30_000 },
+        )
+      }
       // A freshly booted UI loads its workspace list asynchronously: wait for the
       // workspace to be known before opening it (else DSH reports "unknown workspace").
       const workspaceKnown = (id) => {
@@ -356,9 +389,11 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
         }
       }
       const newSession = (workspaceId) => {
+        const seq = ++navSeq
         const specific = !!workspaceId && workspaceId !== '1'
         const started = Date.now()
         const run = () => {
+          if (seq !== navSeq) return undefined
           if (!ctx.uiWorkspace) throw new Error('workspace UI not ready')
           leavePanel()
           if (specific && !workspaceKnown(workspaceId) && Date.now() - started < 10_000) {
@@ -367,13 +402,31 @@ html.dsh-device-embed [class*="_frame"]{grid-template-columns:minmax(0,1fr) auto
           }
           return specific && workspaceKnown(workspaceId) ? ctx.uiWorkspace.openWorkspace(workspaceId) : ctx.uiWorkspace.startSession()
         }
-        retry(run, 'new session')
+        retry(run, 'new session', { timeoutMs: 30_000 })
       }
-      const openPanel = (panel) => retry(() => selectPanel(ctx, panel), `open panel ${panel}`)
+      // Tell the desktop how it went, so it can show the panel, or say why not. A panel
+      // registers when its plugin has loaded, which can take a while over a slow link.
+      const openPanel = (panel) => {
+        const seq = ++navSeq
+        retry(
+          () => {
+            if (seq !== navSeq) return
+            selectPanel(ctx, panel)
+            if (knowsActivePanel(ctx) && activePanel(ctx) !== panel) throw new Error(`panel ${panel} did not open`)
+          },
+          `open panel ${panel}`,
+          {
+            timeoutMs: 60_000,
+            onDone: () => seq === navSeq && postToDesktop({ type: 'panel', panel, ok: true }),
+            onFail: (e) => seq === navSeq && postToDesktop({ type: 'panel', panel, ok: false, error: String((e && e.message) || e) }),
+          },
+        )
+      }
 
       // Files after the session switch: opening the tab first would land on the previous surface.
       const openFilesSoon = () => setTimeout(() => openFiles(ctx), 700)
-      if (sessionId) openSession(sessionId)
+      if (panelParam && /^[\w.-]{1,64}$/.test(panelParam)) openPanel(panelParam)
+      else if (sessionId) openSession(sessionId)
       else if (startNew) newSession(startNew)
       if (filesAfter && (sessionId || startNew)) openFilesSoon()
 

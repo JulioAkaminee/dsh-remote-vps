@@ -121,6 +121,68 @@ test('gateway: secret path, Host/Origin checks, token injection, WebSocket relay
   device.close()
 })
 
+test('gateway: a page load to an unreachable device tells the desktop at once; a refused WebSocket token is renewed once', async () => {
+  const { DeviceGateway } = await import('../../packages/dsh-devices/lib/gateway.js')
+  const id = '00000000-0000-0000-0000-000000000000'
+  // Nothing listens on this port any more: the device is down.
+  const gone = net.createServer()
+  await new Promise((r) => gone.listen(0, '127.0.0.1', r))
+  const downPort = gone.address().port
+  await new Promise((r) => gone.close(r))
+  const gw = new DeviceGateway({ deviceId: id, baseUrl: () => `http://127.0.0.1:${downPort}`, token: async () => 'T' })
+  await gw.start()
+  const host = `127.0.0.1:${gw.port}`
+  const page = await request(gw.port, { path: `/${gw.secret}/?dsh-embed=1`, headers: { host, 'sec-fetch-dest': 'iframe', accept: 'text/html' } })
+  assert.equal(page.status, 502)
+  assert.match(page.headers['content-type'], /text\/html/)
+  assert.match(page.body, /type:'unreachable'/, 'the page posts "unreachable" to the embedding desktop')
+  assert.doesNotMatch(page.body, /<\/script>[^]*<script>/, 'one inline script only')
+  const call = await request(gw.port, { path: `/${gw.secret}/api/session/list`, headers: { host, 'sec-fetch-dest': 'empty' } })
+  assert.equal(call.status, 502)
+  assert.match(call.headers['content-type'], /text\/plain/, 'API calls keep a plain 502')
+  await gw.stop()
+
+  // No transport at all (SSH down): same page, with the reason, safely quoted.
+  const gw2 = new DeviceGateway({ deviceId: id, baseUrl: () => 'http://127.0.0.1:1', token: async () => { throw new Error('ssh: timed out </script><b>x') } })
+  await gw2.start()
+  const page2 = await request(gw2.port, { path: `/${gw2.secret}/`, headers: { host: `127.0.0.1:${gw2.port}`, 'sec-fetch-dest': 'iframe' } })
+  assert.equal(page2.status, 502)
+  assert.match(page2.body, /ssh: timed out \\u003c\/script>\\u003cb>x/, 'the reason is escaped inside the script')
+  await gw2.stop()
+
+  // A WebSocket refused with 401 (the device restarted) is retried once with a fresh token.
+  const tokens = []
+  const device = http.createServer()
+  device.on('upgrade', (req, socket) => {
+    tokens.push(req.headers['x-dsh-device-token'])
+    if (req.headers['x-dsh-device-token'] === 'OLD') return socket.end('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n')
+    socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n')
+    socket.on('data', (d) => socket.write(d))
+  })
+  await new Promise((r) => device.listen(0, '127.0.0.1', r))
+  const gw3 = new DeviceGateway({ deviceId: id, baseUrl: () => `http://127.0.0.1:${device.address().port}`, token: async ({ force } = {}) => (force ? 'NEW' : 'OLD') })
+  await gw3.start()
+  const host3 = `127.0.0.1:${gw3.port}`
+  const reply = await new Promise((resolve, reject) => {
+    const s = net.connect(gw3.port, '127.0.0.1', () => {
+      s.write(`GET /${gw3.secret}/api/remote.mux HTTP/1.1\r\nHost: ${host3}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: x\r\nSec-WebSocket-Version: 13\r\n\r\n`)
+    })
+    let buf = ''
+    s.on('data', (d) => {
+      buf += d.toString()
+      if (buf.includes('\r\n\r\n')) {
+        s.destroy()
+        resolve(buf)
+      }
+    })
+    s.on('error', reject)
+  })
+  assert.match(reply, /^HTTP\/1\.1 101/)
+  assert.deepEqual(tokens, ['OLD', 'NEW'])
+  await gw3.stop()
+  device.close()
+})
+
 test('ssh: machines saved by dsh-tauri-remote are listed with their accepted host key, secrets only on request', async () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-dshhome-'))
   fs.mkdirSync(path.join(home, 'remote'), { recursive: true })
@@ -142,6 +204,16 @@ test('ssh: machines saved by dsh-tauri-remote are listed with their accepted hos
     if (prev === undefined) delete process.env.DSH_HOME
     else process.env.DSH_HOME = prev
   }
+})
+
+test('panels: how each device host opens its own panels (answers, opens silently, or cannot)', async () => {
+  const { panelSupport } = await import('../../packages/dsh-devices/lib/manager.js')
+  assert.equal(panelSupport(['watch', 'panels'], '0.1.11'), 'ack')
+  assert.equal(panelSupport(['watch', 'ports'], '0.1.10'), 'legacy')
+  assert.equal(panelSupport([], '0.1.8'), 'legacy')
+  assert.equal(panelSupport(['watch'], '0.1.7'), 'none')
+  assert.equal(panelSupport(undefined, '0.1.3'), 'none')
+  assert.equal(panelSupport(undefined, null), 'none')
 })
 
 test('versions: device hosts older than the desktop plugin are detected', async () => {
@@ -517,6 +589,55 @@ test('browser UI smoke render: every surface renders without recursion or throwi
     const ctx = { layout: { selectPanel() {} } }
     const cls = { native: false }
     render(react.createElement(c.RemoteSidebar, { ctx, t }))
+    for (const variant of [{ status: 'offline', lastSeenAt: new Date().toISOString(), error: 'connect ECONNREFUSED' }, { status: 'connecting' }, { status: 'revoked' }, { updating: { startedAt: Date.now() } }, { sessions: [] }, { status: 'offline', sessions: [] }]) {
+      render(react.createElement(c.RemoteDevice, { ctx, t, cls: {}, device: { ...device, ...variant }, st: store, chatActive: true, perGroup: 2 }))
+    }
+    render(react.createElement(c.RemoteDevice, { ctx, t, cls: {}, device, st: { ...store, collapsed: { 'device:d1': true } }, chatActive: false, perGroup: 0 }))
+    const items = mod.__test.deviceMenuItems({ ...device, status: 'offline' }, t, null)
+    assert.ok(items.some((i) => i.id === 'reconnect'), 'an offline device offers Reconnect')
+    assert.ok(items.some((i) => i.id === 'update'), 'an outdated device offers its update in the device menu')
+    assert.ok(items.find((i) => i.id === 'plugins').disabled, 'panels need the device online')
+    // The overlay over a device UI: opening, slow, failed, unsupported, unreachable.
+    const frames = mod.__test.frames
+    let shown = null
+    frames.status = { style: {} }
+    frames.statusRoot = { render: (el) => (shown = el) }
+    const iframe = { style: {}, contentWindow: {}, src: 'x', remove() {}, addEventListener() {} }
+    const text = (node) => (node == null || typeof node !== 'object' ? (node == null || node === false ? '' : String(node)) : Array.isArray(node) ? node.map(text).join(' ') : typeof node.type === 'function' ? text(node.type(node.props || {})) : text(node.props && node.props.children))
+    const stateOf = () => shown && shown.props && shown.props['data-state']
+    frames.byDevice.set('d1', { iframe, root: 'http://gw/', ready: true, loaded: true, pending: [] })
+    frames.active = 'd1'
+    setStore({ selection: { deviceId: 'd1', sessionId: null, panel: 'plugins' } })
+    frames.panels.set('d1', { id: 'plugins', state: 'opening', mode: 'ack', startedAt: Date.now(), timers: [] })
+    frames.renderStatus()
+    assert.equal(stateOf(), 'opening')
+    assert.match(text(shown), /panelOpening/)
+    frames.panels.get('d1').startedAt = Date.now() - 20_000
+    frames.renderStatus()
+    assert.match(text(shown), /panelSlow/, 'a slow device says so')
+    frames.panelAnswered('d1', 'plugins', false, 'layout.selectPanel: main panel "plugins" is not registered')
+    assert.equal(stateOf(), 'failed')
+    assert.match(text(shown), /panelFailed[\s\S]*not registered/)
+    frames.panelAnswered('d1', 'plugins', true)
+    assert.equal(shown, null, 'an open panel hides the overlay')
+    frames.panels.set('d1', { id: 'plugins', state: 'unsupported', mode: 'none', startedAt: Date.now(), timers: [] })
+    setStore({ data: { ...store.data, devices: [{ ...device, panels: 'none' }] } })
+    frames.renderStatus()
+    assert.equal(stateOf(), 'unsupported')
+    assert.match(text(shown), /panelOldHost[\s\S]*panelOldHostHint/, 'an old host that can be updated from here says how')
+    frames.panels.set('d1', { id: 'plugins', state: 'opening', mode: 'ack', startedAt: Date.now(), timers: [] })
+    frames.markUnreachable('d1', 'connect ECONNREFUSED 127.0.0.1:3181')
+    assert.equal(stateOf(), 'unreachable')
+    assert.match(text(shown), /unreachable[\s\S]*ECONNREFUSED/)
+    frames.onReady('d1', { announced: false })
+    assert.equal(stateOf(), 'unreachable', 'the older-host load fallback never hides "could not reach"')
+    assert.equal(frames.panels.get('d1').state, 'waiting', 'the panel waits for the device to come back')
+    setStore({ selection: { deviceId: 'd1', sessionId: 's1' } })
+    frames.markLoaded('d1')
+    assert.equal(shown, null, 'a loaded chat shows no overlay')
+    frames.byDevice.clear()
+    frames.panels.clear()
+    frames.active = null
     render(react.createElement(c.RemoteSessionRow, { ctx, t, cls: {}, device, s: device.sessions[0], selected: true, online: true }))
     render(react.createElement(c.RemoteSearchResults, { ctx, t, cls: {}, st: { ...store, nativeSearch: 'fix' }, query: 'fix' }))
     render(react.createElement(c.DevicesPage, { ctx, t }))

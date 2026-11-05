@@ -97,3 +97,24 @@ cliente e o cabeçalho do token removidos; `Set-Cookie` nunca volta.
 - **Memória do Mac:** uma interface de device fora da tela por mais que `unloadAfter` minutos é
   removida (a entrada do gateway fica em cache); o painel do chat a recria ao ser mostrado.
 
+### Sidebar, painéis e reconexão (0.1.11)
+
+- **Sidebar:** cada device é uma seção com cabeçalho nas classes do próprio `WorkspaceBrowser`
+  (`sectionHeader`/`sectionLabel`/`headerActions`/`iconButton`, descobertas em tempo de execução);
+  os workspaces remotos usam as linhas de projeto/sessão do DSH (pasta aberta/fechada), sem o
+  nome do device repetido e sem marca por linha (a seção diz onde roda; a busca ainda marca).
+  Estado no cabeçalho a partir de `status`/`updating`; recolher em `collapsed['device:<id>']`.
+- **Painéis do device:** o host 0.1.11 anuncia `panels` em `features`. O Mac abre o painel pelo
+  endereço (`?dsh-panel=<id>`, quando a UI ainda não existe) ou por `open-panel`; a UI do device
+  tenta `layout.selectPanel` até 60 s (o painel só existe quando o plugin dele carrega) e responde
+  `{type:'panel', ok, error?}`. Cada navegação nova cancela uma anterior ainda tentando. O Mac
+  mantém por device `{id, state: opening|open|failed|unsupported}` e cobre a UI com a camada de
+  estado até o painel estar na tela. Hosts 0.1.8–0.1.10 (`legacy`) recebem o pedido sem resposta;
+  hosts anteriores (`none`) recebem a explicação com Atualizar/Atualizar por SSH/Abrir em janela.
+- **Carregamento e falhas:** uma UI de device ganha 10 s antes de “demorando” e 60 s antes de
+  “falhou”. O gateway responde a uma navegação sem device (conexão recusada, sem transporte/token)
+  com uma página que avisa o Mac (`{type:'unreachable'}`), e um WebSocket recusado com 401 é
+  repetido uma vez com token novo (device reiniciado). Quando um device volta a `online`, as UIs
+  dele que tinham desistido recarregam, abrindo o que está selecionado agora (chat ou painel).
+- **Instalador:** se o dsh pedido pelo Mac não existe no npm (E404), o host é atualizado mantendo
+  o dsh atual do device.

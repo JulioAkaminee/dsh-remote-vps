@@ -88,10 +88,20 @@ const MENU = {
   pin: /^(Pin|Unpin) session$/,
   archive: /^Archive session$/,
 }
+const deviceHeader = () => page.locator('[data-dsh-devices=sidebar] [data-dshdev-device-header]').first()
+// Device things (panels, ports, sync…) live in the device's section header menu.
 const openDeviceMenu = async () => {
+  await deviceHeader().locator('[data-dshdev-action=device-more]').click()
+  await page.waitForSelector('[role=menu]', { timeout: 5000 })
+}
+const openWorkspaceMenu = async () => {
   await groupRow().hover()
   await groupRow().locator('[data-dshdev-action=more]').click()
   await page.waitForSelector('[role=menu]', { timeout: 5000 })
+}
+const overlayState = async () => {
+  const visible = await page.locator('#dsh-devices-frames .dshdev-frame-overlay').evaluate((el) => el.style.display !== 'none').catch(() => false)
+  return visible ? await page.locator('[data-testid=dsh-devices-frame-status]').getAttribute('data-state', { timeout: 500 }).catch(() => '?') : null
 }
 // The newest open menu (a closing one may still be fading out).
 const pickMenu = async (key) => {
@@ -118,15 +128,39 @@ try {
   await page.getByRole('button', { name: 'Continue' }).click({ timeout: 15000 }).catch(() => {})
   await page.waitForSelector('[data-dsh-devices=sidebar] [data-dshdev-session]', { timeout: 30000 })
 
+  // ── 0. the device's section in the sidebar ────────────────────────────────
+  const headerText = await deviceHeader().innerText()
+  check('the device has its own section header, like “Workspaces”', headerText.includes(device.name) && /sectionHeader/.test((await deviceHeader().getAttribute('class')) || ''), headerText)
+  check('its workspaces sit under it without repeating the device name', !(await groupRow().innerText()).includes(device.name), await groupRow().innerText())
+  check('idle remote chats look like local ones (no per-row mark)', (await page.locator('[data-dsh-devices=sidebar] [data-dshdev-session][data-dshdev-state=idle] .dshdev-remote-mark').count()) === 0)
+  await openWorkspaceMenu()
+  const wsLabels = await page.locator('[role=menu]').last().locator('[role=menuitem]').evaluateAll((els) => els.map((e) => e.textContent.trim()))
+  check('the workspace menu still reaches the device panels', wsLabels.some((l) => MENU.plugins.test(l)), wsLabels.join(' | '))
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+
   // ── 1. device panels ──────────────────────────────────────────────────────
   await openDeviceMenu()
   const menuLabels = await page.locator('[role=menu] [role=menuitem]').evaluateAll((els) => els.map((e) => e.textContent.trim()))
   check('device menu offers plugins, automations, ports, sync, account and search', ['plugins', 'automations', 'ports', 'sync', 'account', 'search'].every((k) => menuLabels.some((l) => MENU[k].test(l))), menuLabels.join(' | '))
+  // Record every state the overlay goes through (it can be brief when the device UI is warm).
+  await page.evaluate(() => {
+    window.__overlayStates = []
+    const record = () => {
+      const ov = document.querySelector('#dsh-devices-frames .dshdev-frame-overlay')
+      const st = ov && ov.style.display !== 'none' && ov.querySelector('[data-testid=dsh-devices-frame-status]')
+      if (st) window.__overlayStates.push(st.getAttribute('data-state'))
+    }
+    new MutationObserver(record).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['style', 'data-state'] })
+  })
   await pickMenu('plugins')
+  const sawOpening = await until(async () => (await page.evaluate(() => window.__overlayStates)).includes('opening'), 5000, 100)
   let frame = await waitFrame()
-  const pluginsShown = await until(async () => (await frame.locator('main, body').first().innerText()).match(/Plug-?ins?/i) && (await frame.locator('[contenteditable=true]').count()) === 0)
+  // The list itself, not only the title (the old check passed on an endless skeleton).
+  const pluginsShown = await until(async () => /Built-in plugin settings|Installed plugins/.test(await frame.locator('body').innerText()) && (await overlayState()) === null, 45000)
   await shot(page, 'tools-01-plugins')
-  check('the device’s Plugins panel opens inline', !!pluginsShown)
+  check('“Opening Plugins on <device>…” shows while it loads', !!sawOpening)
+  check('the device’s Plugins panel opens inline, with its list loaded', !!pluginsShown)
   check('…labelled with the device it belongs to', (await page.locator('[data-testid=dsh-devices-panel-context]').innerText().catch(() => '')).includes(device.name))
   await openDeviceMenu()
   await pickMenu('automations')

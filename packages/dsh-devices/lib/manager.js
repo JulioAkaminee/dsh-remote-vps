@@ -41,6 +41,20 @@ export const PLUGIN_VERSION = readVersion(path.join(here, '..', 'package.json'))
  * (0.1.4: model-key routes.)
  */
 export const MIN_HOST_VERSION = '0.1.4'
+/** First host that opens its own panels (Plugins, Automations…) on request. */
+export const PANELS_HOST_VERSION = '0.1.8'
+
+/**
+ * How a device opens its panels inside the desktop:
+ *   'ack'    it opens them and says when the panel is on screen (or why not)
+ *   'legacy' it opens them on request, without an answer (hosts 0.1.8 – 0.1.10)
+ *   'none'   too old: it ignores the request
+ */
+export function panelSupport(features, pluginVersion) {
+  if (Array.isArray(features) && features.includes('panels')) return 'ack'
+  if (pluginVersion && compareVersions(pluginVersion, PANELS_HOST_VERSION) >= 0) return 'legacy'
+  return 'none'
+}
 
 /** Version of the dsh runtime this desktop runs; remote devices are aligned to it. */
 export function localDshVersion() {
@@ -493,6 +507,7 @@ export class DeviceManager {
       uptimeSec: s.info?.uptimeSec ?? null,
       model: s.info?.model ?? null,
       features: s.features ?? [],
+      panels: panelSupport(s.features, remotePlugin),
       live: !!s.watchToken,
       editorHost: this.editorHost(device),
       loadavg: s.info?.loadavg ?? null,

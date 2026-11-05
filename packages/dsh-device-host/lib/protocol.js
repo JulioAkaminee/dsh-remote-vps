@@ -69,7 +69,7 @@ export const ACCOUNT_GRANT_KEY = 'deepseek-account-platform/default'
 export const PORT_TUNNEL_PROTOCOL = 'dsh-port-tunnel'
 
 /** Capabilities a device host advertises in /info (desktops degrade gracefully without them). */
-export const HOST_FEATURES = Object.freeze(['watch', 'model-key', 'pending', 'session-actions', 'search', 'account', 'sync', 'ports', 'health'])
+export const HOST_FEATURES = Object.freeze(['watch', 'model-key', 'pending', 'session-actions', 'search', 'account', 'sync', 'ports', 'health', 'panels'])
 /** Advertised only when the host was installed by install-host.sh (it knows its installation root). */
 export const SELF_UPDATE_FEATURE = 'self-update'
 

@@ -30,18 +30,25 @@ Dois pacotes:
 Gere os pacotes (na VPS ou em qualquer máquina com Node ≥ 22.19):
 
 ```sh
-npm run build        # → dist/dsh-devices-0.1.10.tgz, dist/dsh-device-host-0.1.10.tgz, dist/install-*.sh
+npm run build        # → dist/dsh-devices-0.1.11.tgz, dist/dsh-device-host-0.1.11.tgz, dist/install-*.sh
 ```
 
 ### 1. No Mac: instalar o `dsh-devices`
 
 **Pelo próprio app (mais simples):**
 
-1. Baixe **`dsh-devices-0.1.10.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
+1. Baixe **`dsh-devices-0.1.11.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
 2. No DeepSeek Harness: **Plug-ins → Adicionar plug-in**. No campo, cole o **caminho completo** do
-   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.10.tgz`
+   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.11.tgz`
    (no Finder: clique com o botão direito no arquivo, segure **Option** → *Copiar "…" como Nome de Caminho*).
-3. **Instalar**. Pronto: aparece **Devices** na barra lateral.
+3. **Instalar**. O plug-in aparece em **Plug-ins instalados** desligado: **ligue a chave** do
+   `dsh-devices`. Pronto: aparece **Devices** na barra lateral (não precisa reiniciar o app).
+
+**Para atualizar depois** (ex.: 0.1.10 → 0.1.11): baixe o `.tgz` novo e repita **Adicionar
+plug-in** com o caminho dele — o DSH troca a versão na hora, sem reiniciar, e o plug-in continua
+ligado. Atenção: **não apague o `.tgz` antigo antes disso** (o gerenciador do DSH ainda procura o
+arquivo de onde a versão atual veio). Se já apagou, remova o `dsh-devices` em Plug-ins e instale o
+novo. As VPS se atualizam sozinhas em seguida (veja *Atualização automática*).
 
 O pacote não tem dependências (o `ssh2` vai embutido), então não baixa nada do npm nem pede
 aprovação de scripts. O campo "endereço do repositório GitHub" do app só funciona com repositório
@@ -59,17 +66,17 @@ sh ~/dsh-remote-vps/deploy/install-desktop.sh
 Para atualizar depois: `cd ~/dsh-remote-vps && git pull && sh deploy/install-desktop.sh`.
 Os pacotes prontos também estão nas *Releases* do repositório.
 
-Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.10.tgz` e `install-desktop.sh` para o Mac e rode:
+Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.11.tgz` e `install-desktop.sh` para o Mac e rode:
 
 ```sh
-sh install-desktop.sh ./dsh-devices-0.1.10.tgz            # detecta o profile do app
-sh install-desktop.sh ./dsh-devices-0.1.10.tgz --profile NOME
+sh install-desktop.sh ./dsh-devices-0.1.11.tgz            # detecta o profile do app
+sh install-desktop.sh ./dsh-devices-0.1.11.tgz --profile NOME
 ```
 
 Ou, direto do Mac, puxando da VPS por SSH:
 
 ```sh
-ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.10.tgz' > /tmp/dsh-devices.tgz
+ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.11.tgz' > /tmp/dsh-devices.tgz
 ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/install-desktop.sh' | sh -s /tmp/dsh-devices.tgz
 ```
 
@@ -95,7 +102,11 @@ mostra um código `XXXX-XXXX` (5 min, uso único) e um link `dsh-device://…`. 
 *Add device* → Pairing code → cole o link. Exige que o Mac alcance a VPS por HTTPS
 (Tailscale, Cloudflare Tunnel ou proxy reverso apontando para `127.0.0.1:3180`).
 
-Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.10.tgz`.
+Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.11.tgz`.
+
+**VPS com host antigo pareada por código** (anterior à 0.1.10, que não se atualiza sozinha): o Mac
+mostra **Atualizar por SSH…** — adicione a mesma VPS por SSH; o host novo é instalado, os chats
+continuam e as próximas atualizações passam a ser automáticas.
 
 ### 3. Modelos na VPS: conta ou chave
 
@@ -123,9 +134,14 @@ mesmas palavras (em pt-BR quando o app está em português). Um chat remoto se c
 local: ponto laranja e *Aprovação* quando espera você, ponto de concluído até ser aberto,
 alfinete quando fixado, ⋯/arquivar/fixar ao passar o mouse, renomear com duplo clique.
 
-- **Chats juntos:** os workspaces da VPS aparecem abaixo dos locais, com o ícone de remoto e o
-  nome do device. Clique num chat remoto: ele abre na área principal desta janela. Voltar para
-  um chat local e para o remoto é instantâneo (a UI do device fica viva em segundo plano).
+- **Chats juntos, uma seção por VPS:** abaixo dos workspaces locais, cada device tem o seu
+  cabeçalho, igual ao *Workspaces* do DSH: ícone de remoto, nome, estado (*Conectando…*,
+  *Offline*, *Atualizando…*; nada quando está tudo bem), **+** (nova sessão) e **⋯** (o menu do
+  device). Clique no cabeçalho para recolher a VPS inteira; passe o mouse para ver endereço,
+  versões, CPU/memória/disco e há quanto tempo foi vista. Embaixo ficam os workspaces da VPS com
+  as pastas e as linhas do próprio DSH (sem repetir o nome do device em cada linha). VPS sem chats
+  mostra a linha **Nova sessão**. Clique num chat remoto: ele abre na área principal desta janela.
+  Voltar para um chat local e para o remoto é instantâneo (a UI do device fica viva em segundo plano).
 - **Onde a sessão roda:** na tela de nova sessão, antes de *Escolha o espaço de trabalho*, há o
   seletor de device (**Este computador ▾**). Escolha a VPS e a nova sessão abre nela, inline;
   dentro dela, a pílula com o nome do device volta para este computador.
@@ -152,10 +168,16 @@ alfinete quando fixado, ⋯/arquivar/fixar ao passar o mouse, renomear com duplo
   chat remoto fica marcado com *Precisa de você* na barra lateral (o grupo mostra quantos), e
   aparece um aviso no canto com **Abrir** — mais uma notificação do sistema se o app estiver em
   segundo plano. Funciona com o chat fechado: quem detecta é a VPS.
-- **Menu ⋯ do device** (passe o mouse no workspace remoto): nova sessão, **Buscar chats…**,
-  **Plug-ins** e **Tarefas de automação** do device (as páginas do próprio DSH da VPS, inline),
-  **Portas e previews**, **Sincronizar com este computador…**, **Modelos e conta…**, chats
-  arquivados e configurações do device.
+- **Menu ⋯ do device** (no cabeçalho da VPS; o ⋯ de cada workspace remoto tem o mesmo, mais
+  Arquivos e Abrir no editor): nova sessão, **Buscar chats…**, **Plug-ins** e **Tarefas de
+  automação** do device (as páginas do próprio DSH da VPS, inline), **Portas e previews**,
+  **Sincronizar com este computador…**, **Modelos e conta…**, chats arquivados, configurações do
+  device — e **Reconectar** quando está offline, **Atualizar device** quando há versão nova.
+- **Abrindo painéis com estado claro:** ao escolher Plug-ins ou Tarefas de automação aparece
+  *Abrindo Plug-ins de <VPS>…*; se a VPS demorar (primeira abertura numa conexão lenta traz uns
+  5 MB), *O device está demorando para responder; continuo tentando*. Se der errado, a tela diz o
+  motivo com **Tentar de novo** e **Abrir em nova janela**; numa VPS com host antigo, explica e
+  oferece **Atualizar device** (ou **Atualizar por SSH…**).
 - **Buscar, renomear, fixar, arquivar:** como num chat local — **⋯** (ou botão direito) num chat
   remoto → Fixar, Renomear, Arquivos, Abrir no editor, Arquivar; ou os botões de arquivar e fixar
   ao passar o mouse; duplo clique no título renomeia. Arquivar mostra o *Desfazer* do DSH; os
@@ -190,7 +212,10 @@ alfinete quando fixado, ⋯/arquivar/fixar ao passar o mouse, renomear com duplo
   workspace remoto (o resto fica em *Mostrar mais*), pré-carregamento ao passar o mouse e
   **device padrão para novas sessões**.
 - Se o Mac dormir ou a rede cair, a sessão continua na VPS; o plugin reconecta sozinho
-  (verificação a cada 15 s, espera crescente com jitter, revalidação ao acordar).
+  (verificação a cada 15 s, espera crescente com jitter, revalidação ao acordar). O cabeçalho da
+  VPS mostra *Conectando…*/*Offline*; quando ela volta, o chat aberto volta a funcionar e uma tela
+  que tinha desistido de carregar recarrega sozinha. Se a VPS não responder ao abrir, aparece na
+  hora *Não consegui falar com <VPS>* com **Tentar de novo** (em vez de uma tela em branco).
 
 ## CLI na VPS (`dsh-device`)
 
@@ -238,6 +263,7 @@ node test/e2e-live.mjs            # feed ao vivo, notificação, Mostrar mais, C
 node test/e2e-files-editor.mjs    # árvore/preview da VPS na janela + abrir no editor (Remote-SSH)
 node test/e2e-device-tools.mjs    # painéis do device, sync, conta, precisa de você, portas, busca/arquivo
 node test/e2e-health-memory.mjs   # saúde no card, liberar memória de devices parados, preferência de atualização
+node test/e2e-reconnect.mjs       # VPS cai e volta com um chat aberto: estado na sidebar, chat e painéis voltam
 sh test/devenv.sh stop
 ```
 
@@ -269,4 +295,8 @@ docs/                       ARQUITETURA.md
 - Plug-ins instalados de uma **pasta local** no Mac não são sincronizados (só de tarball, npm ou
   GitHub).
 - Pareamento por código exige HTTPS até a VPS; por SSH não exige nada além do SSH.
-- Testado com dsh 0.2.1-rc.5 (Linux). O app desktop precisa expor o profile em `~/.dsh/profiles`.
+- Testado com dsh 0.2.1-rc.5 e 0.2.2-rc.1 (Linux, Chromium). No macOS (WebKit do app) a interface
+  ainda não foi verificada por nós; o fluxo de instalação pelo *Adicionar plug-in* foi verificado
+  num DSH limpo. O app desktop precisa expor o profile em `~/.dsh/profiles`.
+- A primeira abertura da interface de uma VPS baixa ~5 MB dela (depois fica em cache); numa
+  conexão lenta isso leva alguns segundos, com o aviso de que está demorando.

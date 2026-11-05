@@ -110,6 +110,24 @@ export class DeviceGateway {
     res.end(text)
   }
 
+  /**
+   * The device did not answer a page load: a tiny page that tells the embedding
+   * desktop at once (it shows "could not reach" with a retry) instead of a bare 502.
+   */
+  _unreachable(req, res, error) {
+    const dest = String(req.headers['sec-fetch-dest'] ?? '')
+    const wantsPage = dest === 'iframe' || dest === 'document' || (!dest && /text\/html/.test(String(req.headers.accept ?? '')))
+    if (!wantsPage || req.method !== 'GET') return this._deny(res, 502, `device unreachable: ${error}`)
+    const msg = JSON.stringify(String(error)).replace(/</g, '\\u003c')
+    res.writeHead(502, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+    res.end(
+      `<!doctype html><meta charset="utf-8"><title>Device unreachable</title>` +
+        `<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font:13px system-ui,sans-serif;color:#8a8a8a">` +
+        `<div id="m"></div><script>document.getElementById('m').textContent='Device unreachable: '+${msg};` +
+        `try{parent.postMessage({source:'dsh-device-host',type:'unreachable',error:${msg}},'*')}catch(e){}</script>`,
+    )
+  }
+
   async _handle(req, res) {
     if (!this._authorityOk(req)) return this._deny(res, 403, 'forbidden host')
     const devicePath = this._devicePath(req.url)
@@ -123,7 +141,13 @@ export class DeviceGateway {
     }
     const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(req.method)
     if (unsafe && !this._originOk(req)) return this._deny(res, 403, 'cross-origin request refused')
-    await this._forward(req, res, devicePath, false)
+    try {
+      await this._forward(req, res, devicePath, false)
+    } catch (error) {
+      // No transport or no token (SSH down, device gone): same answer as a refused connection.
+      if (!res.headersSent) this._unreachable(req, res, error?.message ?? String(error))
+      else res.destroy()
+    }
   }
 
   _upstreamHeaders(req, token) {
@@ -164,7 +188,10 @@ export class DeviceGateway {
       (up) => {
         if (up.statusCode === 401 && !retried && (req.method === 'GET' || req.method === 'HEAD')) {
           up.resume()
-          this._forward(req, res, devicePath, true).catch(() => res.destroy())
+          this._forward(req, res, devicePath, true).catch((error) => {
+            if (!res.headersSent) this._unreachable(req, res, error?.message ?? String(error))
+            else res.destroy()
+          })
           return
         }
         const headers = { ...up.headers }
@@ -178,7 +205,7 @@ export class DeviceGateway {
       },
     )
     upstream.on('error', (error) => {
-      if (!res.headersSent) this._deny(res, 502, `device unreachable: ${error.message}`)
+      if (!res.headersSent) this._unreachable(req, res, error.message)
       else res.destroy()
     })
     res.on('close', () => {
@@ -188,12 +215,17 @@ export class DeviceGateway {
     else req.pipe(upstream)
   }
 
-  async _upgrade(req, socket, head) {
+  async _upgrade(req, socket, head, retried = false) {
     const reject = (status, text) => socket.end(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`)
     if (!this._authorityOk(req) || !this._originOk(req)) return reject(403, 'Forbidden')
     const devicePath = this._devicePath(req.url)
     if (devicePath === undefined) return reject(404, 'Not Found')
-    const token = await this.token()
+    let token
+    try {
+      token = await this.token({ force: retried })
+    } catch {
+      return reject(502, 'Bad Gateway')
+    }
     const { base, lib, path } = this._target(devicePath)
     const headers = this._upstreamHeaders(req, token)
     headers.connection = 'Upgrade'
@@ -220,6 +252,11 @@ export class DeviceGateway {
     })
     upstream.on('response', (upRes) => {
       upRes.resume()
+      // A token the device no longer accepts (it restarted, or the token aged out): once more with a fresh one.
+      if (upRes.statusCode === 401 && !retried) {
+        this._upgrade(req, socket, head, true).catch(() => socket.destroy())
+        return
+      }
       reject(upRes.statusCode ?? 502, upRes.statusMessage || 'Bad Gateway')
     })
     upstream.on('error', () => reject(502, 'Bad Gateway'))

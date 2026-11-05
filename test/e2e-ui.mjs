@@ -122,7 +122,7 @@ try {
   const idsBefore = await page.locator('[data-dshdev-session]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dshdev-session')))
   const projectRow = page.locator('[data-dsh-devices=sidebar] [role=treeitem][aria-expanded]').first()
   await projectRow.hover()
-  await projectRow.getByRole('button', { name: /New session on/ }).click()
+  await projectRow.getByRole('button', { name: /New session (on|in) / }).click()
   await page.waitForTimeout(2500)
   await send(frame, 'second remote chat')
   await waitMore(frame, '[VPS] MOCK-REPLY', 0)

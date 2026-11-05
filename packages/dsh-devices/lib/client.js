@@ -195,6 +195,13 @@ window.__ModuleLoader__.load({
       useMacKey: 'Use this computer’s key', pasteKey: 'Paste key', changeKey: 'Change key', removeKey: 'Remove key',
       saveKey: 'Save key', keyPlaceholder: 'sk-…', keySaved: 'Key saved on {device}.', deviceSettings: 'Device settings',
       loadingDevice: 'Loading {device}…', loadFailed: 'Could not load {device}’s interface.', retry: 'Try again',
+      unreachable: 'Could not reach {device}.', comesBack: 'It looks offline. This reloads by itself when the device answers again.',
+      loadFailedHint: 'The device did not finish loading its interface in time.',
+      panelOpening: 'Opening {panel} on {device}…', panelSlow: 'The device is taking a while to answer; it keeps trying.',
+      panelFailed: 'Could not open {panel} on {device}.', panelTimeout: 'The device did not answer in time. Try again, or open it in a window.',
+      panelOldHost: '{device} cannot open {panel} here yet.', panelOldHostHint: 'It runs an older device host ({version}). Update it once and its panels open right here.',
+      panelOldHostManual: 'It runs an older device host ({version}) and was paired with a code. Add it again over SSH: the new host is installed and its chats stay. Or open it in a window for now.',
+      updateViaSsh: 'Update over SSH…', newSessionRow: 'New session',
       needsUpdate: 'This device runs an older device host ({remote}); update it to manage its key from here.', updateNow: 'Update device',
       updateWarn: 'Updating restarts the device host; running turns on it stop.',
       modelLabel: 'Models', keyHint: 'Stored on the device (its credential store). It never stays on this computer.',
@@ -221,6 +228,13 @@ window.__ModuleLoader__.load({
       useMacKey: 'Usar a chave deste computador', pasteKey: 'Colar chave', changeKey: 'Trocar chave', removeKey: 'Remover chave',
       saveKey: 'Salvar chave', keyPlaceholder: 'sk-…', keySaved: 'Chave salva em {device}.', deviceSettings: 'Configurações do device',
       loadingDevice: 'Carregando {device}…', loadFailed: 'Não consegui carregar a interface de {device}.', retry: 'Tentar de novo',
+      unreachable: 'Não consegui falar com {device}.', comesBack: 'Ele parece offline. Isto recarrega sozinho quando o device responder de novo.',
+      loadFailedHint: 'O device não terminou de carregar a interface a tempo.',
+      panelOpening: 'Abrindo {panel} de {device}…', panelSlow: 'O device está demorando para responder; continuo tentando.',
+      panelFailed: 'Não consegui abrir {panel} de {device}.', panelTimeout: 'O device não respondeu a tempo. Tente de novo ou abra numa janela.',
+      panelOldHost: '{device} ainda não abre {panel} aqui.', panelOldHostHint: 'Ele usa um device host antigo ({version}). Atualize uma vez e os painéis dele abrem aqui mesmo.',
+      panelOldHostManual: 'Ele usa um device host antigo ({version}) e foi pareado por código. Adicione de novo por SSH: o host novo é instalado e os chats continuam. Ou, por enquanto, abra numa janela.',
+      updateViaSsh: 'Atualizar por SSH…', newSessionRow: 'Nova sessão',
       needsUpdate: 'Este device roda um device host antigo ({remote}); atualize para gerenciar a chave por aqui.', updateNow: 'Atualizar device',
       updateWarn: 'Atualizar reinicia o device host; turnos rodando nele param.',
       modelLabel: 'Modelos', keyHint: 'Fica guardada no device (no cofre de credenciais dele). Não fica neste computador.',
@@ -239,6 +253,12 @@ window.__ModuleLoader__.load({
       thisMac: '本机', chooseDevice: '会话在哪里运行？', addDeviceMenu: '添加设备…', modelMissing: '{device} 还没有 DeepSeek API Key，会话没有可用模型。',
       modelOk: '已配置 DeepSeek API Key', modelSource: '来源：{source}', useMacKey: '使用本机的 Key', pasteKey: '粘贴 Key', changeKey: '更换 Key',
       removeKey: '移除 Key', saveKey: '保存 Key', keyPlaceholder: 'sk-…', keySaved: '已保存到 {device}。', deviceSettings: '设备设置', modelLabel: '模型',
+      unreachable: '无法连接 {device}。', comesBack: '设备似乎已离线。设备恢复响应后会自动重新加载。', loadFailedHint: '设备未能及时加载完界面。',
+      panelOpening: '正在打开 {device} 的{panel}…', panelSlow: '设备响应较慢，仍在重试。', panelFailed: '无法打开 {device} 的{panel}。',
+      panelTimeout: '设备没有及时响应。请重试，或在窗口中打开。', panelOldHost: '{device} 暂时无法在这里打开{panel}。',
+      panelOldHostHint: '它运行的是旧版设备主机（{version}）。更新一次后，其面板即可在此打开。', panelOldHostManual: '它运行的是旧版设备主机（{version}），且通过配对码配对。通过 SSH 重新添加即可安装新版主机，会话会保留；或暂时在窗口中打开。',
+      updateViaSsh: '通过 SSH 更新…', newSessionRow: '新建会话', reconnect: '重新连接', reconnecting: '正在重新连接 {device}…',
+      newIn: '在 {workspace} 中新建会话', emptyOffline: '离线 — 设备恢复响应后会话会重新出现',
       keyHint: '保存在设备上（设备的凭据存储），不会留在本机。',
     })
 
@@ -272,6 +292,8 @@ window.__ModuleLoader__.load({
       useMacAccount: 'Use this computer’s account', signOutDevice: 'Sign out on the device', accountShared: 'Signed in on {device} with this computer’s account.',
       accountNote: 'The device uses this computer’s sign-in. Signing out on the device keeps this computer signed in; signing out on this computer also stops the device.',
       modelReadyAccount: 'Using your DeepSeek account', addApiKey: 'Add an API key', hostOutdatedFeature: 'Update {device} to use this.',
+      reconnect: 'Reconnect', reconnecting: 'Reconnecting to {device}…', newIn: 'New session in {workspace}',
+      emptyOffline: 'Offline — its chats come back when it answers',
       deviceSection: 'Device', waitingCount: '{n} waiting for you', archived: 'Archived', undo: 'Undo', failed: 'failed',
       updating: 'Updating the device host on {device}…', updated: '{device} is up to date.',
       setAutoUpdate: 'Update devices automatically', setAutoUpdateHint: 'Keeps each device’s host and dsh in step with this computer. A device installs the update itself and goes back to the previous version if the new one does not start.',
@@ -317,6 +339,8 @@ window.__ModuleLoader__.load({
       useMacAccount: 'Usar a conta deste computador', signOutDevice: 'Sair no device', accountShared: 'Conectado em {device} com a conta deste computador.',
       accountNote: 'O device usa o login deste computador. Sair no device mantém este computador conectado; sair neste computador também desconecta o device.',
       modelReadyAccount: 'Usando a sua conta DeepSeek', addApiKey: 'Adicionar chave da API', hostOutdatedFeature: 'Atualize {device} para usar isto.',
+      reconnect: 'Reconectar', reconnecting: 'Reconectando a {device}…', newIn: 'Nova sessão em {workspace}',
+      emptyOffline: 'Offline — os chats voltam quando ele responder',
       deviceSection: 'Device', waitingCount: '{n} esperando por você', archived: 'Arquivada', undo: 'Desfazer', failed: 'falhou',
       updating: 'Atualizando o device host de {device}…', updated: '{device} está atualizado.',
       setAutoUpdate: 'Atualizar devices automaticamente', setAutoUpdateHint: 'Mantém o device host e o dsh de cada device na mesma versão deste computador. O device instala sozinho e volta para a versão anterior se a nova não subir.',
@@ -522,10 +546,21 @@ window.__ModuleLoader__.load({
       }
     }
 
+    const lastStatus = new Map()
     function afterData() {
       try {
         frames.syncPorts()
       } catch {}
+      // A device that answers again brings back any of its UIs that had given up.
+      for (const d of store.data.devices || []) {
+        const before = lastStatus.get(d.id)
+        lastStatus.set(d.id, d.status)
+        if (before && before !== 'online' && d.status === 'online') {
+          try {
+            frames.deviceBack(d.id)
+          } catch {}
+        }
+      }
       try {
         checkHealth()
       } catch {}
@@ -848,7 +883,7 @@ window.__ModuleLoader__.load({
         host.id = 'dsh-devices-frames'
         host.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;display:none;z-index:4;overflow:hidden;background:var(--dsw-alias-bg-base,#fff)'
         const status = document.createElement('div')
-        status.className = 'dshdev-chat-status'
+        status.className = 'dshdev-chat-status dshdev-frame-overlay'
         status.style.display = 'none'
         host.appendChild(status)
         this.status = status
@@ -892,12 +927,9 @@ window.__ModuleLoader__.load({
         if (!msg || msg.source !== 'dsh-device-host') return
         for (const [deviceId, f] of this.byDevice) {
           if (f.iframe.contentWindow !== event.source) continue
-          if (msg.type === 'ready') {
-            f.ready = true
-            this.sendConfig(deviceId)
-            this.markLoaded(deviceId)
-            for (const m of f.pending.splice(0)) this.send(deviceId, m)
-          }
+          if (msg.type === 'ready') this.onReady(deviceId, { announced: true })
+          if (msg.type === 'panel' && typeof msg.panel === 'string') this.panelAnswered(deviceId, msg.panel, !!msg.ok, msg.error)
+          if (msg.type === 'unreachable') this.markUnreachable(deviceId, String(msg.error || ''))
           if (msg.type === 'open-editor') openInEditor(deviceId, { path: msg.path, sessionId: msg.sessionId })
           if (msg.type === 'ensure-port' && Number(msg.port) > 0) {
             const device = (store.data.devices || []).find((d) => d.id === deviceId)
@@ -921,6 +953,20 @@ window.__ModuleLoader__.load({
           }
         }
       },
+      /** The device UI is up (it said so, or an older host had time to boot): show it, run what waited. */
+      onReady(deviceId, { announced }) {
+        const f = this.byDevice.get(deviceId)
+        if (!f) return
+        // The gateway's "unreachable" page fires load too: only the device UI itself clears that.
+        if (!announced && f.unreachable) return
+        f.ready = true
+        f.unreachable = false
+        if (announced) this.sendConfig(deviceId)
+        this.markLoaded(deviceId)
+        for (const m of f.pending.splice(0)) this.send(deviceId, m)
+        const entry = this.panels.get(deviceId)
+        if (entry && entry.mode === 'legacy' && entry.state === 'opening') this.legacyOpened(deviceId, entry)
+      },
       send(deviceId, msg) {
         const f = this.byDevice.get(deviceId)
         if (!f) return
@@ -941,7 +987,107 @@ window.__ModuleLoader__.load({
           this.preloading.delete(deviceId)
         }
       },
-      /** Show `deviceId` and run `command` in it: { type: 'open-session', sessionId } | { type: 'new-session', workspaceId } */
+      /** Address of a device UI that boots straight into `command` (a session, a new session, or a panel). */
+      srcFor(root, device, command) {
+        const params = new URLSearchParams({ 'dsh-embed': '1', 'dsh-device': device ? device.name : '' })
+        if (command && command.type === 'open-session' && command.sessionId) params.set('dsh-session', command.sessionId)
+        if (command && command.type === 'new-session') params.set('dsh-new', command.workspaceId || '1')
+        if (command && command.type === 'open-panel' && command.ack) params.set('dsh-panel', command.panel)
+        if (command && command.files) params.set('dsh-files', '1')
+        return `${root}?${params.toString()}`
+      },
+      /** What the desktop shows for `deviceId` right now, as a boot command (used when its UI reloads). */
+      currentCommand(deviceId) {
+        const sel = store.selection
+        if (!sel || sel.deviceId !== deviceId) return store.embedded[deviceId] ? { type: 'open-session', sessionId: store.embedded[deviceId] } : null
+        const device = deviceById(deviceId)
+        if (sel.panel) return device && device.panels === 'ack' ? { type: 'open-panel', panel: sel.panel, ack: true } : null
+        const sessionId = sel.sessionId || store.embedded[deviceId]
+        return sessionId ? { type: 'open-session', sessionId } : null
+      },
+
+      // ── device panels (Plugins, Automations…) ──
+      /** deviceId -> { id, state: 'opening' | 'open' | 'failed' | 'unsupported', mode, error, startedAt } */
+      panels: new Map(),
+      /** Open one of the device's own panels, and keep the user posted until it is on screen. */
+      openPanel(device, panel) {
+        const id = device.id
+        this.clearPanel(id)
+        const mode = device.panels || (hasFeature(device, 'panels') ? 'ack' : 'legacy')
+        const entry = { id: panel, state: mode === 'none' ? 'unsupported' : 'opening', mode, error: null, startedAt: Date.now(), timers: [] }
+        this.panels.set(id, entry)
+        if (mode === 'none') {
+          // Too old to open it: keep its UI behind the explanation.
+          this.show(id, device, null).catch(() => {})
+          this.renderStatus()
+          return
+        }
+        this.armPanel(id, entry)
+        const f = this.byDevice.get(id)
+        if (mode === 'legacy' && f && f.ready) this.legacyOpened(id, entry)
+        this.show(id, device, { type: 'open-panel', panel, ack: mode === 'ack' }).catch((e) => {
+          if (this.panels.get(id) !== entry) return
+          entry.state = 'failed'
+          entry.error = e.message
+          this.renderStatus()
+        })
+        this.renderStatus()
+      },
+      /** (Re)start a panel's clock: a "slow" note at 10 s, and a verdict if no answer comes. */
+      armPanel(deviceId, entry) {
+        for (const timer of entry.timers) clearTimeout(timer)
+        entry.timers = []
+        entry.state = 'opening'
+        entry.error = null
+        entry.startedAt = Date.now()
+        entry.timers.push(setTimeout(() => this.renderStatus(), 10_000))
+        entry.timers.push(
+          setTimeout(() => {
+            if (this.panels.get(deviceId) !== entry || entry.state !== 'opening') return
+            // An older host never answers: by now it has opened the panel, or never will.
+            if (entry.mode === 'ack') {
+              entry.state = 'failed'
+              entry.error = 'timeout'
+            } else entry.state = 'open'
+            this.renderStatus()
+          }, entry.mode === 'ack' ? 75_000 : 20_000),
+        )
+      },
+      /** An older host opens the panel soon after it gets the request, without saying so. */
+      legacyOpened(deviceId, entry) {
+        entry.timers.push(
+          setTimeout(() => {
+            if (this.panels.get(deviceId) !== entry || entry.state !== 'opening') return
+            entry.state = 'open'
+            this.renderStatus()
+          }, 1500),
+        )
+      },
+      panelAnswered(deviceId, panel, ok, error) {
+        const entry = this.panels.get(deviceId)
+        if (!entry || entry.id !== panel || entry.state === 'unsupported') return
+        entry.state = ok ? 'open' : 'failed'
+        entry.error = ok ? null : String(error || '')
+        for (const timer of entry.timers) clearTimeout(timer)
+        this.renderStatus()
+      },
+      clearPanel(deviceId) {
+        const entry = this.panels.get(deviceId)
+        if (!entry) return
+        for (const timer of entry.timers) clearTimeout(timer)
+        this.panels.delete(deviceId)
+        if (this.active === deviceId) this.renderStatus()
+      },
+      /** The panel state to show over the active device UI (only while that panel is selected). */
+      shownPanel() {
+        const id = this.active
+        const entry = id && this.panels.get(id)
+        const sel = store.selection
+        if (!entry || !sel || sel.deviceId !== id || sel.panel !== entry.id) return null
+        return entry.state === 'open' ? null : entry
+      },
+
+      /** Show `deviceId` and run `command` in it: { type: 'open-session', sessionId } | { type: 'new-session', workspaceId } | { type: 'open-panel', panel, ack } */
       async show(deviceId, device, command, { background = false } = {}) {
         this.ensureHost()
         // One iframe per device even when several opens race (e.g. "Files" = open + show files).
@@ -961,28 +1107,23 @@ window.__ModuleLoader__.load({
             release()
             throw error
           }
-          const params = new URLSearchParams({ 'dsh-embed': '1', 'dsh-device': device ? device.name : '' })
-          if (command && command.type === 'open-session' && command.sessionId) params.set('dsh-session', command.sessionId)
-          if (command && command.type === 'new-session') params.set('dsh-new', command.workspaceId || '1')
-          if (command && command.files) params.set('dsh-files', '1')
           const iframe = document.createElement('iframe')
           iframe.title = device ? device.name : deviceId
           iframe.allow = 'clipboard-read; clipboard-write'
           iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:transparent;visibility:hidden'
-          iframe.src = `${root}?${params.toString()}`
+          iframe.src = this.srcFor(root, device, command)
           this.host.appendChild(iframe)
           f = { iframe, root, ready: false, pending: [], createdAt: Date.now(), lastVisibleAt: background ? 0 : Date.now() }
-          if (command && command.type !== 'open-session' && command.type !== 'new-session') f.pending.push(command)
+          // (sessions, new sessions and answered panels ride on the address; the rest waits for "ready")
+          const onAddress = command && (command.type === 'open-session' || command.type === 'new-session' || (command.type === 'open-panel' && command.ack))
+          if (command && !onAddress) f.pending.push(command)
           this.byDevice.set(deviceId, f)
           iframe.addEventListener('load', () => {
             if (iframe.src === 'about:blank') return
-            // The device UI announces readiness itself; this covers older hosts.
+            // The device UI announces readiness itself; this covers older hosts (never the
+            // gateway's "unreachable" page, which also fires load).
             setTimeout(() => {
-              if (!f.ready && f.iframe.src !== 'about:blank') {
-                f.ready = true
-                this.markLoaded(deviceId)
-                for (const m of f.pending.splice(0)) this.send(deviceId, m)
-              }
+              if (!f.ready && f.iframe.src !== 'about:blank' && this.byDevice.get(deviceId) === f) this.onReady(deviceId, { announced: false })
             }, 8000)
           })
           this.watch(deviceId)
@@ -1029,7 +1170,17 @@ window.__ModuleLoader__.load({
         f.ready = false
         f.loaded = false
         f.pending = []
-        const src = f.iframe.src
+        // Boot into what is on screen now (not into what the frame first opened).
+        const command = this.currentCommand(deviceId)
+        const src = this.srcFor(f.root, deviceById(deviceId), command)
+        f.unreachable = false
+        // The panel on screen comes back with the UI (on an older host, as a request once it is ready).
+        const entry = this.panels.get(deviceId)
+        const sel = store.selection
+        if (entry && entry.state !== 'unsupported' && sel && sel.deviceId === deviceId && sel.panel === entry.id) {
+          this.armPanel(deviceId, entry)
+          if (entry.mode === 'legacy') f.pending.push({ type: 'open-panel', panel: entry.id })
+        }
         f.iframe.style.visibility = 'hidden'
         f.iframe.src = 'about:blank'
         setTimeout(() => {
@@ -1044,57 +1195,120 @@ window.__ModuleLoader__.load({
         if (!f) return
         f.loaded = true
         f.failed = false
+        f.slow = false
+        f.error = null
         clearTimeout(f.timer)
+        clearTimeout(f.slowTimer)
         f.iframe.style.visibility = 'visible'
         this.renderStatus()
       },
-      /** Give the device UI a deadline; past it, explain instead of showing a blank area. */
+      /** The gateway could not reach the device for the page itself: say so now, offer a retry. */
+      markUnreachable(deviceId, error) {
+        const f = this.byDevice.get(deviceId)
+        if (!f) return
+        f.ready = false
+        f.loaded = false
+        f.failed = true
+        f.unreachable = true
+        f.error = error
+        clearTimeout(f.timer)
+        clearTimeout(f.slowTimer)
+        f.iframe.style.visibility = 'hidden'
+        // A panel is not on screen any more either; it opens again when the device answers.
+        const entry = this.panels.get(deviceId)
+        if (entry && (entry.state === 'opening' || entry.state === 'open')) entry.state = 'waiting'
+        this.renderStatus()
+      },
+      /**
+       * Give the device UI time: a first load over a slow link brings ~5 MB from the
+       * device. Past 10 s say it is slow; only past a minute call it failed.
+       */
       watch(deviceId) {
         const f = this.byDevice.get(deviceId)
         if (!f) return
         clearTimeout(f.timer)
+        clearTimeout(f.slowTimer)
         f.failed = false
+        f.slow = false
+        f.error = null
+        f.startedAt = Date.now()
+        f.slowTimer = setTimeout(() => {
+          if (f.loaded) return
+          f.slow = true
+          this.renderStatus()
+        }, 10_000)
         f.timer = setTimeout(() => {
-          if (!f.loaded) {
-            f.failed = true
-            this.renderStatus()
-          }
-        }, 15000)
+          if (f.loaded) return
+          f.failed = true
+          this.renderStatus()
+        }, 60_000)
+      },
+      /** A device came back: reload any of its UIs that had given up. */
+      deviceBack(deviceId) {
+        const f = this.byDevice.get(deviceId)
+        if (f && f.failed && !f.loaded) this.reload(deviceId)
       },
       renderStatus() {
         if (!this.status) return
-        const f = this.active && this.byDevice.get(this.active)
-        const device = this.active && (store.data.devices || []).find((d) => d.id === this.active)
+        const id = this.active
+        const f = id && this.byDevice.get(id)
+        const device = id && deviceById(id)
         const name = device ? device.name : 'device'
-        if (!f || f.loaded) {
+        const panel = this.shownPanel()
+        if (!f || (f.loaded && !panel)) {
           this.status.style.display = 'none'
           this.statusRoot.render(null)
           return
         }
         this.status.style.display = 'flex'
-        const id = this.active
-        const retry = () => {
+        const panelName = panel ? panelLabel(panel.id) : ''
+        const reboot = () => {
           entries.delete(id)
           this.drop(id)
-          const d = (store.data.devices || []).find((x) => x.id === id)
-          this.show(id, d, null).catch(() => {})
+          const d = deviceById(id)
+          if (!d) return
+          if (panel) this.openPanel(d, panel.id)
+          else this.show(id, d, this.currentCommand(id)).catch(() => {})
         }
-        const text = f.failed ? fill(appT('loadFailed'), { device: name }) : fill(appT('loadingDevice'), { device: name })
-        this.statusRoot.render(
-          h(
-            'div',
-            { className: 'dshdev-frame-status' },
-            f.failed || !P.TextShimmer ? h('div', null, text) : h(P.TextShimmer, null, text),
-            f.failed
-              ? h(
-                  'div',
-                  { className: 'dshdev-frame-status-actions' },
-                  h(ModalButton, { variant: 'primary', onClick: retry }, appT('retry')),
-                  device ? h(ModalButton, { variant: 'outline', onClick: () => openInWindow(device).catch(() => {}) }, appT('openWindow')) : null,
-                )
-              : null,
-          ),
-        )
+        const windowButton = device ? h(ModalButton, { variant: 'outline', onClick: () => openInWindow(device, { panel: panel ? panel.id : null }).catch(() => {}) }, appT('openWindow')) : null
+        const shimmer = (text) => (P.TextShimmer ? h(P.TextShimmer, null, text) : h('div', null, text))
+        let body
+        if (panel && panel.state === 'unsupported') {
+          const version = (device && device.versions && device.versions.plugin) || '?'
+          body = [
+            h('div', { key: 't', className: 'dshdev-frame-status-title' }, fill(appT('panelOldHost'), { device: name, panel: panelName })),
+            h('div', { key: 'd', className: 'dshdev-frame-status-detail' }, fill(device && device.canUpdate ? appT('panelOldHostHint') : appT('panelOldHostManual'), { version })),
+            h(
+              'div',
+              { key: 'a', className: 'dshdev-frame-status-actions' },
+              device && device.canUpdate ? h(ModalButton, { variant: 'primary', testid: 'dsh-devices-panel-update', disabled: !!device.updating, onClick: () => startDeviceUpdate(device) }, device.updating ? appT('updatingTag') : appT('updateNow')) : null,
+              device && !device.canUpdate ? h(ModalButton, { variant: 'primary', testid: 'dsh-devices-panel-update-ssh', onClick: () => updateOverSsh(device) }, appT('updateViaSsh')) : null,
+              windowButton,
+            ),
+          ]
+        } else if (panel && panel.state === 'failed' && !(f.failed && !f.loaded)) {
+          body = [
+            h('div', { key: 't', className: 'dshdev-frame-status-title' }, fill(appT('panelFailed'), { device: name, panel: panelName })),
+            h('div', { key: 'd', className: 'dshdev-frame-status-detail' }, panel.error === 'timeout' ? appT('panelTimeout') : panel.error || ''),
+            h('div', { key: 'a', className: 'dshdev-frame-status-actions' }, h(ModalButton, { variant: 'primary', testid: 'dsh-devices-panel-retry', onClick: reboot }, appT('retry')), windowButton),
+          ]
+        } else if (f.failed && !f.loaded) {
+          const offline = device && device.status !== 'online'
+          body = [
+            h('div', { key: 't', className: 'dshdev-frame-status-title' }, fill(f.error ? appT('unreachable') : appT('loadFailed'), { device: name })),
+            h('div', { key: 'd', className: 'dshdev-frame-status-detail' }, offline ? appT('comesBack') : f.error || appT('loadFailedHint')),
+            h('div', { key: 'a', className: 'dshdev-frame-status-actions' }, h(ModalButton, { variant: 'primary', testid: 'dsh-devices-frame-retry', onClick: reboot }, appT('retry')), windowButton),
+          ]
+        } else {
+          const slow = panel ? Date.now() - panel.startedAt > 9_000 : f.slow
+          body = [
+            h('div', { key: 't' }, shimmer(panel ? fill(appT('panelOpening'), { device: name, panel: panelName }) : fill(appT('loadingDevice'), { device: name }))),
+            slow ? h('div', { key: 'd', className: 'dshdev-frame-status-detail' }, appT('panelSlow')) : null,
+            slow ? h('div', { key: 'a', className: 'dshdev-frame-status-actions' }, h(ModalButton, { variant: 'outline', testid: 'dsh-devices-slow-retry', onClick: reboot }, appT('retry')), windowButton) : null,
+          ]
+        }
+        const state = f.failed && !f.loaded ? (f.error ? 'unreachable' : 'failed') : panel ? panel.state : 'loading'
+        this.statusRoot.render(h('div', { className: 'dshdev-frame-status', 'data-testid': 'dsh-devices-frame-status', 'data-state': state }, body))
       },
       /** Free memory: a device UI off screen for longer than `idleMs` is unloaded (its gateway entry stays, so it reloads fast). */
       unloadIdle(idleMs) {
@@ -1114,6 +1328,8 @@ window.__ModuleLoader__.load({
         const f = this.byDevice.get(deviceId)
         if (!f) return
         clearTimeout(f.timer)
+        clearTimeout(f.slowTimer)
+
         try {
           f.iframe.src = 'about:blank'
         } catch {}
@@ -1124,7 +1340,11 @@ window.__ModuleLoader__.load({
       },
       drop(deviceId) {
         const f = this.byDevice.get(deviceId)
-        if (f) f.iframe.remove()
+        if (f) {
+          clearTimeout(f.timer)
+          clearTimeout(f.slowTimer)
+          f.iframe.remove()
+        }
         this.byDevice.delete(deviceId)
         entries.delete(deviceId)
       },
@@ -1162,6 +1382,7 @@ window.__ModuleLoader__.load({
     }
 
     function openRemote(ctx, device, sessionId) {
+      frames.clearPanel(device.id)
       if (sessionId) setUnread(`${device.id}:${sessionId}`, false)
       setStore({ selection: { deviceId: device.id, sessionId: sessionId || null } })
       try {
@@ -1171,6 +1392,7 @@ window.__ModuleLoader__.load({
     }
 
     function newRemote(ctx, device, workspaceId) {
+      frames.clearPanel(device.id)
       setStore({ selection: { deviceId: device.id, sessionId: null } })
       try {
         ctx.layout.selectPanel(CHAT_PANEL_ID)
@@ -1186,6 +1408,26 @@ window.__ModuleLoader__.load({
 [class*="_list"]:has([data-dshdev-search] [data-dshdev-result]) [class*="_searchStatus"]{display:none}
 [class*="_list"]:has(> .dshdev-remote-root [data-dshdev-device]) > [class*="_emptyState"]{display:none}
 .dshdev-remote-root .dshdev-devname{color:var(--dsw-alias-label-tertiary);font-size:12px;margin-left:6px;white-space:nowrap}
+/* DSH's collapsed sidebar (rail) shows icons only: the device sections wait for the wide sidebar. */
+[class*="_root"][class*="_rail"] .dshdev-remote-root{display:none}
+.dshdev-device-section{position:relative;margin-top:10px}
+.dshdev-device-header{cursor:pointer;user-select:none;outline:none}
+.dshdev-device-header:focus-visible{box-shadow:inset 0 0 0 var(--dsw-focus-ring-width,2px) var(--dsw-focus-ring-color,#4176e6)}
+.dshdev-device-header .dshdev-device-label{display:inline-flex;align-items:center;gap:6px;max-width:none;flex:1 1 auto;min-width:0;margin-right:auto}
+.dshdev-device-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-tertiary)}
+.dshdev-device-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshdev-device-state{flex:none;font-size:12px;color:var(--dsw-alias-label-caption,var(--dsw-alias-label-tertiary))}
+.dshdev-device-state[data-dshdev-state=error],.dshdev-device-state[data-dshdev-state=revoked]{color:var(--dsw-alias-state-warn-label,#b45309)}
+.dshdev-device-waiting{display:inline-flex;align-items:center;flex:none}
+.dshdev-device-chevron{flex:none;opacity:0;transition:opacity .12s,transform .18s;color:var(--dsw-alias-label-tertiary)}
+.dshdev-device-chevron.dshdev-collapsed{transform:rotate(-90deg);opacity:1}
+.dshdev-device-header:hover .dshdev-device-chevron,.dshdev-device-header:focus-visible .dshdev-device-chevron{opacity:1}
+.dshdev-device-header .dshdev-device-actions{flex:none}
+.dshdev-device-header button:disabled{opacity:.4;cursor:default}
+.dshdev-device-header button:disabled:hover{background:none}
+.dshdev-device-off .dshdev-device-name{color:var(--dsw-alias-label-tertiary)}
+.dshdev-device-empty{color:var(--dsw-alias-label-tertiary)}
+.dshdev-fb-section{display:flex;align-items:center;gap:4px;height:36px;padding-left:4px;color:var(--dsw-alias-label-tertiary);font-size:13px}
 .dshdev-remote-root .dshdev-dim{opacity:.55}
 .dshdev-remote-mark{display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-caption,var(--dsw-alias-label-tertiary))}
 .dshdev-group-status{display:inline-flex;align-items:center;margin-left:4px;flex:none}
@@ -1376,8 +1618,11 @@ window.__ModuleLoader__.load({
 .dshdev-context{display:flex;align-items:center;gap:8px;padding:calc(var(--dsh-frame-top-clearance,0px) + 8px) 16px 8px;background:var(--dsw-alias-bg-base);font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary)}
 .dshdev-context-label{border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-fill-tsp-secondary);height:22px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;align-items:center;gap:4px;padding:0 6px 0 4px;font-size:12px;line-height:22px;display:inline-flex}
 .dshdev-context-panel{font-weight:500}
-.dshdev-frame-status{display:flex;flex-direction:column;align-items:center;gap:12px}
-.dshdev-frame-status-actions{display:flex;gap:8px}
+.dshdev-frame-status{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:440px}
+.dshdev-frame-status-actions{display:flex;gap:8px;margin-top:4px}
+.dshdev-frame-overlay{z-index:2;background:var(--dsw-alias-bg-base,#fff)}
+.dshdev-frame-status-title{color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px;font-weight:500}
+.dshdev-frame-status-detail{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;overflow-wrap:anywhere}
 `
     /**
      * Install (or refresh) this version's styles. A plugin update swaps the
@@ -1430,9 +1675,9 @@ window.__ModuleLoader__.load({
     }
 
     // ── DSH primitives, with plain stand-ins if a future build lacks one ────
-    function Icon(name, props) {
+    function Icon(name, props, fallback) {
       const C = P[name]
-      return C ? h(C, props || {}) : null
+      return C ? h(C, props || {}) : fallback ? fallback() : null
     }
     function Dot({ state }) {
       return P.StateDot ? h(P.StateDot, { state }) : h('span', { className: `dshdev-fb-dot ${state}`, 'aria-hidden': true })
@@ -1732,8 +1977,8 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function TipButton({ label, cls, onClick, children, action }) {
-      const button = h('button', { type: 'button', className: cls.iconButton, 'aria-label': label, 'data-dshdev-action': action, onClick }, children)
+    function TipButton({ label, cls, onClick, children, action, className, disabled }) {
+      const button = h('button', { type: 'button', className: className || cls.iconButton, 'aria-label': label, 'data-dshdev-action': action, disabled, onClick }, children)
       return P.Tooltip ? h(P.Tooltip, { label, side: 'bottom', align: 'end', delayMs: 500, portal: true }, button) : button
     }
 
@@ -1772,7 +2017,7 @@ window.__ModuleLoader__.load({
           },
           onMouseEnter: () => prefetchDevice(device),
         },
-        h('span', { className: cls.slot }, status.state !== 'idle' ? h(StatusDots, { cls, status }) : h(RemoteMark, null)),
+        h('span', { className: cls.slot }, status.state !== 'idle' ? h(StatusDots, { cls, status }) : null),
         h(
           'span',
           {
@@ -1827,7 +2072,7 @@ window.__ModuleLoader__.load({
       const old = (f) => (hasFeature(device, f) ? '' : ` (${t('outdated')})`)
       return [
         { id: 'new', icon: Icon('IconNewChatOutlineRegular'), label: fill(t('newRemote'), { device: device.name }), disabled: !online },
-        ...(group && !group.deviceOnly
+        ...(group
           ? [
               { id: 'files', icon: Icon('IconFolderOpenOutlineRegular'), label: t('openFiles'), disabled: !online },
               { id: 'editor', icon: Icon('IconCodeOutlineRegular'), label: fill(t('openInEditor'), { editor: currentEditor().label }) },
@@ -1842,6 +2087,8 @@ window.__ModuleLoader__.load({
         { id: 'account', icon: Icon('IconUserOutlineRegular'), label: t('accountMenu'), disabled: !online },
         ...(archived ? [{ id: 'archived', icon: Icon('IconArchiveOutlineRegular'), label: fill(t('archivedMenu'), { n: archived }) }] : []),
         { type: 'separator', id: 'sep-2' },
+        ...(!online && device.status !== 'revoked' ? [{ id: 'reconnect', icon: Icon('IconRefreshOutlineRegular'), label: t('reconnect') }] : []),
+        ...(device.outdated && device.canUpdate && !group ? [{ id: 'update', icon: Icon('IconDownloadOutlineRegular'), label: device.updating ? t('updatingTag') : t('updateNow'), disabled: !!device.updating || !online }] : []),
         { id: 'settings', icon: Icon('IconSettingsOutlineRegular'), label: t('deviceSettings'), disabled: !online },
         { id: 'manage', icon: h(DevicesIcon, { size: 16 }), label: t('manageDevices') },
       ]
@@ -1849,6 +2096,7 @@ window.__ModuleLoader__.load({
 
     function runDeviceAction(id, device, group) {
       const ctx = appCtx
+      const t = appT
       if (id === 'new') newRemote(ctx, device, group ? group.workspaceId : null)
       if (id === 'search') focusNativeSearch()
       if (id === 'files') openRemoteFiles(ctx, device, group || { sessions: device.sessions || [], workspaceId: null })
@@ -1860,6 +2108,13 @@ window.__ModuleLoader__.load({
       if (id === 'automations') openDevicePanel(device, 'schedules')
       if (id === 'ports' || id === 'sync' || id === 'account' || id === 'archived') setStore({ dialog: { kind: id, deviceId: device.id } })
       if (id === 'settings') openDeviceSettings(device)
+      if (id === 'reconnect') {
+        post('/devices/refresh', { id: device.id })
+          .then(() => setTimeout(() => refreshDevices(), 1200))
+          .catch(() => {})
+        showToast(fill(t('reconnecting'), { device: device.name }), { icon: Icon('IconRefreshOutlineRegular') })
+      }
+      if (id === 'update') startDeviceUpdate(device)
       if (id === 'manage') {
         try {
           ctx.layout.selectPanel(PANEL_ID)
@@ -1869,20 +2124,13 @@ window.__ModuleLoader__.load({
 
     function RemoteGroupHover({ cls, device, g, t }) {
       const waiting = g.sessions.filter((s) => s.pending).length
-      const online = device.status === 'online'
       return h(
         'div',
         { className: cls.hoverContent },
-        h('div', { className: cls.hoverTitle }, g.deviceOnly ? device.name : g.title),
+        h('div', { className: cls.hoverTitle }, g.title),
         g.path ? h('div', { className: cls.hoverPath || cls.hoverTime }, g.path.replace(/^\/(root|home\/[^/]+)(?=\/|$)/, '~')) : null,
-        h(
-          'div',
-          { className: cls.hoverStatus },
-          h(Dot, { state: online ? 'done' : device.status === 'connecting' ? 'ongoing' : 'idle' }),
-          h('span', null, [device.name, t(`status_${device.status}`), device.versions && device.versions.dsh ? `dsh ${device.versions.dsh}` : null].filter(Boolean).join(' · ')),
-        ),
+        h('div', { className: cls.hoverStatus }, h(RemoteMark, { size: 12 }), h('span', null, device.name)),
         waiting ? h('div', { className: cls.hoverStatus }, h(Dot, { state: 'warning' }), h('span', null, fill(t('waitingCount'), { n: waiting }))) : null,
-        online && device.health ? h('div', { className: cls.hoverStatus }, h(Dot, { state: healthIssues(device.health).length ? 'warning' : 'done' }), h('span', null, healthSummary(device.health, t))) : null,
       )
     }
 
@@ -1893,7 +2141,6 @@ window.__ModuleLoader__.load({
       const online = device.status === 'online'
       const waiting = g.sessions.filter((s) => s.pending).length
       const active = chatActive && st.selection && st.selection.deviceId === device.id && g.sessions.some((s) => s.sessionId === (st.selection.sessionId || st.embedded[device.id]))
-      const label = g.deviceOnly ? device.name : g.title
       const header = h(
         'div',
         {
@@ -1908,19 +2155,9 @@ window.__ModuleLoader__.load({
           },
           onMouseEnter: () => prefetchDevice(device),
         },
-        h('span', { className: cx(cls.slot, cls.folder, active && cls.folderActive) }, h(RemoteIcon, { size: 16 })),
+        h('span', { className: cx(cls.slot, cls.folder, active && cls.folderActive) }, Icon(collapsed ? 'IconFolderCloseRegular' : 'IconFolderOpenRegular', {}, () => h(RemoteIcon, { size: 16 }))),
         h('span', { className: cx(cls.slot, cls.chevron) }, Icon('IconTriangleRightFillRegular', { className: cx(cls.arrow, !collapsed && cls.arrowOpen) })),
-        h(
-          'span',
-          { className: cls.projectText },
-          h(
-            'span',
-            { className: cls.title },
-            label,
-            g.deviceOnly ? null : h('span', { className: 'dshdev-devname' }, device.name),
-            online ? null : h('span', { className: 'dshdev-devname' }, t(`status_${device.status}`).toLowerCase()),
-          ),
-        ),
+        h('span', { className: cls.projectText }, h('span', { className: cls.title }, g.title)),
         waiting && collapsed ? h('span', { className: 'dshdev-group-status', title: fill(t('waitingCount'), { n: waiting }), 'data-dshdev-waiting': waiting }, h(Dot, { state: 'warning' })) : null,
         h(
           'span',
@@ -1937,17 +2174,17 @@ window.__ModuleLoader__.load({
             closeOnPointerLeave: true,
             anchor: h(
               'button',
-              { type: 'button', className: cls.iconButton, 'aria-label': `${t('moreActions')} — ${device.name}`, 'aria-haspopup': 'menu', 'data-dshdev-action': 'more', onClick: () => setMenuOpen((v) => !v) },
+              { type: 'button', className: cls.iconButton, 'aria-label': `${t('moreActions')} — ${g.title}`, 'aria-haspopup': 'menu', 'data-dshdev-action': 'more', onClick: () => setMenuOpen((v) => !v) },
               Icon('IconEllipsisOutlineRegular'),
             ),
           }),
-          h(TipButton, { cls, label: fill(t('newRemote'), { device: device.name }), action: 'new', onClick: () => online && newRemote(ctx, device, g.workspaceId) }, Icon('IconNewChatOutlineRegular')),
+          h(TipButton, { cls, label: fill(t('newIn'), { workspace: g.title }), action: 'new', disabled: !online, onClick: () => online && newRemote(ctx, device, g.workspaceId) }, Icon('IconNewChatOutlineRegular')),
         ),
       )
       const rows = collapsed ? [] : perGroup && !st.expanded[ckey] ? g.sessions.slice(0, perGroup) : g.sessions
       return h(
         'div',
-        { className: cls.group, 'data-dshdev-device': device.id },
+        { className: cls.group, 'data-dshdev-workspace': ckey },
         P.HoverCard ? h(P.HoverCard, { anchor: header, content: h(RemoteGroupHover, { cls, device, g, t }), openDelayMs: 800, grouped: true, disabled: menuOpen, copyText: g.path || undefined, copyLabel: nt('copy', null, 'Copy'), copiedLabel: nt('hover.copied', null, 'Copied') }) : header,
         rows.map((s) => {
           const selected = chatActive && st.selection && st.selection.deviceId === device.id && (st.selection.sessionId === s.sessionId || (!st.selection.sessionId && st.embedded[device.id] === s.sessionId))
@@ -1960,6 +2197,124 @@ window.__ModuleLoader__.load({
               st.expanded[ckey] ? nt('sessions.collapse', null, t('showLess')) : nt('sessions.expand', { n: g.sessions.length - perGroup, count: g.sessions.length - perGroup }, fill(t('showMore'), { n: g.sessions.length - perGroup })),
             )
           : null,
+      )
+    }
+
+    /** How a device is doing, in a word for its sidebar header ('' when all is well). */
+    function deviceHeaderState(device, t) {
+      if (device.updating) return { text: t('updatingTag'), busy: true, dot: 'ongoing' }
+      if (device.status === 'online') return { text: '', busy: false, dot: 'done' }
+      if (device.status === 'connecting') return { text: t('status_connecting'), busy: true, dot: 'ongoing' }
+      if (device.status === 'revoked') return { text: t('status_revoked'), busy: false, dot: 'warning' }
+      if (device.status === 'error') return { text: t('status_error'), busy: false, dot: 'warning' }
+      return { text: t('status_offline'), busy: false, dot: 'idle' }
+    }
+
+    function RemoteDeviceHover({ cls, device, t }) {
+      const state = deviceHeaderState(device, t)
+      const online = device.status === 'online'
+      const where = device.transport && device.transport.kind === 'ssh' ? `SSH · ${device.transport.target}` : device.transport ? device.transport.url : null
+      const versions = device.versions ? [device.versions.dsh ? `dsh ${device.versions.dsh}` : null, device.versions.plugin ? `host ${device.versions.plugin}` : null].filter(Boolean).join(' · ') : null
+      return h(
+        'div',
+        { className: cls.hoverContent },
+        h('div', { className: cls.hoverTitle }, device.name),
+        where ? h('div', { className: cls.hoverPath || cls.hoverTime }, where) : null,
+        h('div', { className: cls.hoverStatus }, h(Dot, { state: state.dot }), h('span', null, [t(`status_${device.status}`), versions].filter(Boolean).join(' · '))),
+        !online && device.lastSeenAt ? h('div', { className: cls.hoverTime }, fill(t('lastSeen'), { when: timeLabel(device.lastSeenAt) })) : null,
+        !online && device.error ? h('div', { className: cls.hoverTime }, device.error) : null,
+        device.pendingCount ? h('div', { className: cls.hoverStatus }, h(Dot, { state: 'warning' }), h('span', null, fill(t('waitingCount'), { n: device.pendingCount }))) : null,
+        online && device.health ? h('div', { className: cls.hoverStatus }, h(Dot, { state: healthIssues(device.health).length ? 'warning' : 'done' }), h('span', null, healthSummary(device.health, t))) : null,
+      )
+    }
+
+    /** One device in the sidebar: a section header like DSH's "Workspaces", then its workspaces. */
+    function RemoteDevice({ ctx, t, cls, device, st, chatActive, perGroup }) {
+      const [menuOpen, setMenuOpen] = useState(false)
+      const key = `device:${device.id}`
+      const collapsed = !!st.collapsed[key]
+      const online = device.status === 'online'
+      const state = deviceHeaderState(device, t)
+      const groups = groupSessions(device)
+      const waiting = device.pendingCount || (device.sessions || []).filter((s) => s.pending).length
+      const list = discoverPrefixes().list
+      const headerButton = list ? `${list}iconButton` : 'dshdev-fb-iconbtn'
+      const toggle = () => toggleCollapsed(key)
+      const header = h(
+        'div',
+        {
+          className: cx(list ? `${list}sectionHeader` : 'dshdev-fb-section', 'dshdev-device-header', menuOpen && 'dshdev-menu-open'),
+          role: 'button',
+          tabIndex: 0,
+          'aria-expanded': !collapsed,
+          'aria-label': [device.name, state.text].filter(Boolean).join(' — '),
+          'data-dshdev-device-header': device.id,
+          onClick: toggle,
+          onKeyDown: (e) => {
+            if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return
+            e.preventDefault()
+            toggle()
+          },
+          onContextMenu: (e) => {
+            e.preventDefault()
+            setMenuOpen(true)
+          },
+          onMouseEnter: () => prefetchDevice(device),
+        },
+        h(
+          'span',
+          { className: cx(list && `${list}sectionLabel`, list && `${list}wide`, 'dshdev-device-label') },
+          h('span', { className: 'dshdev-device-icon' }, h(RemoteIcon, { size: 14 })),
+          h('span', { className: 'dshdev-device-name' }, device.name),
+          state.text
+            ? h('span', { className: 'dshdev-device-state', 'data-dshdev-state': device.updating ? 'updating' : device.status }, state.busy && P.TextShimmer ? h(P.TextShimmer, null, state.text) : state.text)
+            : null,
+          waiting && (collapsed || !online) ? h('span', { className: 'dshdev-device-waiting', title: fill(t('waitingCount'), { n: waiting }), 'data-dshdev-waiting': waiting }, h(Dot, { state: 'warning' })) : null,
+          Icon('IconChevronDownOutlineRegular', { size: 12, className: cx('dshdev-device-chevron', collapsed && 'dshdev-collapsed') }),
+        ),
+        h(
+          'div',
+          { className: cx(list && `${list}headerActions`, 'dshdev-device-actions'), onClick: (e) => e.stopPropagation() },
+          h(TipButton, { cls, className: headerButton, label: fill(t('newRemote'), { device: device.name }), action: 'device-new', disabled: !online, onClick: () => online && newRemote(ctx, device, null) }, Icon('IconNewChatOutlineRegular', { size: 14 })),
+          h(NativeMenu, {
+            open: menuOpen,
+            onClose: () => setMenuOpen(false),
+            items: deviceMenuItems(device, t, null),
+            onSelect: (id) => {
+              setMenuOpen(false)
+              runDeviceAction(id, device, null)
+            },
+            portal: true,
+            align: 'end',
+            anchor: h(
+              'button',
+              { type: 'button', className: headerButton, 'aria-label': `${t('moreActions')} — ${device.name}`, 'aria-haspopup': 'menu', 'data-dshdev-action': 'device-more', onClick: () => setMenuOpen((v) => !v) },
+              Icon('IconEllipsisOutlineRegular', { size: 14 }),
+            ),
+          }),
+        ),
+      )
+      let body = null
+      if (!collapsed) {
+        if (groups.length) body = groups.map((g) => h(RemoteGroup, { key: `${device.id}:${g.key}`, ctx, t, cls, device, g, st, chatActive, perGroup }))
+        else
+          body = h(
+            'div',
+            {
+              className: cx(cls.session, 'dshdev-device-empty', !online && 'dshdev-dim'),
+              role: 'treeitem',
+              'data-dshdev-empty': device.id,
+              onClick: () => online && newRemote(ctx, device, null),
+            },
+            h('span', { className: cls.slot }, online ? Icon('IconNewChatOutlineRegular', { size: 14 }) : null),
+            h('span', { className: cls.title }, online ? t('newSessionRow') : t('emptyOffline')),
+          )
+      }
+      return h(
+        'div',
+        { className: cx('dshdev-device-section', !online && 'dshdev-device-off'), 'data-dshdev-device': device.id, 'data-dshdev-status': device.status },
+        P.HoverCard ? h(P.HoverCard, { anchor: header, content: h(RemoteDeviceHover, { cls, device, t }), openDelayMs: 800, grouped: true, disabled: menuOpen }) : header,
+        body,
       )
     }
 
@@ -2051,13 +2406,11 @@ window.__ModuleLoader__.load({
       if (st.nativeSearch && st.nativeSearch.trim()) return h(RemoteSearchResults, { ctx, t, cls, st, query: st.nativeSearch })
       const chatActive = st.activePanel === CHAT_PANEL_ID
       const perGroup = Number(st.settings.sessionsPerGroup) || 0
-      const out = []
-      for (const device of devices) {
-        const groups = groupSessions(device)
-        if (groups.length === 0) groups.push({ key: '_device', workspaceId: null, title: device.name, path: null, sessions: [], deviceOnly: true })
-        for (const g of groups) out.push(h(RemoteGroup, { key: `${device.id}:${g.key}`, ctx, t, cls, device, g, st, chatActive, perGroup }))
-      }
-      return h('div', { className: 'dshdev-remote-root', role: 'group', 'aria-label': t('remote') }, out)
+      return h(
+        'div',
+        { className: 'dshdev-remote-root', role: 'group', 'aria-label': t('remote') },
+        devices.map((device) => h(RemoteDevice, { key: device.id, ctx, t, cls, device, st, chatActive, perGroup })),
+      )
     }
 
     let prefetchTimer = null
@@ -2472,6 +2825,12 @@ window.__ModuleLoader__.load({
       // Shown with no device UI (unloaded, or the app came back to this panel): load it again.
       useEffect(() => {
         if (st.activePanel !== CHAT_PANEL_ID || !device || device.status !== 'online' || frames.byDevice.has(device.id)) return
+        // (an open already in flight is creating it)
+        if (frames.creating && frames.creating.has(device.id)) return
+        if (st.selection.panel) {
+          frames.openPanel(device, st.selection.panel)
+          return
+        }
         const sessionId = st.selection.sessionId || st.embedded[device.id]
         frames.show(device.id, device, sessionId ? { type: 'open-session', sessionId } : null).catch(() => {})
       }, [st.activePanel, device && device.id, device && device.status, frames.byDevice.has(device ? device.id : '')])
@@ -2481,7 +2840,7 @@ window.__ModuleLoader__.load({
       else if (!frames.byDevice.has(device.id)) status = fill(t('connecting'), { device: device.name })
       const banner = device && device.status === 'online' && device.model && !(device.model.ready ?? device.model.configured)
       const panel = device && st.selection && st.selection.panel
-      const panelLabel = panel === 'plugins' ? t('pluginsMenu') : panel === 'schedules' ? t('automationsMenu') : panel
+      const panelName = panel ? panelLabel(panel) : ''
       const connecting = device && device.status !== 'offline' && device.status !== 'error' && device.status !== 'revoked'
       return h(
         'div',
@@ -2491,7 +2850,7 @@ window.__ModuleLoader__.load({
               'div',
               { className: 'dshdev-context', 'data-testid': 'dsh-devices-panel-context' },
               h('span', { className: 'dshdev-context-label' }, h(RemoteIcon, { size: 14 }), h('span', null, device.name)),
-              h('span', { className: 'dshdev-context-panel' }, panelLabel),
+              h('span', { className: 'dshdev-context-panel' }, panelName),
             )
           : null,
         banner ? h('div', { className: 'dshdev-chat-banner' }, h(ModelKeyPanel, { device, t, variant: 'banner', onSaved: () => frames.reload(device.id) })) : null,
@@ -2762,6 +3121,7 @@ window.__ModuleLoader__.load({
         null,
         noModels ? h(Btn, { variant: 'outline', onClick: () => onAction('account', device) }, t('setUpModels')) : null,
         device.outdated && device.canUpdate ? h(Btn, { variant: 'outline', disabled: !!device.updating, onClick: () => onAction('update', device) }, device.updating ? t('updatingTag') : t('updateNow')) : null,
+        device.outdated && !device.canUpdate ? h(Btn, { variant: 'outline', 'data-testid': `update-ssh-${device.id}`, onClick: () => onAction('update-ssh', device) }, t('updateViaSsh')) : null,
         h(Btn, { variant: 'primary', disabled: !online, onClick: () => onOpen(device) }, t('open')),
         true
           ? h(NativeMenu, {
@@ -2824,7 +3184,8 @@ window.__ModuleLoader__.load({
           setHosts((r.hosts || []).map((x) => (typeof x === 'string' ? { alias: x } : x)))
           setSaved(r.saved || [])
         }, () => {})
-        if (preset) startSsh()
+        // A saved machine connects right away; a guessed address waits for the user to check it.
+        if (preset && preset.target && preset.autoStart !== false) startSsh()
       }, [])
 
       useEffect(() => {
@@ -3019,9 +3380,11 @@ window.__ModuleLoader__.load({
       return h(NativeModal, { t, title, description, onClose, footer, wide, children })
     }
 
-    async function openInWindow(device) {
+    async function openInWindow(device, { panel } = {}) {
       const root = await deviceRoot(device.id)
-      const url = `${root}?${new URLSearchParams({ 'dsh-device': device.name }).toString()}`
+      const params = new URLSearchParams({ 'dsh-device': device.name })
+      if (panel && device.panels === 'ack') params.set('dsh-panel', panel)
+      const url = `${root}?${params.toString()}`
       const tauri = window.__TAURI_INTERNALS__
       if (tauri && typeof tauri.invoke === 'function') {
         try {
@@ -3080,8 +3443,9 @@ window.__ModuleLoader__.load({
       }
       useEffect(() => {
         if (st.openAdd) {
+          const preset = typeof st.openAdd === 'object' ? st.openAdd.preset : undefined
           setStore({ openAdd: false })
-          setAdding({})
+          setAdding(preset ? { preset } : {})
         }
       }, [st.openAdd])
 
@@ -3101,6 +3465,7 @@ window.__ModuleLoader__.load({
           }
           if (kind === 'remove') setRemoving(device)
           if (kind === 'update') setUpdateJob(await post('/devices/update', { id: device.id }))
+          if (kind === 'update-ssh') setAdding({ preset: sshPresetFor(device) })
           refreshDevices()
         } catch (e) {
           setNotice(e.message)
@@ -3228,13 +3593,34 @@ window.__ModuleLoader__.load({
       return (e && e.message) || String(e)
     }
 
-    /** Show one of the device's own panels (Plugins, Automations…) inline. */
+    /** Show one of the device's own panels (Plugins, Automations…) inline, with its loading state. */
     function openDevicePanel(device, panel) {
       setStore({ selection: { deviceId: device.id, sessionId: null, panel } })
       try {
         appCtx.layout.selectPanel(CHAT_PANEL_ID)
       } catch {}
-      frames.show(device.id, device, { type: 'open-panel', panel }).catch((e) => showToast(e.message))
+      frames.openPanel(device, panel)
+    }
+    /**
+     * A device paired with a code and too old to update itself: adding it again over SSH
+     * installs the current host (same machine, same chats) and lets later updates happen from here.
+     */
+    function sshPresetFor(device) {
+      let host = ''
+      try {
+        const u = new URL(device.transport && device.transport.url)
+        if (!/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) host = u.hostname
+      } catch {}
+      return { target: host ? `root@${host}` : '', name: device.name, autoStart: false }
+    }
+    function updateOverSsh(device) {
+      setStore({ openAdd: { preset: sshPresetFor(device) } })
+      try {
+        appCtx.layout.selectPanel(PANEL_ID)
+      } catch {}
+    }
+    function panelLabel(panel) {
+      return panel === 'plugins' ? appT('pluginsMenu') : panel === 'schedules' ? appT('automationsMenu') : panel
     }
 
     async function sessionAction(device, sessionId, action, extra = {}) {
@@ -3803,7 +4189,9 @@ window.__ModuleLoader__.load({
       healthIssues,
       healthSummary,
       formatBytes,
-      components: { RemoteSidebar, RemoteGroup, RemoteSessionRow, RemoteSearchResults, DevicesPage, DeviceCard, DevicesSettings, ModelKeyPanel, RemoteChatPanel, Overlays, DevicePicker, AddDialog },
+      frames,
+      deviceMenuItems,
+      components: { RemoteSidebar, RemoteDevice, RemoteGroup, RemoteSessionRow, RemoteSearchResults, DevicesPage, DeviceCard, DevicesSettings, ModelKeyPanel, RemoteChatPanel, Overlays, DevicePicker, AddDialog },
       dialogs: { RenameDialog, ConfirmArchiveDialog, ArchivedDialog, PortsDialog, SyncDialog, AccountDialog },
     }
     return module.exports

@@ -24,6 +24,7 @@ try {
   const devices = (await api.call('GET', '/api/devices')).body.devices
   const dev = devices.find((d) => d.transport.kind === 'url')
   await api.call('POST', '/api/devices/model-key/clear', { id: dev.id })
+  await api.call('POST', '/api/devices/account/clear', { id: dev.id }).catch(() => {})
   await api.call('POST', '/api/devices/refresh', { id: dev.id })
 
   await page.goto(url)
@@ -56,7 +57,8 @@ try {
   await page.waitForSelector('.dshdev-chat-banner [data-testid^=model-key-]', { timeout: 20000 })
   await shot(page, 'mp-02-missing-key-banner')
   check('missing model key is explained in a banner above the remote chat', true)
-  await page.locator('.dshdev-chat-banner').getByRole('button', { name: /Use this computer/ }).click()
+  // (with an account on this computer too, the banner offers both: take the key)
+  await page.locator('.dshdev-chat-banner').getByRole('button', { name: /Use this computer.s key/ }).click()
   await page.waitForFunction(() => !document.querySelector('.dshdev-chat-banner'), null, { timeout: 20000 })
   check('one click stores the desktop key on the device', true)
   const after = (await api.call('GET', '/api/devices')).body.devices.find((d) => d.id === dev.id)

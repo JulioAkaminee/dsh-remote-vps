@@ -71,6 +71,15 @@ echo "using node $("$NODE" --version) at $NODE"
 
 # ── dsh + plugin ─────────────────────────────────────────────────────────────
 [ -f "$ROOT/runtime/package.json" ] || printf '{\n  "name": "dsh-device-runtime",\n  "private": true\n}\n' > "$ROOT/runtime/package.json"
+# A desktop asks for its own dsh version. When npm does not have that version (a
+# desktop build ahead of npm), keep the dsh the device runs: the host still updates.
+if [ "$DSH_VERSION" != "latest" ]; then
+  if "$NPM" view "@deepseek-ai/dsh@$DSH_VERSION" version --loglevel=error 2>&1 | grep -q 'E404'; then
+    current_dsh=$("$NODE" -e 'try{console.log(require(process.argv[1]+"/node_modules/@deepseek-ai/dsh/package.json").version)}catch{}' "$ROOT/runtime" 2>/dev/null || true)
+    echo "dsh $DSH_VERSION is not on npm; keeping dsh ${current_dsh:-latest}"
+    DSH_VERSION="${current_dsh:-latest}"
+  fi
+fi
 echo "installing @deepseek-ai/dsh@$DSH_VERSION and $(basename "$PLUGIN")"
 "$NPM" install --prefix "$ROOT/runtime" --no-audit --no-fund --omit=dev --loglevel=error \
   "@deepseek-ai/dsh@$DSH_VERSION" "$PLUGIN" || result_fail "npm install failed"
