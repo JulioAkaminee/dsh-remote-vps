@@ -12,44 +12,64 @@ import path from 'node:path'
 // and need no package build scripts in any package manager.
 //
 // Hosts disagree on how a CommonJS file reaches an ES module: plain Node hands
-// module.exports over as the default export, while a bundling host can expose
-// the namespace itself or only `default`. Reading Client from the first shape
-// that has it keeps the transport working on both; the require fallback covers
-// a host that rewrites the import altogether.
+// module.exports over as the default export; another host exposes the namespace
+// itself, a `default` that is not the exports object, or the exports object
+// under a literal `module.exports` key (seen on macOS). `utils` can also be
+// missing from the namespace while `Client` is there, because it is built from
+// an object spread the host's parser cannot see. So: look at every shape, take
+// the first with both, otherwise take one with a Client, and let the require
+// path fill in whatever is still missing.
 import * as ssh2Module from './vendor/node_modules/ssh2/lib/index.js'
 
-function pickSsh2(candidate) {
-  // The namespace can carry only some of the names (Node's CommonJS lexer sees
-  // `Client` but not the object spread behind `utils`), so prefer whichever
-  // shape has both, and settle for a Client when neither does.
-  const shapes = [candidate, candidate && candidate.default].filter(Boolean)
-  return shapes.find((s) => typeof s.Client === 'function' && s.utils) || shapes.find((s) => typeof s.Client === 'function') || null
+/** Every plausible exports object behind the module, outermost first. */
+export function ssh2Shapes(mod) {
+  const shapes = []
+  const add = (value) => {
+    if (value && typeof value === 'object' && !shapes.includes(value)) shapes.push(value)
+  }
+  add(mod)
+  add(mod && mod.default)
+  add(mod && mod['module.exports'])
+  const def = mod && mod.default
+  add(def && def.default)
+  add(def && def['module.exports'])
+  return shapes
+}
+
+export function pickSsh2(mod) {
+  const shapes = ssh2Shapes(mod)
+  return (
+    shapes.find((s) => typeof s.Client === 'function' && s.utils) ||
+    shapes.find((s) => typeof s.Client === 'function') ||
+    null
+  )
 }
 
 let ssh2 = pickSsh2(ssh2Module)
-if (!ssh2) {
+if (!ssh2 || !ssh2.utils) {
   try {
-    ssh2 = pickSsh2(createRequire(import.meta.url)('./vendor/node_modules/ssh2/lib/index.js'))
+    const required = pickSsh2(createRequire(import.meta.url)('./vendor/node_modules/ssh2/lib/index.js'))
+    if (required && (!ssh2 || required.utils)) ssh2 = required
   } catch {}
 }
 
-const Client = (ssh2 && ssh2.Client) || null
+const Client = (ssh2 && typeof ssh2.Client === 'function' && ssh2.Client) || null
 const utils = (ssh2 && ssh2.utils) || null
 
 /** What loaded, for the error a person reads when it did not. */
 function ssh2Shape() {
   const keys = Object.keys(ssh2Module || {}).join(', ') || 'none'
-  return `module keys: ${keys}; default: ${ssh2Module && ssh2Module.default ? 'yes' : 'no'}`
+  return `module keys: ${keys}; default: ${ssh2Module && ssh2Module.default ? 'yes' : 'no'}; client: ${Client ? 'yes' : 'no'}; utils: ${utils ? 'yes' : 'no'}`
 }
 
 function requireSsh2(what) {
-  if (typeof Client === 'function' && utils) return
-  throw new Error(`ssh transport unavailable: ssh2 did not load (${what}; ${ssh2Shape()}). Reinstall the plugin.`)
+  if (Client) return
+  throw new Error(`ssh transport unavailable: ssh2 did not load its client (${what}; ${ssh2Shape()}). Reinstall the plugin.`)
 }
 
 /** For tests and the doctor: is the SSH client really there in this host? */
 export function sshTransport() {
-  return { client: typeof Client === 'function', utils: !!utils, shape: ssh2Shape() }
+  return { client: !!Client, utils: !!utils, shape: ssh2Shape() }
 }
 
 const SSH_DIR = () => path.join(os.homedir(), '.ssh')
@@ -268,6 +288,12 @@ function loadKeys(resolved, passphrase) {
     try {
       data = fs.readFileSync(file)
     } catch {
+      continue
+    }
+    // Without ssh2's `utils` the key cannot be inspected; hand it to the client
+    // as-is and let it decide (an encrypted key then reports ssh2's own error).
+    if (!utils) {
+      keys.push({ file, data })
       continue
     }
     let parsed = utils.parseKey(data)
