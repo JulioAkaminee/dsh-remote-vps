@@ -118,8 +118,12 @@ for (const [f, body] of Object.entries(files)) if (!fs.existsSync(path.join(dir,
 if [ -n "$NAME" ]; then "$ROOT/bin/dsh-device" name "$NAME" >/dev/null; fi
 
 # ── port: keep the running host's port, otherwise the first free one ─────────
-current=$("$ROOT/bin/dsh-device" status --json 2>/dev/null | "$NODE" -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);if(j.running&&j.origin)console.log(new URL(j.origin).port)}catch{}})' || true)
-if [ -n "$current" ]; then PORT="$current"; else
+# (a self-update passes the port it runs on with DSH_DEVICE_FORCE_PORT=1: kept as is)
+current=""
+if [ "${DSH_DEVICE_FORCE_PORT:-0}" != 1 ]; then
+  current=$("$ROOT/bin/dsh-device" status --json 2>/dev/null | "$NODE" -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);if(j.running&&j.origin)console.log(new URL(j.origin).port)}catch{}})' || true)
+fi
+if [ "${DSH_DEVICE_FORCE_PORT:-0}" = 1 ]; then :; elif [ -n "$current" ]; then PORT="$current"; else
   PORT=$("$NODE" -e '
 const net = require("net"); let p = Number(process.argv[1])
 const tryPort = () => { const s = net.createServer(); s.once("error", () => { p++; tryPort() }); s.listen(p, "127.0.0.1", () => s.close(() => console.log(p))) }
@@ -135,7 +139,12 @@ if [ "$SERVICE" = 1 ]; then
     mode="systemd"
   else
     echo "systemd --user unavailable: starting in the background (no restart on reboot)"
-    if [ -f "$ROOT/host.pid" ] && kill -0 "$(cat "$ROOT/host.pid")" 2>/dev/null; then kill "$(cat "$ROOT/host.pid")" || true; sleep 1; fi
+    if [ -f "$ROOT/host.pid" ] && kill -0 "$(cat "$ROOT/host.pid")" 2>/dev/null; then
+      old_pid=$(cat "$ROOT/host.pid"); kill "$old_pid" || true
+      # The old host must be gone before the new one binds its port (and before /hello is checked).
+      n=0; while kill -0 "$old_pid" 2>/dev/null && [ "$n" -lt 15 ]; do sleep 1; n=$((n + 1)); done
+      kill -9 "$old_pid" 2>/dev/null || true
+    fi
     # shellcheck disable=SC1091
     ( set -a; [ -f "$ROOT/env" ] && . "$ROOT/env"; set +a
       DSH_HOME="$DSH_HOME" nohup "$NODE" "$DSH_BIN" --profile device-host --no-open --host 127.0.0.1 --port "$PORT" >> "$ROOT/host.log" 2>&1 &

@@ -63,6 +63,33 @@ export function compareVersions(a, b) {
   return 0
 }
 
+/** Semver order with prereleases: 0.2.1-rc.4 < 0.2.1-rc.5 < 0.2.1. */
+export function compareSemver(a, b) {
+  const [ma, pa = ''] = String(a ?? '').split(/-(.*)/s)
+  const [mb, pb = ''] = String(b ?? '').split(/-(.*)/s)
+  const main = compareVersions(ma, mb)
+  if (main) return main
+  if (pa === pb) return 0
+  if (!pa) return 1
+  if (!pb) return -1
+  const xa = pa.split('.')
+  const xb = pb.split('.')
+  for (let i = 0; i < Math.max(xa.length, xb.length); i++) {
+    if (xa[i] === undefined) return -1
+    if (xb[i] === undefined) return 1
+    const na = /^\d+$/.test(xa[i]) ? Number(xa[i]) : null
+    const nb = /^\d+$/.test(xb[i]) ? Number(xb[i]) : null
+    if (na !== null && nb !== null && na !== nb) return na > nb ? 1 : -1
+    if (na === null || nb === null) {
+      const c = xa[i].localeCompare(xb[i])
+      if (c) return c > 0 ? 1 : -1
+    }
+  }
+  return 0
+}
+
+const AUTO_UPDATE_MODES = ['auto', 'ask', 'never']
+
 function backoffMs(failures) {
   const base = Math.min(30_000, 1000 * 2 ** Math.max(0, failures - 1))
   return base / 2 + Math.random() * (base / 2)
@@ -293,6 +320,8 @@ export class DeviceManager {
       try {
         info = await client.info()
       } catch (error) {
+        // A device installing its own update restarts on purpose: never "repair" it meanwhile.
+        if (s.updating) throw Object.assign(error, { duringUpdate: true })
         if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET' || error.status === 502) {
           if (await this._rediscoverPort(device, s).catch(() => false)) {
             s.baseUrl = await this._transport(this.registry.get(id), s)
@@ -319,6 +348,7 @@ export class DeviceManager {
       const patch = { lastSeenAt: new Date().toISOString(), versions: info.versions, platform: info.platform }
       if (info.name && info.name !== device.remoteName) patch.remoteName = info.name
       this.registry.update(id, patch)
+      this._maybeAutoUpdate(this.registry.get(id), s)
     } catch (error) {
       s.failures += 1
       s.error = errorText(error)
@@ -335,9 +365,9 @@ export class DeviceManager {
         this._closeTransport(s)
         return
       }
-      s.status = s.failures >= OFFLINE_AFTER_FAILURES ? 'offline' : 'connecting'
-      s.nextCheckAt = Date.now() + backoffMs(s.failures)
-      this._closeTransport(s)
+      s.status = s.failures >= OFFLINE_AFTER_FAILURES && !s.updating ? 'offline' : 'connecting'
+      s.nextCheckAt = Date.now() + (s.updating ? 5000 : backoffMs(s.failures))
+      if (!s.updating) this._closeTransport(s)
     }
   }
 
@@ -395,7 +425,7 @@ export class DeviceManager {
   _recordTurnEnd(device, s, te) {
     if (!te?.sessionId) return false
     const session = (s.sessions ?? []).find((x) => x.sessionId === te.sessionId)
-    this.notifications.push({
+    this._pushNotification({
       id: `${device.id}:${s.w.boot}:${te.seq}`,
       kind: 'done',
       deviceId: device.id,
@@ -405,7 +435,6 @@ export class DeviceManager {
       reason: te.reason || '',
       at: te.at ?? Date.now(),
     })
-    if (this.notifications.length > 30) this.notifications.splice(0, this.notifications.length - 30)
     return true
   }
 
@@ -413,7 +442,7 @@ export class DeviceManager {
   _recordAttention(device, s, a) {
     if (!a?.sessionId) return false
     const session = (s.sessions ?? []).find((x) => x.sessionId === a.sessionId)
-    this.notifications.push({
+    this._pushNotification({
       id: `${device.id}:${s.w.boot}:a${a.seq}`,
       kind: 'attention',
       deviceId: device.id,
@@ -424,7 +453,6 @@ export class DeviceManager {
       toolName: a.toolName ?? null,
       at: a.at ?? Date.now(),
     })
-    if (this.notifications.length > 30) this.notifications.splice(0, this.notifications.length - 30)
     return true
   }
 
@@ -452,7 +480,10 @@ export class DeviceManager {
       versions: device.versions ?? null,
       outdated: !!(localDsh && remoteDsh && localDsh !== remoteDsh) || hostBehind || !!(PLUGIN_VERSION && remotePlugin && compareVersions(remotePlugin, PLUGIN_VERSION) < 0),
       hostBehind,
-      canUpdate: device.transport.kind === 'ssh',
+      canUpdate: device.transport.kind === 'ssh' || (s.features ?? []).includes('self-update'),
+      updating: s.updating ? { startedAt: s.updating.startedAt, auto: !!s.updating.auto } : null,
+      lastUpdate: s.lastUpdate ?? this._deviceUpdateRecord(device, s),
+      health: s.info?.health ?? null,
       protocolMismatch: !!(device.versions?.protocol && device.versions.protocol !== PROTOCOL_VERSION),
       sessions: s.sessions,
       sessionsAt: s.sessionsAt,
@@ -470,6 +501,31 @@ export class DeviceManager {
       ports: (s.ports ?? []).map((p) => ({ port: p.port, label: p.label ?? p.command ?? null, cwd: p.cwd ?? null, scope: p.scope ?? null, fromAgent: p.fromAgent !== false || !!p.inWorkspace, localPort: this.ports.get(device.id, p.port)?.localPort ?? null })),
       portMap: this.ports.map(device.id),
     }
+  }
+
+  /** The device's own record of its last update, when still relevant (recent, and the device still behind). */
+  _deviceUpdateRecord(device, s) {
+    const u = s.info?.update
+    if (!u || u.state === 'none' || u.state === 'running') return null
+    if (Date.now() - Date.parse(u.finishedAt || u.startedAt || 0) > 7 * 24 * 3600_000) return null
+    if (u.state === 'failed' && !this._behind(device)) return null
+    return u
+  }
+
+  /** Whether the device runs an older host or dsh than this desktop (never true for a newer one). */
+  _behind(device) {
+    const remotePlugin = device.versions?.plugin ?? null
+    const remoteDsh = device.versions?.dsh ?? null
+    const localDsh = localDshVersion()
+    if (remotePlugin && compareVersions(remotePlugin, MIN_HOST_VERSION) < 0) return true
+    if (PLUGIN_VERSION && remotePlugin && compareSemver(remotePlugin, PLUGIN_VERSION) < 0) return true
+    if (localDsh && remoteDsh && compareSemver(remoteDsh, localDsh) < 0) return true
+    return false
+  }
+
+  _pushNotification(n) {
+    this.notifications.push(n)
+    if (this.notifications.length > 30) this.notifications.splice(0, this.notifications.length - 30)
   }
 
   _requireFeature(device, s, feature) {
@@ -697,7 +753,28 @@ export class DeviceManager {
       notifications: this.notifications,
       version: this.version,
       self: { hostname: os.hostname(), platform: process.platform, dsh: localDshVersion(), plugin: PLUGIN_VERSION },
+      prefs: this.prefs(),
     }
+  }
+
+  // ── preferences the host side acts on ────────────────────────────────────
+
+  prefs() {
+    const p = this.registry.prefs ? this.registry.prefs() : {}
+    return { autoUpdate: AUTO_UPDATE_MODES.includes(p.autoUpdate) ? p.autoUpdate : 'auto' }
+  }
+
+  setPrefs(patch = {}) {
+    const next = {}
+    if (patch.autoUpdate !== undefined) {
+      if (!AUTO_UPDATE_MODES.includes(patch.autoUpdate)) throw new Error('autoUpdate must be auto, ask or never')
+      next.autoUpdate = patch.autoUpdate
+    }
+    if (this.registry.setPrefs) this.registry.setPrefs(next)
+    this._changed()
+    // Turning automatic updates on acts at once on idle devices.
+    if (next.autoUpdate === 'auto') for (const d of this.registry.list()) this._maybeAutoUpdate(d, this._ensureState(d.id))
+    return this.prefs()
   }
 
   // ── jobs ─────────────────────────────────────────────────────────────────
@@ -962,30 +1039,151 @@ export class DeviceManager {
     }
   }
 
-  /** Re-run the installer on an SSH device (version alignment). */
-  update(id) {
+  /**
+   * Update a device's host (and align its dsh with this desktop): by the
+   * device itself when it supports it (any transport, rolls back on failure),
+   * else over SSH. Returns a job.
+   */
+  update(id, { auto = false } = {}) {
     const device = this.registry.get(id)
     if (!device) throw new Error('unknown device')
-    if (device.transport.kind !== 'ssh') throw new Error('only SSH devices can be updated from here; run the installer on the device')
-    return this._job('update', async (log) => {
-      const s = this._ensureState(id)
-      const t = device.transport
-      const { ssh } = await this._connectSsh(
-        { target: t.target, port: t.port, username: t.username, identityFile: t.identityFile, fingerprint: t.fingerprint, ...this._savedSecrets(t.savedMachineId) },
-        log,
-      )
+    const s = this._ensureState(id)
+    if (s.updating) {
+      const job = this.jobView(s.updating.jobId)
+      if (job) return job
+    }
+    const selfUpdate = (s.features ?? []).includes('self-update')
+    if (!selfUpdate && device.transport.kind !== 'ssh') throw new Error('this device runs an older host: update it once on the device (install-host.sh); later updates happen from here')
+    const target = { plugin: PLUGIN_VERSION, dsh: localDshVersion() }
+    const view = this._job('update', async (log) => {
       try {
-        await this._install(ssh, log, { port: t.remotePort })
-        log('restarting the device host')
-        await ssh.exec(`${REMOTE_CLI} service restart`, { timeoutMs: 60_000 })
+        const from = device.versions?.plugin ?? '?'
+        if (selfUpdate) await this._selfUpdate(device, s, log)
+        else await this._sshUpdate(device, s, log)
+        s.lastUpdate = { state: 'done', from, to: target.plugin, finishedAt: new Date().toISOString(), auto }
+        this._recordUpdate(device, s, { ok: true, auto, from, to: target.plugin })
+        log('done')
+        return { ok: true }
+      } catch (error) {
+        s.lastUpdate = { state: 'failed', error: errorText(error), finishedAt: new Date().toISOString(), auto }
+        s.updateFailedAt = Date.now()
+        this._recordUpdate(device, s, { ok: false, auto, error: errorText(error) })
+        throw error
       } finally {
-        ssh.end()
+        s.updating = null
+        s.autoTarget = `${target.plugin}|${target.dsh}`
+        this.refresh(id)
+        this._changed()
       }
-      this._closeTransport(s)
-      s.client = null
-      this.refresh(id)
-      return { ok: true }
     })
+    s.updating = { startedAt: Date.now(), auto, jobId: view.id }
+    this._changed()
+    return view
+  }
+
+  async _selfUpdate(device, s, log) {
+    const tarball = fs.readdirSync(ASSETS).find((f) => /^dsh-device-host-.*\.tgz$/.test(f))
+    if (!tarball) throw new Error('dsh-devices assets are missing the dsh-device-host tarball (run `npm run build`)')
+    const { client } = await this._ready(device.id)
+    log(`sending ${tarball} to ${device.name || device.remoteName}`)
+    try {
+      const started = await client.selfUpdate({
+        installer: fs.readFileSync(path.join(ASSETS, 'install-host.sh')).toString('base64'),
+        tarball: fs.readFileSync(path.join(ASSETS, tarball)).toString('base64'),
+        tarballName: tarball,
+        dshVersion: localDshVersion() || 'latest',
+      })
+      log(`the device installs ${started.from} → ${started.to} and restarts itself`)
+    } catch (error) {
+      // Another desktop (or an earlier attempt) is already updating it: follow that run.
+      if (!(error instanceof DeviceHttpError && error.status === 409)) throw error
+      log('the device is already installing an update; following it')
+    }
+    const deadline = Date.now() + 20 * 60_000
+    let seenDown = false
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 3000))
+      let st
+      try {
+        s.baseUrl = await this._transport(this.registry.get(device.id), s)
+        st = await client.selfUpdateStatus()
+      } catch {
+        if (!seenDown) log('the device host is restarting…')
+        seenDown = true
+        client.invalidate()
+        continue
+      }
+      if (st.state === 'done') {
+        log(`updated to ${st.to}`)
+        return st
+      }
+      if (st.state === 'failed') throw new Error(st.error || 'the update failed on the device')
+    }
+    throw new Error('the update did not finish within 20 minutes')
+  }
+
+  async _sshUpdate(device, s, log) {
+    const t = device.transport
+    const { ssh } = await this._connectSsh(
+      { target: t.target, port: t.port, username: t.username, identityFile: t.identityFile, fingerprint: t.fingerprint, ...this._savedSecrets(t.savedMachineId) },
+      log,
+    )
+    try {
+      await this._install(ssh, log, { port: t.remotePort })
+      log('restarting the device host')
+      await ssh.exec(`${REMOTE_CLI} service restart`, { timeoutMs: 60_000 })
+    } finally {
+      ssh.end()
+    }
+    this._closeTransport(s)
+    s.client = null
+  }
+
+  _recordUpdate(device, s, { ok, auto, from, to, error }) {
+    this._pushNotification({
+      id: `${device.id}:update:${Date.now()}`,
+      kind: 'update',
+      deviceId: device.id,
+      deviceName: device.name || device.remoteName || device.id.slice(0, 8),
+      ok,
+      auto,
+      from: from ?? null,
+      to: to ?? null,
+      error: error ?? null,
+      at: Date.now(),
+    })
+  }
+
+  /**
+   * Keep devices current without being asked: when this desktop is newer (or
+   * runs another dsh) and the device is idle — no turn running, nobody waited on.
+   * "ask" announces the update once per version; failures wait six hours.
+   */
+  _maybeAutoUpdate(device, s) {
+    if (!device || this.disposed || s.updating || s.status !== 'online') return
+    const pref = this.prefs().autoUpdate
+    if (pref === 'never') return
+    const v = this.view(device)
+    // Only forward: a device newer than this desktop (updated by another one) is left alone.
+    if (!this._behind(device) || !v.canUpdate || v.protocolMismatch) return
+    const target = `${PLUGIN_VERSION}|${localDshVersion()}`
+    // Already tried this exact target and it stayed outdated (e.g. that dsh is not on npm): stop.
+    if (s.autoTarget === target && s.lastUpdate && s.lastUpdate.state === 'done') return
+    if (s.updateFailedAt && Date.now() - s.updateFailedAt < 6 * 3600_000) return
+    if ((s.sessions ?? []).some((x) => x.running || x.pending)) return
+    if (pref === 'ask') {
+      if (s.askedTarget === target) return
+      s.askedTarget = target
+      this._pushNotification({ id: `${device.id}:update-available:${target}`, kind: 'update-available', deviceId: device.id, deviceName: v.name, to: PLUGIN_VERSION, at: Date.now() })
+      this._changed()
+      return
+    }
+    try {
+      this.logger.info?.(`[dsh-devices] updating ${v.name} automatically (${device.versions?.plugin ?? '?'} → ${PLUGIN_VERSION})`)
+      this.update(device.id, { auto: true })
+    } catch (error) {
+      this.logger.warn?.(`[dsh-devices] automatic update of ${v.name}: ${errorText(error)}`)
+    }
   }
 
   // ── model credential on the device ───────────────────────────────────────

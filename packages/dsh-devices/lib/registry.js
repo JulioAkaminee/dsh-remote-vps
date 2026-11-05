@@ -27,21 +27,34 @@ export class DeviceRegistry {
         fs.chmodSync(d, 0o700)
       } catch {}
     }
-    this.devices = this._load()
+    const doc = this._load()
+    this.devices = doc.devices
+    /** Desktop-wide preferences the host side needs (e.g. automatic updates). */
+    this.preferences = doc.prefs
   }
 
   _load() {
     try {
       const doc = JSON.parse(fs.readFileSync(this.file, 'utf8'))
-      return Array.isArray(doc.devices) ? doc.devices : []
+      return { devices: Array.isArray(doc.devices) ? doc.devices : [], prefs: doc.prefs && typeof doc.prefs === 'object' ? doc.prefs : {} }
     } catch (error) {
-      if (error.code === 'ENOENT') return []
+      if (error.code === 'ENOENT') return { devices: [], prefs: {} }
       throw new Error(`dsh-devices: cannot read ${this.file}: ${error.message}`)
     }
   }
 
   save() {
-    writeAtomic(this.file, JSON.stringify({ version: 1, devices: this.devices }, null, 2) + '\n')
+    writeAtomic(this.file, JSON.stringify({ version: 1, devices: this.devices, prefs: this.preferences }, null, 2) + '\n')
+  }
+
+  prefs() {
+    return { ...this.preferences }
+  }
+
+  setPrefs(patch) {
+    this.preferences = { ...this.preferences, ...patch }
+    this.save()
+    return this.prefs()
   }
 
   list() {

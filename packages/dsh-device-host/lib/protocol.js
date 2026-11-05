@@ -50,6 +50,11 @@ export const ROUTES = Object.freeze({
   ports: `${DEVICE_BASE}/ports`,
   /** Authenticated upgrade (`Upgrade: dsh-port-tunnel`, `?port=`): raw TCP to 127.0.0.1:<port> on the device. */
   portTunnel: `${DEVICE_BASE}/port-tunnel`,
+  /**
+   * Authenticated. POST `{ installer, tarball, tarballName, dshVersion }` (base64) installs a new
+   * device host on the device itself, rolling back if it does not come up; GET reports the last update.
+   */
+  selfUpdate: `${DEVICE_BASE}/self-update`,
   /** Authenticated. Everything below is proxied to the host's own DSH web UI. */
   tunnel: `${DEVICE_BASE}/t`,
 })
@@ -64,7 +69,9 @@ export const ACCOUNT_GRANT_KEY = 'deepseek-account-platform/default'
 export const PORT_TUNNEL_PROTOCOL = 'dsh-port-tunnel'
 
 /** Capabilities a device host advertises in /info (desktops degrade gracefully without them). */
-export const HOST_FEATURES = Object.freeze(['watch', 'model-key', 'pending', 'session-actions', 'search', 'account', 'sync', 'ports'])
+export const HOST_FEATURES = Object.freeze(['watch', 'model-key', 'pending', 'session-actions', 'search', 'account', 'sync', 'ports', 'health'])
+/** Advertised only when the host was installed by install-host.sh (it knows its installation root). */
+export const SELF_UPDATE_FEATURE = 'self-update'
 
 /** Longest long-poll a host holds open. */
 export const WATCH_MAX_MS = 30_000

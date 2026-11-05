@@ -227,6 +227,15 @@ export class DeviceClient {
     return this.call('GET', ROUTES.ports)
   }
 
+  /** Hand the device a new device host to install itself (base64 installer + tarball). */
+  selfUpdate(body) {
+    return this.call('POST', ROUTES.selfUpdate, body, { timeoutMs: 120_000 })
+  }
+
+  selfUpdateStatus() {
+    return this.call('GET', ROUTES.selfUpdate, undefined, { timeoutMs: 15_000 })
+  }
+
   /**
    * Open a raw TCP tunnel to `port` on the device (Upgrade: dsh-port-tunnel).
    * @returns {Promise<import('node:net').Socket>} the spliced socket

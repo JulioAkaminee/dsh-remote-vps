@@ -274,6 +274,16 @@ window.__ModuleLoader__.load({
       modelReadyAccount: 'Using your DeepSeek account', addApiKey: 'Add an API key', hostOutdatedFeature: 'Update {device} to use this.',
       deviceSection: 'Device', waitingCount: '{n} waiting for you', archived: 'Archived', undo: 'Undo', failed: 'failed',
       updating: 'Updating the device host on {device}…', updated: '{device} is up to date.',
+      setAutoUpdate: 'Update devices automatically', setAutoUpdateHint: 'Keeps each device’s host and dsh in step with this computer. A device installs the update itself and goes back to the previous version if the new one does not start.',
+      autoUpdateAuto: 'When the device is idle', autoUpdateAsk: 'Ask first', autoUpdateNever: 'Never',
+      setUnload: 'Free memory of idle devices', setUnloadHint: 'Unloads a device’s interface on this computer after it has not been on screen for a while; it reloads quickly when you come back.',
+      unloadMinutes: 'After {n} minutes', unloadNever: 'Never',
+      setHealthAlerts: 'Warn about device health', setHealthAlertsHint: 'Disk almost full, memory almost exhausted or a device overloaded.',
+      updateAvailable: 'Update available for {device}', updateNow2: 'Update', updatedTo: '{device} updated to {version}.', updateFailed: 'Could not update {device}: {error}',
+      updatingTag: 'Updating…', updateFailedTag: 'Update failed',
+      cpu: 'CPU', memory: 'Memory', disk: 'Disk', ofSize: '{used} of {total}',
+      healthDisk: '{device}: disk almost full ({free} free)', healthMemory: '{device}: memory almost exhausted ({percent}% in use)', healthCpu: '{device} is overloaded (CPU {percent}%)',
+      tagDisk: 'Disk almost full', tagMemory: 'Memory high', tagCpu: 'Overloaded',
       apiKeyName: 'DeepSeek API key', accountName: 'DeepSeek account', configured: 'Configured', notConfigured: 'Not set',
       signedIn: 'Signed in', notSignedIn: 'Not signed in', noModels: 'No models', setUpModels: 'Set up models', yourDevices: 'Your devices',
     })
@@ -309,6 +319,16 @@ window.__ModuleLoader__.load({
       modelReadyAccount: 'Usando a sua conta DeepSeek', addApiKey: 'Adicionar chave da API', hostOutdatedFeature: 'Atualize {device} para usar isto.',
       deviceSection: 'Device', waitingCount: '{n} esperando por você', archived: 'Arquivada', undo: 'Desfazer', failed: 'falhou',
       updating: 'Atualizando o device host de {device}…', updated: '{device} está atualizado.',
+      setAutoUpdate: 'Atualizar devices automaticamente', setAutoUpdateHint: 'Mantém o device host e o dsh de cada device na mesma versão deste computador. O device instala sozinho e volta para a versão anterior se a nova não subir.',
+      autoUpdateAuto: 'Quando o device estiver ocioso', autoUpdateAsk: 'Perguntar antes', autoUpdateNever: 'Nunca',
+      setUnload: 'Liberar memória de devices parados', setUnloadHint: 'Descarrega a interface de um device neste computador quando ela fica um tempo fora da tela; ela recarrega rápido quando você volta.',
+      unloadMinutes: 'Depois de {n} minutos', unloadNever: 'Nunca',
+      setHealthAlerts: 'Avisar sobre a saúde dos devices', setHealthAlertsHint: 'Disco quase cheio, memória quase esgotada ou device sobrecarregado.',
+      updateAvailable: 'Atualização disponível para {device}', updateNow2: 'Atualizar', updatedTo: '{device} atualizado para {version}.', updateFailed: 'Não foi possível atualizar {device}: {error}',
+      updatingTag: 'Atualizando…', updateFailedTag: 'Falha na atualização',
+      cpu: 'CPU', memory: 'Memória', disk: 'Disco', ofSize: '{used} de {total}',
+      healthDisk: '{device}: disco quase cheio ({free} livres)', healthMemory: '{device}: memória quase esgotada ({percent}% em uso)', healthCpu: '{device} está sobrecarregado (CPU {percent}%)',
+      tagDisk: 'Disco quase cheio', tagMemory: 'Memória alta', tagCpu: 'Sobrecarregado',
       apiKeyName: 'Chave da API DeepSeek', accountName: 'Conta DeepSeek', configured: 'Configurada', notConfigured: 'Não configurada',
       signedIn: 'Conectada', notSignedIn: 'Não conectada', noModels: 'Sem modelos', setUpModels: 'Configurar modelos', yourDevices: 'Seus devices',
     })
@@ -338,7 +358,15 @@ window.__ModuleLoader__.load({
       useMacAccount: '使用本机的账号', signOutDevice: '在设备上退出', accountShared: '已用本机账号登录 {device}。',
       accountNote: '设备使用本机的登录。在设备上退出不影响本机；在本机退出会同时让设备失效。',
       modelReadyAccount: '正在使用你的 DeepSeek 账号', addApiKey: '添加 API Key', hostOutdatedFeature: '请更新 {device} 后使用。', deviceSection: '设备', waitingCount: '{n} 个等待你处理', archived: '已归档', undo: '撤销', failed: '失败',
-      updating: '正在更新 {device} 的设备主机…', updated: '{device} 已是最新。', apiKeyName: 'DeepSeek API Key', accountName: 'DeepSeek 账号', configured: '已配置', notConfigured: '未设置', signedIn: '已登录', notSignedIn: '未登录',
+      updating: '正在更新 {device} 的设备主机…', updated: '{device} 已是最新。',
+      setAutoUpdate: '自动更新设备', setAutoUpdateHint: '让每台设备的主机和 dsh 与本机保持同一版本。设备自行安装，新版本无法启动时会恢复旧版本。',
+      autoUpdateAuto: '设备空闲时', autoUpdateAsk: '先询问', autoUpdateNever: '从不',
+      setUnload: '释放空闲设备的内存', setUnloadHint: '设备界面一段时间不在屏幕上时在本机卸载，回来时会快速重新加载。', unloadMinutes: '{n} 分钟后', unloadNever: '从不',
+      setHealthAlerts: '设备状况提醒', setHealthAlertsHint: '磁盘快满、内存快用完或设备过载。',
+      updateAvailable: '{device} 有可用更新', updateNow2: '更新', updatedTo: '{device} 已更新到 {version}。', updateFailed: '无法更新 {device}：{error}',
+      updatingTag: '更新中…', updateFailedTag: '更新失败', cpu: 'CPU', memory: '内存', disk: '磁盘', ofSize: '{used} / {total}',
+      healthDisk: '{device}：磁盘快满了（剩余 {free}）', healthMemory: '{device}：内存快用完了（已用 {percent}%）', healthCpu: '{device} 过载（CPU {percent}%）',
+      tagDisk: '磁盘快满', tagMemory: '内存高', tagCpu: '过载', apiKeyName: 'DeepSeek API Key', accountName: 'DeepSeek 账号', configured: '已配置', notConfigured: '未设置', signedIn: '已登录', notSignedIn: '未登录',
       noModels: '没有模型', setUpModels: '设置模型', yourDevices: '你的设备',
     })
 
@@ -457,9 +485,49 @@ window.__ModuleLoader__.load({
     /** Push port maps into the embedded device UIs; announce ports forwarded automatically. */
     const knownForwards = new Map()
     const primedPorts = new Set()
+    /** Warn once when a device's disk, memory or CPU crosses into trouble (CPU only when it lasts). */
+    const healthAlerted = new Map()
+    const cpuStreak = new Map()
+    function checkHealth() {
+      if (store.settings.healthAlerts === false) return
+      const focused = document.visibilityState === 'visible' && document.hasFocus()
+      for (const d of store.data.devices || []) {
+        if (d.status !== 'online' || !d.health) continue
+        const issues = healthIssues(d.health)
+        const at = d.health.at
+        const streak = cpuStreak.get(d.id) || { at: null, n: 0 }
+        if (issues.some((i) => i.key === 'cpu')) {
+          if (streak.at !== at) cpuStreak.set(d.id, { at, n: streak.n + 1 })
+        } else cpuStreak.set(d.id, { at, n: 0 })
+        for (const key of ['disk', 'memory', 'cpu']) {
+          const k = `${d.id}:${key}`
+          const issue = issues.find((i) => i.key === key)
+          const lasting = key !== 'cpu' || (cpuStreak.get(d.id) || {}).n >= 3
+          if (!issue || !lasting) {
+            if (!issue) healthAlerted.delete(k)
+            continue
+          }
+          const before = healthAlerted.get(k)
+          if (before === issue.level || (before === 'critical' && issue.level === 'warning')) continue
+          healthAlerted.set(k, issue.level)
+          const text =
+            key === 'disk'
+              ? fill(appT('healthDisk'), { device: d.name, free: formatBytes(d.health.disk.free) })
+              : key === 'memory'
+                ? fill(appT('healthMemory'), { device: d.name, percent: Math.round(d.health.memory.percent) })
+                : fill(appT('healthCpu'), { device: d.name, percent: Math.round(d.health.cpu.percent) })
+          showToast(text, { icon: Icon('IconWarningOutlineRegular'), holdMs: 8000, kind: 'health' })
+          if (!focused || issue.level === 'critical') sendNotification({ key: `${k}:${issue.level}:${at}`, title: d.name, body: text })
+        }
+      }
+    }
+
     function afterData() {
       try {
         frames.syncPorts()
+      } catch {}
+      try {
+        checkHealth()
       } catch {}
       // Forget read marks of devices and sessions that are gone (only once a device's list is known).
       const devices = store.data.devices || []
@@ -618,6 +686,22 @@ window.__ModuleLoader__.load({
         }
         return
       }
+      if (n.kind === 'update') {
+        if (n.ok) showToast(fill(appT('updatedTo'), { device: n.deviceName, version: n.to || '' }), { tone: 'success', holdMs: 5000 })
+        else {
+          showToast(fill(appT('updateFailed'), { device: n.deviceName, error: n.error || '' }), { icon: Icon('IconWarningOutlineRegular'), holdMs: 8000 })
+          if (!focused) sendNotification({ key: n.id, title: n.deviceName, body: fill(appT('updateFailed'), { device: n.deviceName, error: n.error || '' }) })
+        }
+        return
+      }
+      if (n.kind === 'update-available') {
+        showToast(fill(appT('updateAvailable'), { device: n.deviceName }), {
+          icon: Icon('IconDownloadOutlineRegular'),
+          holdMs: 10_000,
+          actions: [{ label: appT('updateNow2'), onClick: () => (setStore({ toast: null }), device && startDeviceUpdate(device)) }],
+        })
+        return
+      }
       const mode = store.settings.notify
       if (mode === 'never') return
       if (/abort|cancel|interrupt/i.test(n.reason || '')) return
@@ -680,7 +764,7 @@ window.__ModuleLoader__.load({
     }
     // Function (hoisted), not a const: the store object above reads settings at module start.
     function settingsDefaults() {
-      return { notify: 'background', notifyAttention: true, showInSidebar: true, sessionsPerGroup: 5, preload: true, defaultDevice: 'local', editor: '' }
+      return { notify: 'background', notifyAttention: true, showInSidebar: true, sessionsPerGroup: 5, preload: true, defaultDevice: 'local', editor: '', unloadAfter: 10, healthAlerts: true }
     }
     function readSettings() {
       try {
@@ -887,7 +971,7 @@ window.__ModuleLoader__.load({
           iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:transparent;visibility:hidden'
           iframe.src = `${root}?${params.toString()}`
           this.host.appendChild(iframe)
-          f = { iframe, root, ready: false, pending: [] }
+          f = { iframe, root, ready: false, pending: [], createdAt: Date.now(), lastVisibleAt: background ? 0 : Date.now() }
           if (command && command.type !== 'open-session' && command.type !== 'new-session') f.pending.push(command)
           this.byDevice.set(deviceId, f)
           iframe.addEventListener('load', () => {
@@ -906,6 +990,7 @@ window.__ModuleLoader__.load({
           release()
         } else if (command) this.send(deviceId, command)
         if (background) return
+        f.lastVisibleAt = Date.now()
         this.active = deviceId
         for (const [id, x] of this.byDevice) x.iframe.style.display = id === deviceId ? 'block' : 'none'
         this.renderStatus()
@@ -1010,6 +1095,32 @@ window.__ModuleLoader__.load({
               : null,
           ),
         )
+      },
+      /** Free memory: a device UI off screen for longer than `idleMs` is unloaded (its gateway entry stays, so it reloads fast). */
+      unloadIdle(idleMs) {
+        if (!idleMs) return
+        const now = Date.now()
+        for (const [id, f] of [...this.byDevice]) {
+          // Only the UI on screen stays (even while the window is in the background). Any other one
+          // goes after the idle time; the chat panel loads it again when it is shown.
+          if (store.activePanel === CHAT_PANEL_ID && this.active === id) {
+            f.lastVisibleAt = now
+            continue
+          }
+          if (now - (f.lastVisibleAt || f.createdAt || now) > idleMs) this.unload(id)
+        }
+      },
+      unload(deviceId) {
+        const f = this.byDevice.get(deviceId)
+        if (!f) return
+        clearTimeout(f.timer)
+        try {
+          f.iframe.src = 'about:blank'
+        } catch {}
+        f.iframe.remove()
+        this.byDevice.delete(deviceId)
+        if (this.active === deviceId) this.active = null
+        emit()
       },
       drop(deviceId) {
         const f = this.byDevice.get(deviceId)
@@ -1183,6 +1294,7 @@ window.__ModuleLoader__.load({
 .dshdev-card2-open:focus-visible:after{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
 .dshdev-card2-desc{color:var(--dsw-alias-label-tertiary);-webkit-line-clamp:1;-webkit-box-orient:vertical;font-size:13px;line-height:18px;display:-webkit-box;overflow:hidden}
 .dshdev-card2-error{color:var(--dsw-alias-state-error-primary)}
+.dshdev-card2-health{color:var(--dsw-alias-label-secondary)}
 .dshdev-card2-end{z-index:1;flex:none;align-items:center;gap:8px;display:inline-flex;position:relative}
 .dshdev-status-tag{height:18px;padding:0 7px;font-size:10px;line-height:1}
 .dshdev-icon-button{border-radius:var(--dsw-radius-sm);width:28px;height:28px;color:var(--dsw-alias-label-caption);cursor:pointer;background:0 0;border:0;justify-content:center;align-items:center;display:inline-flex;flex:none}
@@ -1526,6 +1638,54 @@ window.__ModuleLoader__.load({
       return nt('time.ago', { t: label }, '{t} ago')
     }
 
+    /** "3.1 GB" in the app's language. */
+    function formatBytes(n) {
+      if (!Number.isFinite(n)) return '?'
+      const units = ['B', 'KB', 'MB', 'GB', 'TB']
+      let v = n
+      let i = 0
+      while (v >= 1000 && i < units.length - 1) {
+        v /= 1000
+        i += 1
+      }
+      const digits = v < 10 && i > 0 ? 1 : 0
+      try {
+        return `${new Intl.NumberFormat(document.documentElement.lang || undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(v)} ${units[i]}`
+      } catch {
+        return `${v.toFixed(digits)} ${units[i]}`
+      }
+    }
+    /** "CPU 12% · Memory 3.1 of 8 GB · Disk 41 of 80 GB" */
+    function healthSummary(health, t) {
+      if (!health) return null
+      const parts = []
+      if (health.cpu) parts.push(`${t('cpu')} ${Math.round(health.cpu.percent)}%`)
+      if (health.memory && health.memory.total) parts.push(`${t('memory')} ${fill(t('ofSize'), { used: formatBytes(health.memory.used), total: formatBytes(health.memory.total) })}`)
+      if (health.disk && health.disk.total) parts.push(`${t('disk')} ${fill(t('ofSize'), { used: formatBytes(health.disk.used), total: formatBytes(health.disk.total) })}`)
+      return parts.join(' · ')
+    }
+    /** What is wrong with a device right now: disk, memory, CPU — warning or critical. */
+    function healthIssues(health) {
+      if (!health) return []
+      const out = []
+      const d = health.disk
+      if (d && d.total) {
+        if (d.percent >= 95 || d.free < 1e9) out.push({ key: 'disk', level: 'critical' })
+        else if (d.percent >= 90 || d.free < 3e9) out.push({ key: 'disk', level: 'warning' })
+      }
+      const m = health.memory
+      if (m && m.total) {
+        if (m.percent >= 95) out.push({ key: 'memory', level: 'critical' })
+        else if (m.percent >= 90) out.push({ key: 'memory', level: 'warning' })
+      }
+      const c = health.cpu
+      if (c) {
+        const perCore = ((health.load && health.load[0]) || 0) / Math.max(1, c.cores)
+        if (c.percent >= 95 || perCore >= 2) out.push({ key: 'cpu', level: c.percent >= 99 || perCore >= 3 ? 'critical' : 'warning' })
+      }
+      return out
+    }
+
     /** The sidebar status of a remote session, worded and coloured like a local one. */
     function remoteStatus(s, deviceId) {
       if (s.pending && s.pending.kind === 'approval') return { state: 'warning', label: nt('status.waitingApproval', null, 'Waiting for approval'), trailing: nt('status.compact.approval', null, 'Approval') }
@@ -1722,6 +1882,7 @@ window.__ModuleLoader__.load({
           h('span', null, [device.name, t(`status_${device.status}`), device.versions && device.versions.dsh ? `dsh ${device.versions.dsh}` : null].filter(Boolean).join(' · ')),
         ),
         waiting ? h('div', { className: cls.hoverStatus }, h(Dot, { state: 'warning' }), h('span', null, fill(t('waitingCount'), { n: waiting }))) : null,
+        online && device.health ? h('div', { className: cls.hoverStatus }, h(Dot, { state: healthIssues(device.health).length ? 'warning' : 'done' }), h('span', null, healthSummary(device.health, t))) : null,
       )
     }
 
@@ -2308,6 +2469,12 @@ window.__ModuleLoader__.load({
         frames.layout()
       })
       const device = st.selection && (st.data.devices || []).find((d) => d.id === st.selection.deviceId)
+      // Shown with no device UI (unloaded, or the app came back to this panel): load it again.
+      useEffect(() => {
+        if (st.activePanel !== CHAT_PANEL_ID || !device || device.status !== 'online' || frames.byDevice.has(device.id)) return
+        const sessionId = st.selection.sessionId || st.embedded[device.id]
+        frames.show(device.id, device, sessionId ? { type: 'open-session', sessionId } : null).catch(() => {})
+      }, [st.activePanel, device && device.id, device && device.status, frames.byDevice.has(device ? device.id : '')])
       let status = null
       if (!device) status = st.loaded ? null : ''
       else if (device.status === 'offline' || device.status === 'error' || device.status === 'revoked') status = fill(t('deviceOffline'), { device: device.name })
@@ -2416,6 +2583,34 @@ window.__ModuleLoader__.load({
           h(SettingsSelect, { label: t('setPerGroup'), value: cfg.sessionsPerGroup, onChange: (v) => setSetting('sessionsPerGroup', Number(v)), options: [[3, '3'], [5, '5'], [10, '10'], [20, '20'], [0, t('allSessions')]] }),
         ),
         h(SettingsRow, { title: t('setPreload'), description: t('setPreloadHint') }, h(SettingsSwitch, { label: t('setPreload'), checked: cfg.preload, onChange: (v) => setSetting('preload', v) })),
+        h(
+          SettingsRow,
+          { title: t('setUnload'), description: t('setUnloadHint') },
+          h(SettingsSelect, {
+            label: t('setUnload'),
+            value: cfg.unloadAfter ?? 10,
+            onChange: (v) => setSetting('unloadAfter', Number(v)),
+            options: [[5, fill(t('unloadMinutes'), { n: 5 })], [10, fill(t('unloadMinutes'), { n: 10 })], [30, fill(t('unloadMinutes'), { n: 30 })], [0, t('unloadNever')]],
+          }),
+        ),
+        h(
+          SettingsRow,
+          { title: t('setAutoUpdate'), description: t('setAutoUpdateHint'), testid: 'dsh-devices-auto-update' },
+          h(SettingsSelect, {
+            label: t('setAutoUpdate'),
+            value: (st.data.prefs && st.data.prefs.autoUpdate) || 'auto',
+            onChange: async (v) => {
+              try {
+                await post('/devices/prefs', { autoUpdate: v })
+                await refreshDevices()
+              } catch (e) {
+                showToast(e.message, { icon: Icon('IconWarningOutlineRegular') })
+              }
+            },
+            options: [['auto', t('autoUpdateAuto')], ['ask', t('autoUpdateAsk')], ['never', t('autoUpdateNever')]],
+          }),
+        ),
+        h(SettingsRow, { title: t('setHealthAlerts'), description: t('setHealthAlertsHint') }, h(SettingsSwitch, { label: t('setHealthAlerts'), checked: cfg.healthAlerts !== false, onChange: (v) => setSetting('healthAlerts', v) })),
         h(
           SettingsRow,
           { title: t('setEditor'), description: t('setEditorHint') },
@@ -2540,17 +2735,25 @@ window.__ModuleLoader__.load({
           : null
         : fill(t('lastSeen'), { when: device.lastSeenAt ? timeLabel(device.lastSeenAt) : t('never') })
       const noModels = online && device.model && !(device.model.ready ?? device.model.configured)
+      const issues = online ? healthIssues(device.health) : []
+      const ISSUE_TAG = { disk: 'tagDisk', memory: 'tagMemory', cpu: 'tagCpu' }
+      const failedUpdate = !device.updating && device.lastUpdate && device.lastUpdate.state === 'failed'
       const tags = h(
         React.Fragment,
         null,
         h(NativeTag, { tone: STATUS_TAG_TONE[device.status] || 'neutral' }, t(`status_${device.status}`)),
+        device.updating ? h(NativeTag, { tone: 'info' }, t('updatingTag')) : null,
+        failedUpdate ? h('span', { title: device.lastUpdate.error || '' }, h(NativeTag, { tone: 'danger' }, t('updateFailedTag'))) : null,
         device.pendingCount ? h(NativeTag, { tone: 'warning' }, fill(t('waitingCount'), { n: device.pendingCount })) : null,
+        ...issues.map((i) => h(NativeTag, { key: i.key, tone: i.level === 'critical' ? 'danger' : 'warning' }, t(ISSUE_TAG[i.key]))),
         noModels ? h(NativeTag, { tone: 'warning' }, t('noModels')) : null,
-        device.outdated ? h(NativeTag, { tone: 'info' }, t('outdated')) : null,
+        device.outdated && !device.updating ? h(NativeTag, { tone: 'info' }, t('outdated')) : null,
       )
+      const healthLine = online ? healthSummary(device.health, t) : null
       const description = h(
         React.Fragment,
         null,
+        healthLine ? h('span', { className: 'dshdev-card2-health', 'data-testid': `health-${device.id}` }, healthLine, ' · ') : null,
         [via, device.versions ? `dsh ${device.versions.dsh || '?'}` : null, when].filter(Boolean).join(' · '),
         device.error && !online ? h('span', { className: 'dshdev-card2-error' }, ` — ${device.error}`) : null,
       )
@@ -2558,7 +2761,7 @@ window.__ModuleLoader__.load({
         React.Fragment,
         null,
         noModels ? h(Btn, { variant: 'outline', onClick: () => onAction('account', device) }, t('setUpModels')) : null,
-        device.outdated && device.canUpdate ? h(Btn, { variant: 'outline', onClick: () => onAction('update', device) }, t('updateNow')) : null,
+        device.outdated && device.canUpdate ? h(Btn, { variant: 'outline', disabled: !!device.updating, onClick: () => onAction('update', device) }, device.updating ? t('updatingTag') : t('updateNow')) : null,
         h(Btn, { variant: 'primary', disabled: !online, onClick: () => onOpen(device) }, t('open')),
         true
           ? h(NativeMenu, {
@@ -3416,18 +3619,10 @@ window.__ModuleLoader__.load({
     /** Update a device host from anywhere (the Devices page follows its own job log). */
     async function startDeviceUpdate(device) {
       try {
-        const job = await post('/devices/update', { id: device.id })
+        await post('/devices/update', { id: device.id })
+        // The outcome arrives as an "update" notice (one toast, shown by maybeNotify).
         showToast(fill(appT('updating'), { device: device.name }), { icon: Icon('IconDownloadOutlineRegular'), holdMs: 5000 })
-        const timer = setInterval(async () => {
-          try {
-            const next = await api(`/devices/job?id=${encodeURIComponent(job.id)}`)
-            if (next.state === 'running') return
-            clearInterval(timer)
-            refreshDevices()
-            if (next.state === 'done') showToast(fill(appT('updated'), { device: device.name }), { tone: 'success' })
-            else showToast(next.error || appT('failed'), { icon: Icon('IconWarningOutlineRegular') })
-          } catch {}
-        }, 1500)
+        refreshDevices()
       } catch (e) {
         showToast(e.message, { icon: Icon('IconWarningOutlineRegular') })
       }
@@ -3569,6 +3764,16 @@ window.__ModuleLoader__.load({
       ctx.effect(() => mountWorkspaceMenu(ctx, t), 'dsh-devices: workspace chooser')
       ctx.effect(() => watchNativeSearch(), 'dsh-devices: sidebar search')
       ctx.effect(() => {
+        const idleMs = () => {
+          const s = store.settings
+          if (Number(s.unloadAfterMs) > 0) return Number(s.unloadAfterMs) // tests
+          const minutes = s.unloadAfter === undefined ? 10 : Number(s.unloadAfter)
+          return minutes > 0 ? minutes * 60_000 : 0
+        }
+        const timer = setInterval(() => frames.unloadIdle(idleMs()), Number(store.settings.unloadAfterMs) > 0 ? 1000 : 30_000)
+        return () => clearInterval(timer)
+      }, 'dsh-devices: free idle device UIs')
+      ctx.effect(() => {
         document.addEventListener('visibilitychange', clearVisibleUnread)
         window.addEventListener('focus', clearVisibleUnread)
         return () => {
@@ -3595,6 +3800,9 @@ window.__ModuleLoader__.load({
     exports.__test = {
       store,
       setStore,
+      healthIssues,
+      healthSummary,
+      formatBytes,
       components: { RemoteSidebar, RemoteGroup, RemoteSessionRow, RemoteSearchResults, DevicesPage, DeviceCard, DevicesSettings, ModelKeyPanel, RemoteChatPanel, Overlays, DevicePicker, AddDialog },
       dialogs: { RenameDialog, ConfirmArchiveDialog, ArchivedDialog, PortsDialog, SyncDialog, AccountDialog },
     }

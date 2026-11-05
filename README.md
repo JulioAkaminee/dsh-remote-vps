@@ -30,16 +30,16 @@ Dois pacotes:
 Gere os pacotes (na VPS ou em qualquer máquina com Node ≥ 22.19):
 
 ```sh
-npm run build        # → dist/dsh-devices-0.1.9.tgz, dist/dsh-device-host-0.1.9.tgz, dist/install-*.sh
+npm run build        # → dist/dsh-devices-0.1.10.tgz, dist/dsh-device-host-0.1.10.tgz, dist/install-*.sh
 ```
 
 ### 1. No Mac: instalar o `dsh-devices`
 
 **Pelo próprio app (mais simples):**
 
-1. Baixe **`dsh-devices-0.1.9.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
+1. Baixe **`dsh-devices-0.1.10.tgz`** da página de *Releases* do repositório (no navegador, logado no GitHub).
 2. No DeepSeek Harness: **Plug-ins → Adicionar plug-in**. No campo, cole o **caminho completo** do
-   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.9.tgz`
+   arquivo baixado, por exemplo `/Users/SEU_USUARIO/Downloads/dsh-devices-0.1.10.tgz`
    (no Finder: clique com o botão direito no arquivo, segure **Option** → *Copiar "…" como Nome de Caminho*).
 3. **Instalar**. Pronto: aparece **Devices** na barra lateral.
 
@@ -59,17 +59,17 @@ sh ~/dsh-remote-vps/deploy/install-desktop.sh
 Para atualizar depois: `cd ~/dsh-remote-vps && git pull && sh deploy/install-desktop.sh`.
 Os pacotes prontos também estão nas *Releases* do repositório.
 
-Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.9.tgz` e `install-desktop.sh` para o Mac e rode:
+Ou, com os arquivos de `dist/`, copie `dsh-devices-0.1.10.tgz` e `install-desktop.sh` para o Mac e rode:
 
 ```sh
-sh install-desktop.sh ./dsh-devices-0.1.9.tgz            # detecta o profile do app
-sh install-desktop.sh ./dsh-devices-0.1.9.tgz --profile NOME
+sh install-desktop.sh ./dsh-devices-0.1.10.tgz            # detecta o profile do app
+sh install-desktop.sh ./dsh-devices-0.1.10.tgz --profile NOME
 ```
 
 Ou, direto do Mac, puxando da VPS por SSH:
 
 ```sh
-ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.9.tgz' > /tmp/dsh-devices.tgz
+ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/dsh-devices-0.1.10.tgz' > /tmp/dsh-devices.tgz
 ssh root@SUA_VPS 'cat /root/Projetos/dsh-remote-vps/dist/install-desktop.sh' | sh -s /tmp/dsh-devices.tgz
 ```
 
@@ -95,7 +95,7 @@ mostra um código `XXXX-XXXX` (5 min, uso único) e um link `dsh-device://…`. 
 *Add device* → Pairing code → cole o link. Exige que o Mac alcance a VPS por HTTPS
 (Tailscale, Cloudflare Tunnel ou proxy reverso apontando para `127.0.0.1:3180`).
 
-Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.9.tgz`.
+Instalação manual na VPS (sem o Mac): `sh install-host.sh --plugin ./dsh-device-host-0.1.10.tgz`.
 
 ### 3. Modelos na VPS: conta ou chave
 
@@ -174,6 +174,17 @@ alfinete quando fixado, ⋯/arquivar/fixar ao passar o mouse, renomear com duplo
   gerenciador de plug-ins do DSH da VPS). Mostra o que é novo, alterado ou já em dia; plug-ins só
   de desktop (janelas, bandeja, pet…) e o próprio dsh-devices ficam no Mac. Arquivos da VPS que
   seriam sobrescritos ganham backup.
+- **Atualização automática:** quando você atualiza o plugin no Mac (ou o app atualiza o dsh), cada
+  VPS se atualiza sozinha assim que estiver ociosa — sem turno rodando nem chat esperando você. A
+  própria VPS instala a nova versão (funciona por SSH ou por código), guarda a versão atual e, se a
+  nova não subir, **volta sozinha** para a anterior. Nunca rebaixa um device mais novo que o Mac.
+  Em Configurações → Devices dá para escolher *Quando o device estiver ocioso*, *Perguntar antes*
+  ou *Nunca*; o card mostra *Atualizando…* e o resultado chega como aviso.
+- **Saúde das VPS:** o card de cada device mostra CPU, memória e disco; o cartão do workspace
+  remoto também. Disco quase cheio, memória quase esgotada ou CPU sobrecarregada (por um tempo)
+  viram etiquetas no card e um aviso — notificação do sistema se o app estiver em segundo plano.
+- **Memória do Mac:** a interface de um device que não está na tela é descarregada depois de 10
+  minutos (configurável) e recarrega rápido quando você volta para o chat.
 - **Configurações → Devices:** notificações (nunca / só em segundo plano / sempre), avisar quando
   um chat remoto precisar de você, mostrar ou esconder chats remotos na barra lateral, sessões por
   workspace remoto (o resto fica em *Mostrar mais*), pré-carregamento ao passar o mouse e
@@ -208,6 +219,9 @@ dsh-device service install|start|stop|restart|status|logs        serviço system
   é recusada. Hosts já presentes no `~/.ssh/known_hosts` são reconhecidos.
 - **Gateway local (Mac):** um por device, em `127.0.0.1`, com segredo aleatório no caminho,
   checagem de Host/Origin (anti DNS-rebinding e cross-site) e `Referrer-Policy: no-referrer`.
+- **Atualização pelo device:** só um desktop pareado pode enviar uma atualização (mesmo token de
+  acesso); o pacote e o instalador são validados, uma atualização por vez, e o processo de
+  atualização roda fora do serviço (unidade transitória do systemd) para poder reverter.
 - **Portas encaminhadas** escutam só em `127.0.0.1` no Mac e chegam só ao loopback da VPS; o túnel
   de portas exige o mesmo token de acesso. **Sincronizar** e **Usar a conta deste computador**
   só acontecem quando você clica; o login copiado vai pelo canal autenticado e nunca passa pelo
@@ -223,6 +237,7 @@ node test/e2e-models-picker.mjs   # chave do modelo no device + seletor de devic
 node test/e2e-live.mjs            # feed ao vivo, notificação, Mostrar mais, Configurações, cache
 node test/e2e-files-editor.mjs    # árvore/preview da VPS na janela + abrir no editor (Remote-SSH)
 node test/e2e-device-tools.mjs    # painéis do device, sync, conta, precisa de você, portas, busca/arquivo
+node test/e2e-health-memory.mjs   # saúde no card, liberar memória de devices parados, preferência de atualização
 sh test/devenv.sh stop
 ```
 

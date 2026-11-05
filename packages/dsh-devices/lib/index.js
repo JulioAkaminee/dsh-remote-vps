@@ -149,6 +149,7 @@ export function apply(ctx, config) {
       const b = await body(request)
       return json(manager.update(b.id))
     }],
+    ['POST', '/devices/prefs', async (request) => json({ prefs: manager.setPrefs(await body(request)) })],
     // remote sessions: rename / pin / archive, and search
     ['POST', '/devices/session-action', async (request) => {
       const b = await body(request)

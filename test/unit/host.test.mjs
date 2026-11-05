@@ -357,3 +357,98 @@ test('sync: managed patch block, instructions, skills and rows applied on the de
     else process.env.DSH_AGENTS_HOME = prevAgents
   }
 })
+
+// ── health and self-update ──────────────────────────────────────────────────
+
+test('health: /proc parsing, CPU from deltas, memory available, disk from statfs', async () => {
+  const { HealthSampler, parseMeminfo, parseProcStat } = await import('../../packages/dsh-device-host/lib/health.js')
+  assert.deepEqual(parseProcStat('cpu  100 0 50 800 50 0 0 0 0 0\ncpu0 1 2 3 4'), { idle: 850, total: 1000 })
+  assert.equal(parseProcStat('nothing'), null)
+  const mem = parseMeminfo('MemTotal:       8000000 kB\nMemFree:         500000 kB\nMemAvailable:   2000000 kB\nSwapTotal:      1000000 kB\nSwapFree:        250000 kB\n')
+  assert.deepEqual(mem, { total: 8000000 * 1024, available: 2000000 * 1024, swapTotal: 1000000 * 1024, swapFree: 250000 * 1024 })
+  let now = 1_000_000
+  let stat = 'cpu  100 0 50 800 50 0 0 0'
+  const files = { '/proc/stat': () => stat, '/proc/meminfo': () => 'MemTotal: 1000 kB\nMemAvailable: 250 kB\n' }
+  const sampler = new HealthSampler({ home: '/x', now: () => now, read: (f) => files[f](), statfs: () => ({ bsize: 4096, blocks: 1000, bavail: 100 }) })
+  const first = sampler.sample()
+  assert.equal(first.memory.percent, 75)
+  assert.equal(first.disk.total, 4096 * 1000)
+  assert.equal(first.disk.percent, 90)
+  now += 15_000
+  stat = 'cpu  400 0 150 1000 50 0 0 0' // +400 busy, +200 idle → 66.7 %
+  assert.equal(sampler.sample().cpu.percent, 66.7)
+})
+
+test('self-update: validation, the runner keeps a good install and rolls a broken one back', async () => {
+  const { spawnSync } = await import('node:child_process')
+  const zlib = await import('node:zlib')
+  const { Updater, runtimeRoot } = await import('../../packages/dsh-device-host/lib/updater.js')
+  assert.equal(runtimeRoot('/home/u/.dsh-device/runtime/node_modules/dsh-device-host', {}), '/home/u/.dsh-device')
+  assert.equal(runtimeRoot('/home/u/src/packages/dsh-device-host', {}), null)
+  assert.equal(runtimeRoot('/anything', { DSH_DEVICE_ROOT: '/r' }), '/r')
+
+  const root = tmp()
+  fs.mkdirSync(path.join(root, 'runtime', 'node_modules', 'dsh-device-host'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'runtime', 'version.txt'), 'old\n')
+  fs.writeFileSync(path.join(root, 'runtime', 'package.json'), '{"v":"old"}\n')
+  fs.writeFileSync(path.join(root, 'runtime', 'node_modules', 'dsh-device-host', 'index.js'), 'old host\n')
+  let lastArgs = null
+  // The runner "lives" (this test process) until we run it by hand below.
+  const updater = new Updater({ root, version: '0.1.9', port: () => 3999, logger: { warn() {} }, spawnRunner: (args) => ((lastArgs = args), { pid: process.pid }) })
+  assert.equal(updater.supported(), true)
+  const tarball = zlib.gzipSync(crypto.randomBytes(2048)).toString('base64')
+  // Behaves like npm: changed files are extracted beside and renamed in, manifests are
+  // rewritten in place, and the host package itself is rewritten.
+  const installer = (ok) =>
+    Buffer.from(
+      `#!/bin/sh\n# fake installer\necho installing "$@"\nR="$(dirname "$0")/../../runtime"\nprintf 'new\\n' > "$R/version.txt.tmp" && mv "$R/version.txt.tmp" "$R/version.txt"\nprintf '{"v":"new"}\\n' > "$R/package.json"\nprintf 'new host\\n' > "$R/node_modules/dsh-device-host/index.js"\nV=$(basename "$2" .tgz | sed 's/^dsh-device-host-//')\necho "DSH_DEVICE_INSTALL_RESULT {\\"ok\\":${ok},\\"versions\\":{\\"plugin\\":\\"$V\\"}}"\n${'#'.repeat(100)}\n`,
+    ).toString('base64')
+  assert.throws(() => updater.start({ installer: installer(true), tarball, tarballName: 'evil.tgz' }), /invalid-tarball-name/)
+  assert.throws(() => updater.start({ installer: installer(true), tarball: Buffer.from('x'.repeat(200)).toString('base64'), tarballName: 'dsh-device-host-0.2.0.tgz' }), /invalid-tarball/)
+  assert.throws(() => updater.start({ installer: Buffer.from('rm -rf /'.repeat(20)).toString('base64'), tarball, tarballName: 'dsh-device-host-0.2.0.tgz' }), /invalid-installer/)
+
+  // success: the new install stays, the backup goes
+  const ok = updater.start({ installer: installer(true), tarball, tarballName: 'dsh-device-host-0.2.0.tgz', dshVersion: '0.2.1' })
+  assert.deepEqual([ok.from, ok.to], ['0.1.9', '0.2.0'])
+  assert.equal(updater.status().state, 'running')
+  assert.throws(() => updater.start({ installer: installer(true), tarball, tarballName: 'dsh-device-host-0.2.0.tgz' }), /update-in-progress/)
+  assert.equal(spawnSync('sh', lastArgs, { encoding: 'utf8' }).status, 0)
+  assert.equal(updater.status().state, 'done')
+  assert.equal(fs.readFileSync(path.join(root, 'runtime', 'version.txt'), 'utf8'), 'new\n')
+  assert.equal(fs.existsSync(path.join(root, 'runtime.prev')), false)
+
+  // failure: the previous install comes back
+  fs.writeFileSync(path.join(root, 'runtime', 'version.txt'), 'good\n')
+  fs.writeFileSync(path.join(root, 'runtime', 'package.json'), '{"v":"good"}\n')
+  fs.writeFileSync(path.join(root, 'runtime', 'node_modules', 'dsh-device-host', 'index.js'), 'good host\n')
+  updater.start({ installer: installer(false), tarball, tarballName: 'dsh-device-host-0.2.1.tgz', dshVersion: '0.2.1' })
+  assert.equal(spawnSync('sh', lastArgs, { encoding: 'utf8' }).status, 1)
+  const failed = updater.status({ withLog: true })
+  assert.equal(failed.state, 'failed')
+  assert.match(failed.error, /restored/)
+  assert.equal(fs.readFileSync(path.join(root, 'runtime', 'version.txt'), 'utf8'), 'good\n', 'rolled back')
+  assert.equal(fs.readFileSync(path.join(root, 'runtime', 'package.json'), 'utf8'), '{"v":"good"}\n', 'manifests rewritten in place come back too')
+  assert.equal(fs.readFileSync(path.join(root, 'runtime', 'node_modules', 'dsh-device-host', 'index.js'), 'utf8'), 'good host\n', 'and the host package')
+  assert.ok(failed.logTail.some((l) => /restoring 0\.1\.9/.test(l)))
+  assert.equal(fs.existsSync(path.join(root, 'runtime.prev')), false)
+
+  // a lock left by a runner that died is stale: a new update may start; a dead run without a verdict failed
+  const twoMinutesAgo = new Date(Date.now() - 120_000).toISOString()
+  fs.writeFileSync(path.join(root, 'update.lock'), JSON.stringify({ pid: 999999, startedAt: twoMinutesAgo }))
+  fs.writeFileSync(path.join(root, 'update-status.json'), JSON.stringify({ state: 'running', from: '0.1.9', to: '0.2.5', startedAt: twoMinutesAgo }))
+  assert.equal(updater.status().state, 'failed', 'the runner is gone and 0.2.5 is not running')
+  const again = updater.start({ installer: installer(true), tarball, tarballName: 'dsh-device-host-0.2.6.tgz' })
+  assert.equal(again.to, '0.2.6', 'a stale lock does not block')
+  spawnSync('sh', lastArgs)
+  assert.equal(fs.existsSync(path.join(root, 'update.lock')), false, 'the runner releases the lock when it ends')
+
+  // a run that has just started is alive even before its runner wrote its pid (no double start)
+  const { runnerAlive } = await import('../../packages/dsh-device-host/lib/updater.js')
+  assert.equal(runnerAlive({ startedAt: new Date().toISOString() }, { root }), true)
+  assert.equal(runnerAlive({ startedAt: twoMinutesAgo }, { root }), false)
+
+  // a runner that died with the old service: the version now running tells how it ended
+  const stale = new Updater({ root, version: '0.3.0', port: () => 3999, now: () => Date.now() + 60_000, spawnRunner() {} })
+  fs.writeFileSync(path.join(root, 'update-status.json'), JSON.stringify({ state: 'running', from: '0.2.9', to: '0.3.0', startedAt: twoMinutesAgo }))
+  assert.equal(stale.status().state, 'done')
+})

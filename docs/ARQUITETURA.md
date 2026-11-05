@@ -78,3 +78,22 @@ cliente e o cabeçalho do token removidos; `Set-Cookie` nunca volta.
   escolhido; o device grava arquivos (com backup), mantém as linhas num bloco gerenciado do
   `cordis.patch.yml` do perfil e instala plug-ins pelo `pluginManager.installBundle`.
 
+### Atualização, saúde e memória (0.1.10)
+
+- **Autoatualização:** `POST /device/v1/self-update` recebe o instalador e o pacote (base64). O
+  device grava tudo em `~/.dsh-device/updates/<data>/`, cria `update.lock` e roda `run-update.sh`
+  numa unidade transitória (`systemd-run --user`, com `DSH_HOME`/`DSH_DEVICE_ROOT` explícitos),
+  porque reiniciar o serviço mata todo o seu cgroup. O runner faz backup de `runtime/` (hard links +
+  cópia real do que o npm reescreve no lugar), roda `install-host.sh` (porta fixa) e só declara
+  sucesso se o host que responde é a versão nova; senão restaura o backup e reinicia o serviço
+  dono daquela instalação. `GET` devolve `update-status.json` + o fim do log; o Mac acompanha por ele.
+- **Quando o Mac atualiza:** a cada verificação de saúde, se o device estiver atrás (host ou dsh
+  mais antigos — semver com prerelease) e ocioso, conforme a preferência `autoUpdate`
+  (`auto`/`ask`/`never`, salva em `devices.json`). Falhas esperam 6 h; o mesmo alvo não é repetido.
+  Hosts antigos sem `self-update` usam o caminho por SSH.
+- **Saúde:** `/info` traz `health` (CPU por delta de `/proc/stat`, memória por `MemAvailable`, swap,
+  disco por `statfs` do home, processos que mais usam memória); o Mac calcula avisos (disco ≥ 90% ou
+  < 3 GB, memória ≥ 90%, CPU ≥ 95% por ~45 s).
+- **Memória do Mac:** uma interface de device fora da tela por mais que `unloadAfter` minutos é
+  removida (a entrada do gateway fica em cache); o painel do chat a recria ao ser mostrado.
+

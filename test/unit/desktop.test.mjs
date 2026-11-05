@@ -536,3 +536,100 @@ test('browser UI smoke render: every surface renders without recursion or throwi
   assert.ok(run(true) > 20, 'renders with DSH primitives')
   assert.ok(run(false) > 20, 'renders with the plain stand-ins')
 })
+
+test('manager: automatic updates wait for an idle device, ask once, never repeat a failure soon', async () => {
+  const { DeviceManager, PLUGIN_VERSION } = await import('../../packages/dsh-devices/lib/manager.js')
+  const { DeviceRegistry } = await import('../../packages/dsh-devices/lib/registry.js')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-reg-'))
+  const registry = new DeviceRegistry(dir)
+  const id = '33333333-3333-3333-3333-333333333333'
+  registry.upsert({ id, name: 'vps', clientId: 'cl_z', transport: { kind: 'url', url: 'http://127.0.0.1:9' }, versions: { plugin: '0.0.1', dsh: null } })
+  const m = new DeviceManager({ registry, logger: { info() {}, warn() {} } })
+  const s = m._ensureState(id)
+  s.status = 'online'
+  s.features = ['self-update']
+  const calls = []
+  m.update = (deviceId, opts) => calls.push([deviceId, opts])
+  assert.equal(m.prefs().autoUpdate, 'auto', 'automatic by default')
+  s.sessions = [{ sessionId: 'a', running: true }]
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.equal(calls.length, 0, 'a running turn waits')
+  s.sessions = [{ sessionId: 'a', pending: { kind: 'approval' } }]
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.equal(calls.length, 0, 'a chat waiting for you waits too')
+  s.sessions = []
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.deepEqual(calls, [[id, { auto: true }]], 'idle → updates itself')
+  s.updateFailedAt = Date.now()
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.equal(calls.length, 1, 'a recent failure is not retried')
+  s.updateFailedAt = 0
+  m.setPrefs({ autoUpdate: 'ask' })
+  calls.length = 0
+  m._maybeAutoUpdate(registry.get(id), s)
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.equal(calls.length, 0)
+  assert.equal(m.notifications.filter((n) => n.kind === 'update-available').length, 1, 'asks once per version')
+  m.setPrefs({ autoUpdate: 'never' })
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.equal(calls.length, 0)
+  assert.equal(new DeviceRegistry(dir).prefs().autoUpdate, 'never', 'the choice is saved')
+  assert.throws(() => m.setPrefs({ autoUpdate: 'sometimes' }), /auto, ask or never/)
+  registry.update(id, { versions: { plugin: PLUGIN_VERSION, dsh: null } })
+  m.setPrefs({ autoUpdate: 'auto' })
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.equal(calls.length, 0, 'an up-to-date device is left alone')
+  await m.dispose()
+})
+
+test('device health: alert thresholds and the summary line', async () => {
+  const vm = await import('node:vm')
+  const loaded = []
+  const el = () => ({ style: {}, setAttribute() {}, appendChild() {}, addEventListener() {}, querySelector: () => null, querySelectorAll: () => [], classList: { add() {}, remove() {} } })
+  const sandbox = {
+    window: { __ModuleLoader__: { load: (m) => loaded.push(m) }, location: { search: '', pathname: '/', hash: '' }, addEventListener() {}, history: { replaceState() {} } },
+    document: { getElementById: () => null, createElement: el, head: el(), body: el(), documentElement: { ...el(), lang: 'en' }, querySelector: () => null, querySelectorAll: () => [], addEventListener() {} },
+    localStorage: { getItem: () => null, setItem() {} },
+    navigator: { platform: 'MacIntel', userAgent: '' },
+    URLSearchParams, setTimeout, clearTimeout, setInterval, clearInterval, console, Intl,
+  }
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'packages/dsh-devices/lib/client.js'), 'utf8'), sandbox)
+  const react = { createElement: () => null, useState: (v) => [v, () => {}], useEffect() {}, useLayoutEffect() {}, useRef: () => ({ current: null }), useCallback: (f) => f, useSyncExternalStore: () => 0, Fragment: 'f' }
+  const mod = loaded[0].factory((id) => (id === 'react' ? react : id === 'react-dom/client' ? { createRoot: () => ({ render() {}, unmount() {} }) } : {}))
+  const { healthIssues, healthSummary, formatBytes } = mod.__test
+  const GB = 1e9
+  const keys = (h) => Array.from(healthIssues(h), (i) => `${i.key}:${i.level}`)
+  assert.deepEqual(keys({ cpu: { cores: 4, percent: 20 }, load: [0.5], memory: { total: 8 * GB, used: 2 * GB, percent: 25 }, disk: { total: 80 * GB, free: 40 * GB, percent: 50 } }), [])
+  assert.deepEqual(keys({ disk: { total: 80 * GB, free: 6 * GB, percent: 92.5 } }), ['disk:warning'])
+  assert.deepEqual(keys({ disk: { total: 500 * GB, free: 0.5 * GB, percent: 89 } }), ['disk:critical'], 'under 1 GB free is critical whatever the size')
+  assert.deepEqual(keys({ memory: { total: 8 * GB, percent: 96 } }), ['memory:critical'])
+  assert.deepEqual(keys({ cpu: { cores: 2, percent: 50 }, load: [4.5] }), ['cpu:warning'], 'a long run queue is overload')
+  assert.deepEqual(keys({ cpu: { cores: 2, percent: 99.5 }, load: [1] }), ['cpu:critical'])
+  assert.equal(formatBytes(3.14e9), '3.1 GB')
+  assert.equal(formatBytes(512), '512 B')
+  const t = (k) => ({ cpu: 'CPU', memory: 'Memory', disk: 'Disk', ofSize: '{used} of {total}' })[k] ?? k
+  assert.equal(healthSummary({ cpu: { cores: 4, percent: 12.4 }, memory: { total: 8e9, used: 3.1e9 }, disk: { total: 80e9, used: 41e9 } }, t), 'CPU 12% · Memory 3.1 GB of 8.0 GB · Disk 41 GB of 80 GB')
+})
+
+test('versions: prereleases order before releases; devices newer than this desktop are never downgraded', async () => {
+  const { compareSemver, DeviceManager, PLUGIN_VERSION } = await import('../../packages/dsh-devices/lib/manager.js')
+  const { DeviceRegistry } = await import('../../packages/dsh-devices/lib/registry.js')
+  assert.equal(compareSemver('0.2.1-rc.4', '0.2.1-rc.5'), -1)
+  assert.equal(compareSemver('0.2.1-rc.10', '0.2.1-rc.9'), 1)
+  assert.equal(compareSemver('0.2.1', '0.2.1-rc.5'), 1)
+  assert.equal(compareSemver('0.2.0', '0.2.1-rc.1'), -1)
+  assert.equal(compareSemver('0.1.10', '0.1.10'), 0)
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dshdev-reg-'))
+  const registry = new DeviceRegistry(dir)
+  const id = '44444444-4444-4444-4444-444444444444'
+  const [maj, min, pat] = PLUGIN_VERSION.split('.').map(Number)
+  registry.upsert({ id, name: 'newer', clientId: 'cl_n', transport: { kind: 'url', url: 'http://127.0.0.1:9' }, versions: { plugin: `${maj}.${min}.${pat + 1}`, dsh: null } })
+  const m = new DeviceManager({ registry, logger: { info() {}, warn() {} } })
+  const s = m._ensureState(id)
+  Object.assign(s, { status: 'online', features: ['self-update'], sessions: [] })
+  const calls = []
+  m.update = (deviceId) => calls.push(deviceId)
+  m._maybeAutoUpdate(registry.get(id), s)
+  assert.equal(calls.length, 0, 'a newer device host is not downgraded')
+  await m.dispose()
+})

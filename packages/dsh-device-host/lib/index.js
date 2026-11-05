@@ -17,6 +17,7 @@
 //   GET|POST /sync           customisations copied from a desktop (token)
 //   GET    /ports            listening dev servers                (token)
 //   UPGRADE /port-tunnel     raw TCP to one of them               (token)
+//   GET|POST /self-update    install a new device host, roll back (token)
 //   DELETE /clients/self     unpair the calling client            (token)
 //   *      /t/...            tunnel to this instance's DSH web UI (token)
 
@@ -25,6 +26,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { HostAuth, parsePublicKey } from './auth.js'
+import { HealthSampler } from './health.js'
 import { readJsonBody, remoteAddress, sendError, sendJson } from './http-util.js'
 import { PendingTracker } from './pending.js'
 import { handlePortTunnel, PortWatcher } from './ports.js'
@@ -35,6 +37,7 @@ import {
   MODEL_KEY_REF,
   PROTOCOL_VERSION,
   ROUTES,
+  SELF_UPDATE_FEATURE,
   TOKEN_HEADER,
   TUNNEL_UPGRADE_PATHS,
   WATCH_MAX_MS,
@@ -43,6 +46,7 @@ import { RevisionFeed } from './revision.js'
 import { HostStore } from './store.js'
 import { DeviceSync } from './sync.js'
 import { LocalTunnel } from './tunnel.js'
+import { runtimeRoot, Updater } from './updater.js'
 
 export const name = 'dsh-device-host'
 export const inject = ['webServer', 'connection']
@@ -162,13 +166,22 @@ export function apply(ctx, rawConfig) {
   }, 'dsh-device-host: periodic refresh')
   let sessionsCache = null
 
+  const health = new HealthSampler()
+  const updater = new Updater({
+    root: runtimeRoot(path.join(here, '..')),
+    version: PLUGIN_VERSION,
+    port: () => Number(new URL(ctx.webServer.getOrigin()).port) || 3180,
+    logger,
+  })
   const info = () => ({
     ...hello(),
     platform: process.platform,
     arch: process.arch,
     hostname: os.hostname(),
     versions: { plugin: PLUGIN_VERSION, dsh: dshVersion(), node: process.versions.node, protocol: PROTOCOL_VERSION },
-    features: HOST_FEATURES,
+    features: updater.supported() ? [...HOST_FEATURES, SELF_UPDATE_FEATURE] : HOST_FEATURES,
+    health: health.sample(),
+    update: updater.status(),
     startedAt: startedAt.toISOString(),
     uptimeSec: Math.round(process.uptime()),
     loadavg: os.loadavg(),
@@ -476,6 +489,17 @@ export function apply(ctx, rawConfig) {
       const report = await sync.apply(bundle ?? {}, { from: client.label, log: (line) => lines.push(line) })
       logger.info(`sync from ${client.label}: ${report.filter((r) => r.ok).length}/${report.length} applied`)
       sendJson(res, 200, { report, log: lines, state: await sync.state() })
+    },
+
+    async [ROUTES.selfUpdate](req, res) {
+      const client = requireClient(req, res)
+      if (!client) return
+      if (req.method === 'GET') return sendJson(res, 200, updater.status({ withLog: true }))
+      if (req.method !== 'POST') return sendError(res, 405, 'method-not-allowed')
+      const body = (await readJsonBody(req, 32 * 1024 * 1024)) ?? {}
+      const started = updater.start(body)
+      logger.info(`self-update ${started.from} -> ${started.to} requested by ${client.label}`)
+      sendJson(res, 202, started)
     },
 
     async [ROUTES.ports](req, res) {
