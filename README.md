@@ -302,6 +302,20 @@ test/                       unit/, e2e-ui.mjs, devenv.sh, mock-llm.mjs
 docs/                       ARQUITETURA.md
 ```
 
+## Concorrência e recuperação (0.1.17)
+
+- Trocas rápidas entre VPS respeitam a última navegação solicitada; uma abertura antiga
+  não pode trazer outra VPS de volta à frente. Interfaces já abertas continuam reaproveitadas.
+- Aberturas simultâneas do mesmo device aguardam o mesmo gateway ficar pronto, sem bloquear
+  a abertura de outro device; uma falha ao iniciar permite nova tentativa.
+- Respostas HTTP interrompidas encerram também a resposta ao navegador, em vez de deixá-la
+  pendurada. O estabelecimento do WebSocket tem prazo limitado; conexões já estabelecidas
+  não recebem esse limite, preservando chats e streams longos.
+- Regressões automatizadas simulam respostas fora de ordem, inicialização concorrente,
+  respostas truncadas e falhas de estabelecimento. Isso não substitui validação no WebKit
+  do Mac nem mede a latência real das suas VPS. O histórico é carregado pelo DSH remoto;
+  a prontidão do iframe, sozinha, não comprova que o histórico chegou.
+
 ## Limitações conhecidas
 
 - A conversa remota é renderizada pela UI do próprio DSH da VPS embutida na janela (por isso

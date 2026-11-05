@@ -206,6 +206,9 @@ export class DeviceManager {
     const s = this.state.get(id)
     if (!s) return
     s.watchToken = null
+    s.gatewayGeneration = (s.gatewayGeneration ?? 0) + 1
+    // A gateway being created belongs to this lifecycle too.
+    try { await s.gatewayOpening } catch {}
     try {
       await s.gateway?.stop()
     } catch {}
@@ -1366,28 +1369,51 @@ export class DeviceManager {
     if (!device) throw new Error('unknown device')
     const s = this._ensureState(id)
     if (s.status === 'revoked') throw new Error('this desktop was unpaired on the device; pair it again')
-    s.baseUrl = await this._transport(device, s)
+    const generation = s.gatewayGeneration ?? 0
+    const assertCurrent = () => {
+      if (this.disposed || this.state.get(id) !== s || (s.gatewayGeneration ?? 0) !== generation) {
+        throw new Error('device opening cancelled')
+      }
+    }
+    assertCurrent()
+    const baseUrl = await this._transport(device, s)
+    assertCurrent()
+    s.baseUrl = baseUrl
     const client = this._client(device, s)
     await client.token()
-    if (!s.gateway) {
-      let secret = device.gatewaySecret
-      if (!secret) {
-        secret = crypto.randomBytes(24).toString('base64url')
-        this.registry.update(id, { gatewaySecret: secret })
-      }
-      s.gateway = new DeviceGateway({
-        secret,
-        deviceId: id,
-        baseUrl: () => s.baseUrl,
-        token: async (opts) => {
-          s.baseUrl = await this._transport(this.registry.get(id), s)
-          return client.token(opts)
-        },
-        preferredPort: device.gatewayPort ?? undefined,
-      })
-      await s.gateway.start()
-      if (device.gatewayPort !== s.gateway.port) this.registry.update(id, { gatewayPort: s.gateway.port })
+    assertCurrent()
+    if (!s.gateway && !s.gatewayOpening) {
+      s.gatewayOpening = (async () => {
+        let secret = device.gatewaySecret
+        if (!secret) {
+          secret = crypto.randomBytes(24).toString('base64url')
+          this.registry.update(id, { gatewaySecret: secret })
+        }
+        const gateway = new DeviceGateway({
+          secret,
+          deviceId: id,
+          baseUrl: () => s.baseUrl,
+          token: async (opts) => {
+            s.baseUrl = await this._transport(this.registry.get(id), s)
+            return client.token(opts)
+          },
+          preferredPort: device.gatewayPort ?? undefined,
+        })
+        try {
+          await gateway.start()
+          assertCurrent()
+          if (device.gatewayPort !== gateway.port) this.registry.update(id, { gatewayPort: gateway.port })
+          // Publish only a listening gateway. Concurrent opens share the promise,
+          // but each caller keeps its own destination path.
+          s.gateway = gateway
+        } catch (error) {
+          await gateway.stop()
+          throw error
+        }
+      })().finally(() => { s.gatewayOpening = null })
     }
+    await s.gatewayOpening
+    assertCurrent()
     return { url: s.gateway.entryUrl(next), origin: s.gateway.origin }
   }
 }

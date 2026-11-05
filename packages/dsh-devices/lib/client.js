@@ -941,6 +941,17 @@ window.__ModuleLoader__.load({
       /** deviceId -> { iframe, root, ready, pending: [] } */
       byDevice: new Map(),
       active: null,
+      navigation: null,
+      cancelNavigation() {
+        this.navigation = null
+        for (const f of this.byDevice.values()) {
+          f.pending = f.pending.filter((m) => !['open-session', 'new-session', 'open-panel', 'open-settings'].includes(m.type))
+        }
+      },
+      hide() {
+        this.cancelNavigation()
+        if (this.host) this.host.style.display = 'none'
+      },
       placeholder: null,
       observer: null,
       ensureHost() {
@@ -1013,7 +1024,10 @@ window.__ModuleLoader__.load({
           if (msg.type === 'session') {
             store.embedded = { ...store.embedded, [deviceId]: msg.sessionId || null }
             // (a device panel stays selected: the device reports its current session on boot too)
-            if (store.selection && store.selection.deviceId === deviceId && msg.sessionId) store.selection = { ...store.selection, sessionId: msg.sessionId }
+            const nav = this.navigation
+            const requested = nav && nav.deviceId === deviceId && nav.command?.type === 'open-session' && nav.command.sessionId
+            if (requested && requested === msg.sessionId && f.ready) nav.confirmed = true
+            if (nav && nav.deviceId === deviceId && this.active === deviceId && store.selection && store.selection.deviceId === deviceId && msg.sessionId && (!requested || nav.confirmed)) store.selection = { ...store.selection, sessionId: msg.sessionId }
             emit()
             if (msg.sessionId && chatVisible(deviceId, msg.sessionId)) setUnread(`${deviceId}:${msg.sessionId}`, false)
           }
@@ -1155,24 +1169,42 @@ window.__ModuleLoader__.load({
 
       /** Show `deviceId` and run `command` in it: { type: 'open-session', sessionId } | { type: 'new-session', workspaceId } | { type: 'open-panel', panel, ack } */
       async show(deviceId, device, command, { background = false } = {}) {
+        const navigation = background ? null : { deviceId, command }
+        if (!background) {
+          this.cancelNavigation()
+          this.navigation = navigation
+        }
+        const current = () => !background && this.navigation === navigation
         this.ensureHost()
         // One iframe per device even when several opens race (e.g. "Files" = open + show files).
         this.creating = this.creating || new Map()
         if (!this.byDevice.has(deviceId) && this.creating.has(deviceId)) {
           await this.creating.get(deviceId)
+          if (!background && !current()) return
+          if (!this.byDevice.has(deviceId)) return
         }
         let f = this.byDevice.get(deviceId)
+        // The host only reports session changes, not a second open of its current session.
+        if (current() && f?.ready && command?.type === 'open-session' && store.embedded[deviceId] === command.sessionId) navigation.confirmed = true
         if (!f) {
           let release
-          this.creating.set(deviceId, new Promise((r) => (release = r)))
+          const creation = new Promise((r) => (release = r))
+          this.creating.set(deviceId, creation)
           let root
           try {
             root = await deviceRoot(deviceId)
           } catch (error) {
-            this.creating.delete(deviceId)
+            if (this.creating.get(deviceId) === creation) this.creating.delete(deviceId)
             release()
-            throw error
+            if (background || current()) throw error
+            return
           }
+          if (this.creating.get(deviceId) !== creation) {
+            release()
+            return
+          }
+          // A superseded open may finish warming the UI, but must not boot its old command.
+          if (!current()) command = null
           const iframe = document.createElement('iframe')
           iframe.title = device ? device.name : deviceId
           iframe.allow = 'clipboard-read; clipboard-write'
@@ -1195,8 +1227,8 @@ window.__ModuleLoader__.load({
           this.watch(deviceId)
           this.creating.delete(deviceId)
           release()
-        } else if (command) this.send(deviceId, command)
-        if (background) return
+        } else if (command && current()) this.send(deviceId, command)
+        if (!current()) return
         f.lastVisibleAt = Date.now()
         this.active = deviceId
         for (const [id, x] of this.byDevice) x.iframe.style.display = id === deviceId ? 'block' : 'none'
@@ -1405,6 +1437,9 @@ window.__ModuleLoader__.load({
         emit()
       },
       drop(deviceId) {
+        this.creating?.delete(deviceId)
+        if (this.navigation?.deviceId === deviceId) this.cancelNavigation()
+        if (this.active === deviceId) this.active = null
         const f = this.byDevice.get(deviceId)
         if (f) {
           clearTimeout(f.timer)
@@ -1427,7 +1462,7 @@ window.__ModuleLoader__.load({
           this.placeholder = null
           this.observer?.disconnect()
           this.observer = null
-          if (this.host) this.host.style.display = 'none'
+          this.hide()
         }
       },
       layout() {
@@ -3052,11 +3087,12 @@ window.__ModuleLoader__.load({
         frames.layout()
       })
       const device = st.selection && (st.data.devices || []).find((d) => d.id === st.selection.deviceId)
-      // Shown with no device UI (unloaded, or the app came back to this panel): load it again.
+      // Restore the selected destination on re-entry, including resident UIs whose queued
+      // navigation was cancelled when the user left for a local panel.
       useEffect(() => {
-        if (st.activePanel !== CHAT_PANEL_ID || !device || device.status !== 'online' || frames.byDevice.has(device.id)) return
-        // (an open already in flight is creating it)
-        if (frames.creating && frames.creating.has(device.id)) return
+        if (st.activePanel !== CHAT_PANEL_ID || !device || device.status !== 'online') return
+        // An explicit foreground open already owns this destination (resident or creating).
+        if (frames.navigation?.deviceId === device.id && (frames.byDevice.has(device.id) || frames.creating?.has(device.id))) return
         if (st.selection.panel) {
           frames.openPanel(device, st.selection.panel)
           return
@@ -4664,7 +4700,7 @@ window.__ModuleLoader__.load({
             store.activePanel = active
             emit()
           }
-          if (active !== CHAT_PANEL_ID && frames.host) frames.host.style.display = 'none'
+          if (active !== CHAT_PANEL_ID) frames.hide()
           else frames.layout()
         }
         sync()

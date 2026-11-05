@@ -26,14 +26,16 @@ export class DeviceGateway {
    *   token: (opts?: { force?: boolean }) => Promise<string>,
    *   agent?: () => any,
    *   preferredPort?: number,
+   *   handshakeTimeoutMs?: number,   // WebSocket establishment only (including token refresh)
    * }} options
    */
-  constructor({ deviceId, baseUrl, token, agent, preferredPort, secret }) {
+  constructor({ deviceId, baseUrl, token, agent, preferredPort, secret, handshakeTimeoutMs = 15000 }) {
     this.deviceId = deviceId
     this.baseUrl = baseUrl
     this.token = token
     this.agent = agent ?? (() => undefined)
     this.preferredPort = preferredPort
+    this.handshakeTimeoutMs = handshakeTimeoutMs
     // A stable per-device secret keeps asset URLs stable, so the webview's
     // HTTP cache survives restarts (the device UI opens much faster).
     this.secret = typeof secret === 'string' && /^[A-Za-z0-9_-]{32,}$/.test(secret) ? secret : crypto.randomBytes(24).toString('base64url')
@@ -187,6 +189,7 @@ export class DeviceGateway {
       { protocol: base.protocol, hostname: base.hostname, port: base.port, method: req.method, path, headers: this._upstreamHeaders(req, token), agent: this.agent() },
       (up) => {
         if (up.statusCode === 401 && !retried && (req.method === 'GET' || req.method === 'HEAD')) {
+          up.on('error', () => {}) // A discarded 401 body must not break the retry.
           up.resume()
           this._forward(req, res, devicePath, true).catch((error) => {
             if (!res.headersSent) this._unreachable(req, res, error?.message ?? String(error))
@@ -200,6 +203,9 @@ export class DeviceGateway {
         if (typeof headers.location === 'string' && headers.location.startsWith('/') && !headers.location.startsWith('//')) {
           headers.location = `/${this.secret}${headers.location}`
         }
+        // pipe() does not propagate a truncated response's error to its destination.
+        up.on('aborted', () => res.destroy())
+        up.on('error', () => res.destroy())
         res.writeHead(up.statusCode ?? 502, headers)
         up.pipe(res)
       },
@@ -215,23 +221,61 @@ export class DeviceGateway {
     else req.pipe(upstream)
   }
 
-  async _upgrade(req, socket, head, retried = false) {
-    const reject = (status, text) => socket.end(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`)
+  async _upgrade(req, socket, head, retried = false, handshake) {
+    const reject = (status, text) => {
+      if (handshake?.done || socket.destroyed) return
+      handshake?.finish(true)
+      socket.end(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`)
+    }
     if (!this._authorityOk(req) || !this._originOk(req)) return reject(403, 'Forbidden')
     const devicePath = this._devicePath(req.url)
     if (devicePath === undefined) return reject(404, 'Not Found')
+    if (!handshake) {
+      // One deadline spans token acquisition and the single 401 retry, never the stream.
+      const cancel = () => {
+        handshake.finish(true)
+        socket.destroy()
+      }
+      const timer = setTimeout(() => reject(504, 'Gateway Timeout'), this.handshakeTimeoutMs)
+      timer.unref()
+      handshake = {
+        done: false,
+        upstream: null,
+        finish: (destroy) => {
+          if (handshake.done) return
+          handshake.done = true
+          clearTimeout(timer)
+          socket.off('close', cancel)
+          socket.off('end', cancel)
+          socket.off('error', cancel)
+          if (destroy) handshake.upstream?.destroy()
+        },
+      }
+      socket.once('close', cancel)
+      socket.once('end', cancel)
+      socket.once('error', cancel)
+    }
     let token
     try {
       token = await this.token({ force: retried })
     } catch {
       return reject(502, 'Bad Gateway')
     }
-    const { base, lib, path } = this._target(devicePath)
-    const headers = this._upstreamHeaders(req, token)
-    headers.connection = 'Upgrade'
-    headers.upgrade = req.headers.upgrade ?? 'websocket'
-    const upstream = lib.request({ protocol: base.protocol, hostname: base.hostname, port: base.port, method: 'GET', path, headers, agent: false })
+    if (handshake.done || socket.destroyed) return
+    let upstream
+    try {
+      const { base, lib, path } = this._target(devicePath)
+      const headers = this._upstreamHeaders(req, token)
+      headers.connection = 'Upgrade'
+      headers.upgrade = req.headers.upgrade ?? 'websocket'
+      upstream = lib.request({ protocol: base.protocol, hostname: base.hostname, port: base.port, method: 'GET', path, headers, agent: false })
+    } catch {
+      return reject(502, 'Bad Gateway')
+    }
+    handshake.upstream = upstream
     upstream.on('upgrade', (upRes, upSocket, upHead) => {
+      if (handshake.done || socket.destroyed) return upSocket.destroy()
+      handshake.finish(false)
       const lines = [`HTTP/1.1 ${upRes.statusCode} ${upRes.statusMessage || 'Switching Protocols'}`]
       for (let i = 0; i < upRes.rawHeaders.length; i += 2) lines.push(`${upRes.rawHeaders[i]}: ${upRes.rawHeaders[i + 1]}`)
       socket.write(lines.join('\r\n') + '\r\n\r\n')
@@ -251,15 +295,20 @@ export class DeviceGateway {
       upSocket.pipe(socket)
     })
     upstream.on('response', (upRes) => {
-      upRes.resume()
+      upRes.on('error', () => {})
+      if (handshake.done) return upRes.destroy()
       // A token the device no longer accepts (it restarted, or the token aged out): once more with a fresh one.
       if (upRes.statusCode === 401 && !retried) {
-        this._upgrade(req, socket, head, true).catch(() => socket.destroy())
+        handshake.upstream = null
+        upRes.destroy()
+        this._upgrade(req, socket, head, true, handshake).catch(() => reject(502, 'Bad Gateway'))
         return
       }
       reject(upRes.statusCode ?? 502, upRes.statusMessage || 'Bad Gateway')
     })
-    upstream.on('error', () => reject(502, 'Bad Gateway'))
+    upstream.on('error', () => {
+      if (handshake.upstream === upstream) reject(502, 'Bad Gateway')
+    })
     upstream.end()
   }
 
